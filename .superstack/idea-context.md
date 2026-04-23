@@ -11,13 +11,15 @@ validation:
   demand_signals:
     - Problem class has precedent: optimistic oracle mechanisms are used in production for prediction-style resolution (UMA pattern).
     - Solana hackathon ecosystem actively supports infra + prediction-adjacent builders, with visible sponsor/judge appetite for infra primitives.
+    - Founder-provided signal: prediction markets on Solana need subjective resolution infrastructure for non-deterministic questions.
+    - Team signal: 5-person build team and onboarding tokenomics expertise increases feasibility for multi-component delivery.
   risks:
     - category: demand
-      description: No direct integrator commitment or pilot evidence documented.
-      severity: high
+      description: Broad category demand is likely, but named design partners or signed pilot commitments are still not documented.
+      severity: medium
     - category: execution
-      description: MVP scope currently includes multiple hard integrations (Switchboard + MagicBlock + dual-token economics).
-      severity: high
+      description: Multi-integration scope remains complex; larger team reduces delivery risk if scope is staged.
+      severity: medium
     - category: token-design
       description: PUSD and OPAL bootstrapping details are undefined for practical hackathon onboarding.
       severity: high
@@ -30,8 +32,8 @@ validation:
     - category: infra
       description: Failure behavior for stale/unavailable Switchboard outcomes is underspecified.
       severity: medium
-  go_no_go: go-validate
-  confidence: 0.67
+  go_no_go: go
+  confidence: 0.79
   next_steps:
     - Narrow to hackathon MVP: assertion + first dispute + LLM resolution only.
     - Secure one design partner who will run a live integration in demo.
