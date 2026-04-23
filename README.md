@@ -1,6 +1,6 @@
 # Opal
 
-Opal is a Solana-native optimistic oracle for verifying real-world statements written in natural language. It is designed for statements that price feeds, APIs, and deterministic onchain data cannot safely answer on their own.
+Opal is a Solana-native optimistic oracle for verifying natural language statements. It is designed for statements based on real-world events that price feeds, APIs, and deterministic onchain data cannot safely answer on their own.
 
 The first target use case is prediction-market resolution. A market or application can ask Opal to resolve statements like:
 
