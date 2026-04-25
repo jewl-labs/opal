@@ -6,7 +6,7 @@ import {
   type TransactionSigner,
 } from "@solana/kit";
 import { describe, it, expect, beforeAll } from "bun:test";
-import { 
+import {
   OPAL_PROGRAM_ADDRESS,
   COUNTER_DISCRIMINATOR,
   getCounterDecoder,
@@ -25,7 +25,7 @@ describe("counter", async () => {
   let connection: Connection;
 
   let getCounter: () => Promise<bigint>;
-  const CLUSTER = process.env.CLUSTER || "localnet";
+  const CLUSTER = process.env.CLUSTER?.toLowerCase() || "localnet";
 
   beforeAll(async () => {
     // Bun is so fast, the websocket connection may not be ready yet
@@ -39,14 +39,13 @@ describe("counter", async () => {
           )
         : await connection.createWallet();
 
-    const counterPDAAndBump = await getPDAAndBump(
-      BUNCHOR_TEMPLATE_PROGRAM_ADDRESS,
-      [Buffer.from("counter")],
-    );
+    const counterPDAAndBump = await getPDAAndBump(OPAL_PROGRAM_ADDRESS, [
+      Buffer.from("counter"),
+    ]);
     counterPda = counterPDAAndBump.pda;
 
     const getCounters = connection.getAccountsFactory(
-      BUNCHOR_TEMPLATE_PROGRAM_ADDRESS,
+      OPAL_PROGRAM_ADDRESS,
       COUNTER_DISCRIMINATOR,
       getCounterDecoder(),
     );
