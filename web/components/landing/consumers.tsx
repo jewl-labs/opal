@@ -11,7 +11,7 @@ export default function Consumer() {
           </h2>
         </div>
 
-        <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {[
             {
               title: 'Prediction markets',
@@ -40,7 +40,7 @@ export default function Consumer() {
                   Opal
                 </span>
               </header>
-              <p className="text-muted-foreground mt-5 px-6 text-xs text-balance leading-7 uppercase">
+              <p className="text-muted-foreground mt-5 px-6 text-xs leading-7 text-balance uppercase">
                 {item.text}
               </p>
             </article>

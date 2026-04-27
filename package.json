@@ -5,11 +5,14 @@
     "format": "prettier tests/* --check",
     "generate": "codama run js",
     "setup": "anchor build && codama run js",
-    "test": "anchor test",
-    "test:devnet": "CLUSTER=DEVNET anchor test --provider.cluster devnet --skip-build --skip-deploy"
+    "test": "bash scripts/test-local.sh",
+    "test:devnet": "bun test tests/opal.devnet.test.ts"
   },
   "dependencies": {
+    "@coral-xyz/anchor": "^0.32.1",
     "@solana/kit": "^6.3.1",
+    "@solana/spl-token": "^0.4.14",
+    "@solana/web3.js": "^1.98.4",
     "solana-kite": "^3.2.1"
   },
   "devDependencies": {

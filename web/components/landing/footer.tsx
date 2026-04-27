@@ -19,7 +19,9 @@ export default function Footer() {
               target="_blank"
               rel="noreferrer"
               className="text-primary undeerline-offset-8 text-sm tracking-[0.2em] transition-opacity hover:underline"
-            >X / @opaldotsol</a>
+            >
+              X / @opaldotsol
+            </a>
           </div>
         </div>
 

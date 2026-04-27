@@ -55,10 +55,10 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
         const last = focusables[focusables.length - 1];
         if (e.shiftKey && document.activeElement === first) {
           e.preventDefault();
-          last.focus();
+          last?.focus();
         } else if (!e.shiftKey && document.activeElement === last) {
           e.preventDefault();
-          first.focus();
+          first?.focus();
         }
       }
     };
@@ -90,7 +90,7 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
     >
       <div
         className={cn(
-          'relative mx-4 w-full max-w-[440px]',
+          'relative mx-4 w-full max-w-110',
           'bg-background border-border border',
           'shadow-2xl shadow-black/40',
           'animate-in fade-in-0 zoom-in-95 duration-150'
@@ -184,7 +184,7 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
                 type="submit"
                 disabled={!isInputValid}
                 className={cn(
-                  'font-mono text-[11px] tracking-[0.1em] uppercase transition-all',
+                  'font-mono text-[11px] tracking-widest uppercase transition-all',
                   'border px-4 py-1.5',
                   isInputValid
                     ? 'border-foreground/20 bg-foreground text-background hover:bg-foreground/90'

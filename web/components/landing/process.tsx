@@ -205,7 +205,7 @@ function AssertIllustration() {
               transform="matrix(0.866025 -0.5 0.866025 0.5 85.116 60.433)"
               fill="#141414"
               stroke="#FFC95C"
-              stroke-dasharray="2 2"
+              strokeDasharray="2 2"
             />
             <rect
               id="Rectangle 3_4"
@@ -216,7 +216,7 @@ function AssertIllustration() {
               transform="matrix(0.866025 0.5 0 1 85.058 59.7835)"
               fill="#141414"
               stroke="#FFC95C"
-              stroke-dasharray="2 2"
+              strokeDasharray="2 2"
             />
             <rect
               id="Rectangle 4_4"
@@ -227,7 +227,7 @@ function AssertIllustration() {
               transform="matrix(0.866025 -0.5 0 1 189.058 120.07)"
               fill="#141414"
               stroke="#FFC95C"
-              stroke-dasharray="2 2"
+              strokeDasharray="2 2"
             />
           </g>
         </g>
@@ -287,15 +287,15 @@ function AssertIllustration() {
           id="Line 1"
           d="M85 89.5L32.0007 89.5L32.0007 76"
           stroke="#FFC95C"
-          stroke-opacity="0.5"
-          stroke-dasharray="2 2"
+          strokeOpacity="0.5"
+          strokeDasharray="2 2"
         />
         <path
           id="Line 2"
           d="M293.001 89.5L346 89.5L346 76"
           stroke="#FFC95C"
-          stroke-opacity="0.5"
-          stroke-dasharray="2 2"
+          strokeOpacity="0.5"
+          strokeDasharray="2 2"
         />
         <path
           id="AUXILIARY DATA"
@@ -316,9 +316,9 @@ function AssertIllustration() {
           width="25.3276"
           height="18.0041"
           filterUnits="userSpaceOnUse"
-          color-interpolation-filters="sRGB"
+          colorInterpolationFilters="sRGB"
         >
-          <feFlood flood-opacity="0" result="BackgroundImageFix" />
+          <feFlood floodOpacity="0" result="BackgroundImageFix" />
           <feColorMatrix
             in="SourceAlpha"
             type="matrix"
@@ -339,9 +339,9 @@ function AssertIllustration() {
           width="25.3276"
           height="18.0041"
           filterUnits="userSpaceOnUse"
-          color-interpolation-filters="sRGB"
+          colorInterpolationFilters="sRGB"
         >
-          <feFlood flood-opacity="0" result="BackgroundImageFix" />
+          <feFlood floodOpacity="0" result="BackgroundImageFix" />
           <feColorMatrix
             in="SourceAlpha"
             type="matrix"
@@ -380,19 +380,19 @@ function DisputeIllustration() {
             transform="matrix(0.866025 -0.5 0.866025 0.5 85.1164 158.433)"
             fill="#141414"
             stroke="#FF6464"
-            stroke-dasharray="2 2"
+            strokeDasharray="2 2"
           />
           <path
             id="Rectangle 3"
             d="M85.0004 157.146V217.146L188.923 277.146V217.146"
             stroke="#FF6464"
-            stroke-dasharray="2 2"
+            strokeDasharray="2 2"
           />
           <path
             id="Rectangle 4"
             d="M292.847 157V217L188.923 277"
             stroke="#FF6464"
-            stroke-dasharray="2 2"
+            strokeDasharray="2 2"
           />
         </g>
         <g id="Group 14">
@@ -451,13 +451,13 @@ function DisputeIllustration() {
           id="Line 3"
           d="M85.0004 188.5L32.0011 188.5L32.0011 175"
           stroke="#FF6464"
-          stroke-dasharray="2 2"
+          strokeDasharray="2 2"
         />
         <path
           id="Line 4"
           d="M293 188.5L345.999 188.5L345.999 175"
           stroke="#FF6464"
-          stroke-dasharray="2 2"
+          strokeDasharray="2 2"
         />
         <path
           id="AUXILIARY DATA"
@@ -495,8 +495,8 @@ function DisputeIllustration() {
             height="89"
             transform="matrix(0.866025 0.5 -0.866025 0.5 189.375 113.25)"
             stroke="#FF6464"
-            stroke-opacity="0.25"
-            stroke-dasharray="1 1"
+            strokeOpacity="0.25"
+            strokeDasharray="1 1"
           />
         </g>
         <line
@@ -506,8 +506,8 @@ function DisputeIllustration() {
           x2="189.5"
           y2="202"
           stroke="#FF6464"
-          stroke-opacity="0.25"
-          stroke-dasharray="2 2"
+          strokeOpacity="0.25"
+          strokeDasharray="2 2"
         />
         <line
           id="Line 7"
@@ -516,8 +516,8 @@ function DisputeIllustration() {
           x2="112.5"
           y2="157.996"
           stroke="#FF6464"
-          stroke-opacity="0.25"
-          stroke-dasharray="2 2"
+          strokeOpacity="0.25"
+          strokeDasharray="2 2"
         />
         <line
           id="Line 6"
@@ -526,8 +526,8 @@ function DisputeIllustration() {
           x2="266.5"
           y2="158"
           stroke="#FF6464"
-          stroke-opacity="0.25"
-          stroke-dasharray="2 2"
+          strokeOpacity="0.25"
+          strokeDasharray="2 2"
         />
       </g>
       <defs>
@@ -538,9 +538,9 @@ function DisputeIllustration() {
           width="25.3275"
           height="18.0041"
           filterUnits="userSpaceOnUse"
-          color-interpolation-filters="sRGB"
+          colorInterpolationFilters="sRGB"
         >
-          <feFlood flood-opacity="0" result="BackgroundImageFix" />
+          <feFlood floodOpacity="0" result="BackgroundImageFix" />
           <feColorMatrix
             in="SourceAlpha"
             type="matrix"
@@ -566,9 +566,9 @@ function DisputeIllustration() {
           width="25.3275"
           height="18.0041"
           filterUnits="userSpaceOnUse"
-          color-interpolation-filters="sRGB"
+          colorInterpolationFilters="sRGB"
         >
-          <feFlood flood-opacity="0" result="BackgroundImageFix" />
+          <feFlood floodOpacity="0" result="BackgroundImageFix" />
           <feColorMatrix
             in="SourceAlpha"
             type="matrix"
@@ -611,14 +611,14 @@ function EscalateIllustration() {
           transform="matrix(0.866025 -0.5 0.866025 0.5 86.115 150.433)"
           fill="#141414"
           stroke="#83FF75"
-          stroke-dasharray="2 2"
+          strokeDasharray="2 2"
         />
         <path
           id="Rectangle 6"
           d="M190.922 149.854L86.999 209.854"
           stroke="#83FF75"
-          stroke-opacity="0.5"
-          stroke-dasharray="2 2"
+          strokeOpacity="0.5"
+          strokeDasharray="2 2"
         />
         <rect
           id="Rectangle 3"
@@ -629,14 +629,14 @@ function EscalateIllustration() {
           transform="matrix(0.866025 0.5 0 1 86.057 149.783)"
           fill="#141414"
           stroke="#83FF75"
-          stroke-dasharray="2 2"
+          strokeDasharray="2 2"
         />
         <path
           id="Rectangle 7"
           d="M189.999 90V150L293.922 210"
           stroke="#83FF75"
-          stroke-opacity="0.5"
-          stroke-dasharray="2 2"
+          strokeOpacity="0.5"
+          strokeDasharray="2 2"
         />
         <rect
           id="Rectangle 4"
@@ -647,7 +647,7 @@ function EscalateIllustration() {
           transform="matrix(0.866025 -0.5 0 1 190.057 210.07)"
           fill="#141414"
           stroke="#83FF75"
-          stroke-dasharray="2 2"
+          strokeDasharray="2 2"
         />
         <rect
           id="Rectangle 8"
@@ -657,7 +657,7 @@ function EscalateIllustration() {
           transform="matrix(0.866025 -0.5 0.866025 0.5 86.115 60.433)"
           fill="#141414"
           stroke="#83FF75"
-          stroke-dasharray="2 2"
+          strokeDasharray="2 2"
         />
         <path
           id="PRIVATE VOTING"
@@ -668,13 +668,13 @@ function EscalateIllustration() {
           id="Line 3"
           d="M86.0013 180.5L33.0021 180.5L33.0021 167"
           stroke="#83FF75"
-          stroke-dasharray="2 2"
+          strokeDasharray="2 2"
         />
         <path
           id="Line 4"
           d="M294.001 180.5L347 180.5L347 167"
           stroke="#83FF75"
-          stroke-dasharray="2 2"
+          strokeDasharray="2 2"
         />
         <path
           id="PRIVATE VOTING_2"
@@ -747,9 +747,9 @@ function EscalateIllustration() {
           width="24.6265"
           height="17.5992"
           filterUnits="userSpaceOnUse"
-          color-interpolation-filters="sRGB"
+          colorInterpolationFilters="sRGB"
         >
-          <feFlood flood-opacity="0" result="BackgroundImageFix" />
+          <feFlood floodOpacity="0" result="BackgroundImageFix" />
           <feColorMatrix
             in="SourceAlpha"
             type="matrix"
@@ -770,9 +770,9 @@ function EscalateIllustration() {
           width="24.6265"
           height="17.5992"
           filterUnits="userSpaceOnUse"
-          color-interpolation-filters="sRGB"
+          colorInterpolationFilters="sRGB"
         >
-          <feFlood flood-opacity="0" result="BackgroundImageFix" />
+          <feFlood floodOpacity="0" result="BackgroundImageFix" />
           <feColorMatrix
             in="SourceAlpha"
             type="matrix"

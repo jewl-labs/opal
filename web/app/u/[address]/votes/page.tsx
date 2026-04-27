@@ -26,7 +26,7 @@ function deriveVotes(assertions: any[]): VoteView[] {
 
   assertions.forEach((a) => {
     if (a.voteResolutionRound) {
-      const totalVotes = Object.values(a.voteResolutionRound.aggregateVotes).reduce(
+      const totalVotes = (Object.values(a.voteResolutionRound.aggregateVotes) as number[]).reduce(
         (sum, v) => sum + v,
         0
       );
@@ -35,10 +35,10 @@ function deriveVotes(assertions: any[]): VoteView[] {
           ? ((Number(a.voteResolutionRound.totalValidWeight) / totalVotes) * 100).toFixed(1)
           : '0';
 
-      // Determine status based on resolved or active
+      // Determine status: guard against null/undefined votingDeadline
       const isActive =
         !a.voteResolutionRound.votingDeadline ||
-        new Date(a.voteResolutionRound.votingDeadline) > new Date();
+        new Date(a.voteResolutionRound.votingDeadline).getTime() > Date.now();
       const status: Exclude<VoteStatus, 'ALL'> = isActive ? 'ACTIVE' : 'ALIGNED';
 
       votes.push({
@@ -91,6 +91,7 @@ export default function VotesPage() {
 
   const votes = deriveVotes(assertions as any);
   const stats = computeAssertionStats(assertions as any);
+
   const rows = votes.filter((v) => {
     const matchFilter = filter === 'ALL' || v.status === filter;
     const matchSearch = !search || v.statement.toLowerCase().includes(search.toLowerCase());
@@ -111,8 +112,8 @@ export default function VotesPage() {
 
   return (
     <div className="flex flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8">
-      {/* consistent slim status bar */}
-      <div className="border-muted-foreground/20 flex items-center gap-6 border-b border-dashed py-3 text-[10px] tracking-widest uppercase">
+      {/* status bar */}
+      <div className="border-muted-foreground/20 flex flex-wrap items-center gap-6 border-b border-dashed py-3 text-[10px] tracking-widest uppercase">
         <div className="flex items-center gap-2">
           <div className="text-muted-foreground">Total Assertions</div>
           <div className="text-primary text-[10px] font-semibold">{stats.totalAssertions}</div>
@@ -129,6 +130,11 @@ export default function VotesPage() {
         </div>
 
         <div className="ml-auto flex items-center gap-2">
+          <div className="text-muted-foreground">Total Rewards</div>
+          <div className="text-primary text-[10px] font-semibold">+{totalReward} OPAL</div>
+        </div>
+
+        <div className="flex items-center gap-2">
           <div className="text-muted-foreground">Bond PUSD</div>
           <div className="text-[10px] font-semibold">{stats.totalBondPUSD}</div>
         </div>
@@ -220,45 +226,45 @@ export default function VotesPage() {
                       key={row.id}
                       className="group border-muted-foreground/10 hover:bg-muted/10 border-b border-dashed transition-colors last:border-none"
                     >
-                      <td colSpan={5} className="p-0">
+                      {/* statement */}
+                      <td className="w-[45%] px-5 py-4">
                         <Link
                           href={`/assertion/browse/${row.assertionId}`}
-                          className="grid grid-cols-[45%_1fr_1fr_1fr_1fr] items-center"
+                          className="group-hover:text-primary line-clamp-1 text-xs tracking-tight uppercase transition-colors"
                         >
-                          {/* statement */}
-                          <div className="group-hover:text-primary line-clamp-1 px-5 py-4 text-xs tracking-tight uppercase transition-colors">
-                            {row.statement}
-                          </div>
-
-                          {/* consensus */}
-                          <div
-                            className={`px-5 py-4 text-[10px] font-semibold uppercase ${OUTCOME_COLOR[row.currentConsensus] || 'text-muted-foreground'}`}
-                          >
-                            {row.currentConsensus}
-                          </div>
-
-                          {/* weight */}
-                          <div className="text-muted-foreground px-5 py-4 text-[10px] uppercase">
-                            {row.voteWeight}
-                          </div>
-
-                          {/* status */}
-                          <div className="flex items-center gap-2 px-5 py-4">
-                            <span className={`size-1.5 shrink-0 rounded-full ${dot}`} />
-                            <span className={`text-[10px] tracking-wide uppercase ${text}`}>
-                              {STATUS_META[row.status].label}
-                            </span>
-                          </div>
-
-                          {/* reward */}
-                          <div className="px-5 py-4 text-[10px] font-semibold uppercase">
-                            {row.reward ? (
-                              <span className="text-primary">{row.reward}</span>
-                            ) : (
-                              <span className="text-muted-foreground/30">—</span>
-                            )}
-                          </div>
+                          {row.statement}
                         </Link>
+                      </td>
+
+                      {/* consensus */}
+                      <td
+                        className={`px-5 py-4 text-[10px] font-semibold uppercase ${OUTCOME_COLOR[row.currentConsensus] ?? 'text-muted-foreground'}`}
+                      >
+                        {row.currentConsensus}
+                      </td>
+
+                      {/* weight */}
+                      <td className="text-muted-foreground px-5 py-4 text-[10px] uppercase">
+                        {row.voteWeight}
+                      </td>
+
+                      {/* status */}
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-2">
+                          <span className={`size-1.5 shrink-0 rounded-full ${dot}`} />
+                          <span className={`text-[10px] tracking-wide uppercase ${text}`}>
+                            {STATUS_META[row.status].label}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* reward */}
+                      <td className="px-5 py-4 text-[10px] font-semibold uppercase">
+                        {row.reward ? (
+                          <span className="text-primary">{row.reward}</span>
+                        ) : (
+                          <span className="text-muted-foreground/30">—</span>
+                        )}
                       </td>
                     </tr>
                   );

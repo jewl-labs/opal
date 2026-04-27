@@ -42,15 +42,19 @@ export default function ResolutionLayers() {
                 transition={{ duration: 0.4, delay: index * 0.05 }}
                 className="border-muted-foreground/40 bg-background/80 group flex flex-col gap-3 border border-dashed py-5 shadow-[0_10px_30px_-30px_rgba(0,0,0,0.6)] backdrop-blur"
               >
-                <div className="flex px-5 items-center justify-between gap-4">
+                <div className="flex items-center justify-between gap-4 px-5">
                   <h3 className="text-lg font-semibold tracking-wider uppercase">{item.title}</h3>
                   <span className="border-muted-foreground/40 text-muted-foreground px-2 py-1 text-[10px] tracking-[0.3em] uppercase">
                     {item.tag}
                   </span>
                 </div>
-                <p className="text-muted-foreground px-5 text-sm uppercase leading-relaxed">{item.summary}</p>
-                <div className="border-b border-border border-dashed h-px w-full" />
-                <span className="text-primary text-[10px] px-5 tracking-[0.4em] uppercase">State</span>
+                <p className="text-muted-foreground px-5 text-sm leading-relaxed uppercase">
+                  {item.summary}
+                </p>
+                <div className="border-border h-px w-full border-b border-dashed" />
+                <span className="text-primary px-5 text-[10px] tracking-[0.4em] uppercase">
+                  State
+                </span>
               </m.article>
             ))}
           </div>

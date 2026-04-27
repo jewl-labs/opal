@@ -10,7 +10,7 @@ export default function Hero() {
   return (
     <>
       <section className="relative overflow-x-clip px-4">
-        <div className="relative flex justify-center min-h-[90vh] translate-y-8 flex-col items-center gap-10 py-12 md:py-16">
+        <div className="relative flex min-h-[90vh] translate-y-8 flex-col items-center justify-center gap-10 py-12 md:py-16">
           <div className="flex max-w-4xl flex-col items-center space-y-4">
             <p className="text-primary text-xs font-semibold tracking-[0.35em] uppercase">
               Solana-native optimistic oracle
@@ -24,14 +24,14 @@ export default function Hero() {
             </p>
           </div>
 
-          <div className="flex flex-col gap-4 sm:flex-row w-full md:justify-center sm:items-center">
+          <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-center md:justify-center">
             <Link href="/assertion/make" className="w-full sm:w-auto">
-              <Button size="lg" className="w-full sm:px-8 uppercase">
+              <Button size="lg" className="w-full uppercase sm:px-8">
                 Make Assertion
               </Button>
             </Link>
             <Link href="/assertion/browse" className="w-full sm:w-auto">
-              <Button size="lg" variant="outline" className="w-full sm:px-8 uppercase">
+              <Button size="lg" variant="outline" className="w-full uppercase sm:px-8">
                 Browse Assertions
               </Button>
             </Link>
