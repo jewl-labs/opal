@@ -31,11 +31,11 @@ pub struct InitializeProtocolConfig<'info> {
     #[account(
         init,
         payer = authority,
-        space = 8 + ProtocolConfig::INIT_SPACE,
+        space = 8 + std::mem::size_of::<ProtocolConfig>(),
         seeds = [PROTOCOL_CONFIG_SEED],
         bump
     )]
-    pub protocol_config: Account<'info, ProtocolConfig>,
+    pub protocol_config: AccountLoader<'info, ProtocolConfig>,
 
     pub pusd_mint: Account<'info, Mint>,
 
@@ -47,7 +47,13 @@ pub struct InitializeProtocolConfig<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(ctx: Context<InitializeProtocolConfig>, args: InitializeProtocolConfigArgs) -> Result<()> {
+pub fn handler(
+    ctx: Context<InitializeProtocolConfig>,
+    args: InitializeProtocolConfigArgs,
+) -> Result<()> {
+    // PLACEHOLDER: uncomment before mainnet to restrict init to deployer.
+    // require!(ctx.accounts.authority.key() == crate::ID, OpalError::Unauthorized);
+
     require!(
         args.assertion_bond_min_pusd > 0,
         OpalError::InvalidAssertionBondMinimum
@@ -65,7 +71,8 @@ pub fn handler(ctx: Context<InitializeProtocolConfig>, args: InitializeProtocolC
         OpalError::ConfigInvariantViolation
     );
     require!(
-        u64::from(args.supermajority_bps) <= BPS_DENOMINATOR && args.supermajority_bps > 0,
+        u64::from(args.supermajority_bps) <= BPS_DENOMINATOR
+            && u64::from(args.supermajority_bps) > BPS_DENOMINATOR / 2,
         OpalError::ConfigInvariantViolation
     );
     require!(
@@ -89,25 +96,24 @@ pub fn handler(ctx: Context<InitializeProtocolConfig>, args: InitializeProtocolC
         OpalError::ConfigInvariantViolation
     );
 
-    ctx.accounts.protocol_config.set_inner(ProtocolConfig {
-        authority: ctx.accounts.authority.key(),
-        pusd_mint: ctx.accounts.pusd_mint.key(),
-        treasury: ctx.accounts.treasury_pusd.key(),
-        assertion_bond_min_pusd: args.assertion_bond_min_pusd,
-        llm_dispute_bond_ratio_bps: args.llm_dispute_bond_ratio_bps,
-        vote_dispute_bond_ratio_bps: args.vote_dispute_bond_ratio_bps,
-        protocol_fee_bps: args.protocol_fee_bps,
-        llm_disputer_reward_share_bps: args.llm_disputer_reward_share_bps,
-        vote_disputer_reward_share_bps: args.vote_disputer_reward_share_bps,
-        voter_reward_share_bps: args.voter_reward_share_bps,
-        treasury_share_bps: args.treasury_share_bps,
-        supermajority_bps: args.supermajority_bps,
-        liveness_window_seconds: args.liveness_window_seconds,
-        llm_challenge_window_seconds: args.llm_challenge_window_seconds,
-        vote_setup_window_seconds: args.vote_setup_window_seconds,
-        voting_window_seconds: args.voting_window_seconds,
-        bump: ctx.bumps.protocol_config,
-    });
+    let mut config = ctx.accounts.protocol_config.load_init()?;
+    config.authority = ctx.accounts.authority.key();
+    config.pusd_mint = ctx.accounts.pusd_mint.key();
+    config.treasury = ctx.accounts.treasury_pusd.key();
+    config.assertion_bond_min_pusd = args.assertion_bond_min_pusd;
+    config.llm_dispute_bond_ratio_bps = args.llm_dispute_bond_ratio_bps;
+    config.vote_dispute_bond_ratio_bps = args.vote_dispute_bond_ratio_bps;
+    config.protocol_fee_bps = args.protocol_fee_bps;
+    config.llm_disputer_reward_share_bps = args.llm_disputer_reward_share_bps;
+    config.vote_disputer_reward_share_bps = args.vote_disputer_reward_share_bps;
+    config.voter_reward_share_bps = args.voter_reward_share_bps;
+    config.treasury_share_bps = args.treasury_share_bps;
+    config.supermajority_bps = args.supermajority_bps;
+    config.liveness_window_seconds = args.liveness_window_seconds;
+    config.llm_challenge_window_seconds = args.llm_challenge_window_seconds;
+    config.vote_setup_window_seconds = args.vote_setup_window_seconds;
+    config.voting_window_seconds = args.voting_window_seconds;
+    config.bump = ctx.bumps.protocol_config;
 
     Ok(())
 }

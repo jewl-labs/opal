@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 
-#[account]
-#[derive(InitSpace)]
+#[repr(C, packed)]
+#[account(zero_copy(unsafe))]
 pub struct ProtocolConfig {
     pub authority: Pubkey,
     pub pusd_mint: Pubkey,

@@ -22,7 +22,7 @@ custom-panic = []
 [dependencies]
 anchor-lang = { version = "0.32.1", features = [] }
 anchor-spl = { version = "0.32.1", features = ["token"] }
-bytemuck = { version = "1", features = ["derive"] }
 ephemeral-rollups-sdk = { version = "0.8.0", features = ["anchor", "access-control"] }
 
-[dev-dependencies]
+[lints.rust]
+unexpected_cfgs = { level = "allow", check-cfg = ['cfg(target_os, values("solana"))'] }
