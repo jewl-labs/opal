@@ -1,10 +1,10 @@
 use crate::{
     constants::{
-        ASSERTION_SEED, BOND_VAULT_SEED, MAX_AUXILIARY_HASH_LEN, MAX_STATEMENT_LEN,
-        PROTOCOL_CONFIG_SEED,
+        ASSERTION_SEED, ASSERTION_STATE_ASSERTED, BOND_VAULT_SEED, MAX_AUXILIARY_HASH_LEN,
+        MAX_STATEMENT_LEN, OUTCOME_NONE, PROTOCOL_CONFIG_SEED, TIMESTAMP_NONE,
     },
     errors::OpalError,
-    state::{AssertionAccount, AssertionState, ProtocolConfig},
+    state::{AssertionAccount, ProtocolConfig},
     utils::checked_add_i64,
 };
 use anchor_lang::prelude::*;
@@ -26,21 +26,20 @@ pub struct CreateAssertion<'info> {
 
     #[account(
         seeds = [PROTOCOL_CONFIG_SEED],
-        bump = protocol_config.bump,
-        has_one = pusd_mint @ OpalError::InvalidPusdMint,
+        bump,
     )]
-    pub protocol_config: Account<'info, ProtocolConfig>,
+    pub protocol_config: AccountLoader<'info, ProtocolConfig>,
 
     pub pusd_mint: Account<'info, Mint>,
 
     #[account(
         init,
         payer = asserter,
-        space = 8 + AssertionAccount::INIT_SPACE,
+        space = 8 + std::mem::size_of::<AssertionAccount>(),
         seeds = [ASSERTION_SEED, args.assertion_id.as_ref()],
         bump
     )]
-    pub assertion: Account<'info, AssertionAccount>,
+    pub assertion: AccountLoader<'info, AssertionAccount>,
 
     #[account(
         init,
@@ -64,42 +63,53 @@ pub struct CreateAssertion<'info> {
 }
 
 pub fn handler(ctx: Context<CreateAssertion>, args: CreateAssertionArgs) -> Result<()> {
+    let stmt_bytes = args.statement.as_bytes();
     require!(
-        args.statement.as_bytes().len() <= MAX_STATEMENT_LEN,
+        stmt_bytes.len() <= MAX_STATEMENT_LEN,
         OpalError::StatementTooLong
     );
+    let hash_bytes = args.auxiliary_hash.as_bytes();
     require!(
-        args.auxiliary_hash.as_bytes().len() <= MAX_AUXILIARY_HASH_LEN,
+        hash_bytes.len() <= MAX_AUXILIARY_HASH_LEN,
         OpalError::AuxiliaryHashTooLong
     );
+
+    let protocol_config = ctx.accounts.protocol_config.load()?;
     require!(
-        args.assertion_bond_amount_pusd >= ctx.accounts.protocol_config.assertion_bond_min_pusd,
+        args.assertion_bond_amount_pusd >= protocol_config.assertion_bond_min_pusd,
         OpalError::InsufficientBondAmount
+    );
+    require!(
+        ctx.accounts.pusd_mint.key() == protocol_config.pusd_mint,
+        OpalError::Unauthorized
     );
 
     let now = Clock::get()?.unix_timestamp;
-    let liveness_deadline = checked_add_i64(now, ctx.accounts.protocol_config.liveness_window_seconds)?;
+    let liveness_deadline = checked_add_i64(now, protocol_config.liveness_window_seconds)?;
 
-    let assertion = &mut ctx.accounts.assertion;
-    assertion.set_inner(AssertionAccount {
-        id: args.assertion_id,
-        asserter: ctx.accounts.asserter.key(),
-        statement: args.statement,
-        auxiliary_hash: args.auxiliary_hash,
-        bond_vault: ctx.accounts.bond_vault.key(),
-        state: AssertionState::Asserted,
-        liveness_deadline,
-        llm_challenge_deadline: None,
-        outcome: None,
-        finalized_at: None,
-        dispute_count: 0,
-        assertion_bond_amount_pusd: args.assertion_bond_amount_pusd,
-        llm_dispute: None,
-        vote_dispute: None,
-        llm_resolution_round: None,
-        vote_resolution_round: None,
-        bump: ctx.bumps.assertion,
-    });
+    let mut statement = [0u8; MAX_STATEMENT_LEN];
+    statement[..stmt_bytes.len()].copy_from_slice(stmt_bytes);
+    let mut auxiliary_hash = [0u8; MAX_AUXILIARY_HASH_LEN];
+    auxiliary_hash[..hash_bytes.len()].copy_from_slice(hash_bytes);
+
+    let mut assertion = ctx.accounts.assertion.load_init()?;
+    assertion.id = args.assertion_id;
+    assertion.asserter = ctx.accounts.asserter.key();
+    assertion.statement = statement;
+    assertion.auxiliary_hash = auxiliary_hash;
+    assertion.bond_vault = ctx.accounts.bond_vault.key();
+    assertion.state = ASSERTION_STATE_ASSERTED;
+    assertion.liveness_deadline = liveness_deadline;
+    assertion.llm_challenge_deadline = TIMESTAMP_NONE;
+    assertion.outcome = OUTCOME_NONE;
+    assertion.finalized_at = TIMESTAMP_NONE;
+    assertion.dispute_count = 0;
+    assertion.assertion_bond_amount_pusd = args.assertion_bond_amount_pusd;
+    assertion.llm_dispute = Pubkey::default();
+    assertion.vote_dispute = Pubkey::default();
+    assertion.llm_resolution_round = Pubkey::default();
+    assertion.vote_resolution_round = Pubkey::default();
+    assertion.bump = ctx.bumps.assertion;
 
     token::transfer(
         CpiContext::new(

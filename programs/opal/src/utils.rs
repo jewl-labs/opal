@@ -1,14 +1,9 @@
-use crate::{constants::BPS_DENOMINATOR, errors::OpalError, state::ResolutionOutcome};
+use crate::{constants::BPS_DENOMINATOR, errors::OpalError};
 use anchor_lang::prelude::*;
 
-pub fn map_outcome_code(outcome_code: u8) -> Result<ResolutionOutcome> {
-    match outcome_code {
-        0 => Ok(ResolutionOutcome::True),
-        1 => Ok(ResolutionOutcome::False),
-        2 => Ok(ResolutionOutcome::TooEarly),
-        3 => Ok(ResolutionOutcome::Unresolvable),
-        _ => err!(OpalError::InvalidOutcomeCode),
-    }
+pub fn map_outcome_code(outcome_code: u8) -> Result<u8> {
+    require!(outcome_code <= 3, OpalError::InvalidOutcomeCode);
+    Ok(outcome_code)
 }
 
 pub fn checked_bps(amount: u64, bps: u16) -> Result<u64> {
@@ -22,5 +17,22 @@ pub fn checked_bps(amount: u64, bps: u16) -> Result<u64> {
 }
 
 pub fn checked_add_i64(lhs: i64, rhs: i64) -> Result<i64> {
-    lhs.checked_add(rhs).ok_or_else(|| error!(OpalError::MathOverflow))
+    lhs.checked_add(rhs)
+        .ok_or_else(|| error!(OpalError::MathOverflow))
+}
+
+pub fn is_pubkey_default(pk: &Pubkey) -> bool {
+    *pk == Pubkey::default()
+}
+
+pub fn is_timestamp_set(ts: i64) -> bool {
+    ts != 0
+}
+
+pub fn is_hash_set(hash: &[u8; 32]) -> bool {
+    hash != &[0; 32]
+}
+
+pub fn is_outcome_set(outcome: u8) -> bool {
+    outcome != crate::constants::OUTCOME_NONE
 }

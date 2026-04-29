@@ -7,8 +7,7 @@ const PROGRAM_ID = new PublicKey(
   "8NCcxyAzKiAHxJ9DMnADtxShYutS9w81wHcXqgCavTBy",
 );
 
-const DEVNET_RPC =
-  process.env.DEVNET_RPC || "https://api.devnet.solana.com";
+const DEVNET_RPC = process.env.DEVNET_RPC || "https://api.devnet.solana.com";
 
 describe("opal devnet smoke test", () => {
   let connection: Connection;
@@ -16,11 +15,9 @@ describe("opal devnet smoke test", () => {
 
   beforeAll(async () => {
     connection = new Connection(DEVNET_RPC, "confirmed");
-    const provider = new AnchorProvider(
-      connection,
-      Wallet.local(),
-      { commitment: "confirmed" },
-    );
+    const provider = new AnchorProvider(connection, Wallet.local(), {
+      commitment: "confirmed",
+    });
     program = new Program(idl as any, provider);
   });
 

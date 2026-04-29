@@ -1,14 +1,15 @@
 use crate::{
     constants::{
-        ASSERTION_SEED, BOND_VAULT_SEED, LLM_ROUND_SEED, PROTOCOL_CONFIG_SEED, VOTE_DISPUTE_SEED,
-        VOTE_ROUND_SEED,
+        ASSERTION_SEED, ASSERTION_STATE_ASSERTED_LLM, ASSERTION_STATE_PENDING_VOTE,
+        BOND_VAULT_SEED, BOOL_FALSE, LLM_ROUND_SEED, OUTCOME_NONE, PROTOCOL_CONFIG_SEED,
+        TIMESTAMP_NONE, VOTE_DISPUTE_SEED, VOTE_ROUND_SEED,
     },
     errors::OpalError,
     state::{
-        AssertionAccount, AssertionState, LlmResolutionRound, ProtocolConfig, VoteDisputeAccount,
+        AssertionAccount, LlmResolutionRound, ProtocolConfig, VoteDisputeAccount,
         VoteResolutionRound,
     },
-    utils::checked_bps,
+    utils::{checked_bps, is_outcome_set, is_pubkey_default, is_timestamp_set},
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
@@ -20,48 +21,46 @@ pub struct ChallengeLlmResolution<'info> {
 
     #[account(
         seeds = [PROTOCOL_CONFIG_SEED],
-        bump = protocol_config.bump,
-        has_one = pusd_mint @ OpalError::InvalidPusdMint,
+        bump,
     )]
-    pub protocol_config: Account<'info, ProtocolConfig>,
+    pub protocol_config: AccountLoader<'info, ProtocolConfig>,
 
     pub pusd_mint: Account<'info, Mint>,
 
     #[account(
         mut,
-        seeds = [ASSERTION_SEED, assertion.id.as_ref()],
-        bump = assertion.bump,
+        seeds = [ASSERTION_SEED, assertion.load()?.id.as_ref()],
+        bump = assertion.load()?.bump,
     )]
-    pub assertion: Account<'info, AssertionAccount>,
+    pub assertion: AccountLoader<'info, AssertionAccount>,
 
     #[account(
         seeds = [LLM_ROUND_SEED, assertion.key().as_ref()],
-        bump = llm_resolution_round.bump,
-        constraint = llm_resolution_round.assertion == assertion.key() @ OpalError::AssertionLinkMismatch,
+        bump = llm_resolution_round.load()?.bump,
     )]
-    pub llm_resolution_round: Account<'info, LlmResolutionRound>,
+    pub llm_resolution_round: AccountLoader<'info, LlmResolutionRound>,
 
     #[account(
         init,
         payer = disputer,
-        space = 8 + VoteDisputeAccount::INIT_SPACE,
+        space = 8 + std::mem::size_of::<VoteDisputeAccount>(),
         seeds = [VOTE_DISPUTE_SEED, assertion.key().as_ref()],
         bump
     )]
-    pub vote_dispute: Account<'info, VoteDisputeAccount>,
+    pub vote_dispute: AccountLoader<'info, VoteDisputeAccount>,
 
     #[account(
         init,
         payer = disputer,
-        space = 8 + VoteResolutionRound::INIT_SPACE,
+        space = 8 + std::mem::size_of::<VoteResolutionRound>(),
         seeds = [VOTE_ROUND_SEED, assertion.key().as_ref()],
         bump
     )]
-    pub vote_resolution_round: Account<'info, VoteResolutionRound>,
+    pub vote_resolution_round: AccountLoader<'info, VoteResolutionRound>,
 
     #[account(
         mut,
-        seeds = [BOND_VAULT_SEED, assertion.id.as_ref()],
+        seeds = [BOND_VAULT_SEED, assertion.load()?.id.as_ref()],
         bump,
         token::mint = pusd_mint,
         token::authority = assertion,
@@ -82,32 +81,45 @@ pub struct ChallengeLlmResolution<'info> {
 pub fn handler(ctx: Context<ChallengeLlmResolution>) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
 
+    let assertion = ctx.accounts.assertion.load()?;
+    let llm_round = ctx.accounts.llm_resolution_round.load()?;
+    let protocol_config = ctx.accounts.protocol_config.load()?;
+
     require!(
-        ctx.accounts.assertion.state == AssertionState::AssertedLlm,
+        assertion.state == ASSERTION_STATE_ASSERTED_LLM,
         OpalError::InvalidState
     );
     require!(
-        ctx.accounts.assertion.dispute_count == 1 && ctx.accounts.assertion.vote_dispute.is_none(),
+        assertion.dispute_count == 1 && is_pubkey_default(&assertion.vote_dispute),
         OpalError::VoteDisputeAlreadyExists
     );
+    require!(
+        llm_round.assertion == ctx.accounts.assertion.key(),
+        OpalError::AssertionLinkMismatch
+    );
 
-    let challenge_deadline = ctx
-        .accounts
-        .llm_resolution_round
-        .challenge_deadline
-        .ok_or(OpalError::MissingChallengeDeadline)?;
-    require!(now < challenge_deadline, OpalError::DeadlinePassed);
+    require!(
+        is_timestamp_set(llm_round.challenge_deadline),
+        OpalError::MissingChallengeDeadline
+    );
+    require!(
+        now < llm_round.challenge_deadline,
+        OpalError::DeadlinePassed
+    );
 
-    let challenged_llm_resolution = ctx
-        .accounts
-        .llm_resolution_round
-        .outcome
-        .ok_or(OpalError::LlmOutcomeMissing)?;
+    require!(
+        is_outcome_set(llm_round.outcome),
+        OpalError::LlmOutcomeMissing
+    );
+    let challenged_llm_resolution = llm_round.outcome;
 
     let vote_bond_amount = checked_bps(
-        ctx.accounts.assertion.assertion_bond_amount_pusd,
-        ctx.accounts.protocol_config.vote_dispute_bond_ratio_bps,
+        assertion.assertion_bond_amount_pusd,
+        protocol_config.vote_dispute_bond_ratio_bps,
     )?;
+    drop(assertion);
+    drop(llm_round);
+    drop(protocol_config);
     require!(vote_bond_amount > 0, OpalError::InsufficientBondAmount);
 
     token::transfer(
@@ -124,40 +136,39 @@ pub fn handler(ctx: Context<ChallengeLlmResolution>) -> Result<()> {
 
     let vote_round_key = ctx.accounts.vote_resolution_round.key();
 
-    ctx.accounts.vote_dispute.set_inner(VoteDisputeAccount {
-        assertion: ctx.accounts.assertion.key(),
-        disputer: ctx.accounts.disputer.key(),
-        challenged_llm_resolution_round: ctx.accounts.llm_resolution_round.key(),
-        challenged_llm_resolution,
-        bond_amount_pusd: vote_bond_amount,
-        created_at: now,
-        resolution_round: vote_round_key,
-        settlement_resolution: None,
-        bump: ctx.bumps.vote_dispute,
-    });
+    let mut vote_dispute = ctx.accounts.vote_dispute.load_init()?;
+    vote_dispute.assertion = ctx.accounts.assertion.key();
+    vote_dispute.disputer = ctx.accounts.disputer.key();
+    vote_dispute.challenged_llm_resolution_round = ctx.accounts.llm_resolution_round.key();
+    vote_dispute.challenged_llm_resolution = challenged_llm_resolution;
+    vote_dispute.bond_amount_pusd = vote_bond_amount;
+    vote_dispute.created_at = now;
+    vote_dispute.resolution_round = vote_round_key;
+    vote_dispute.settlement_resolution = OUTCOME_NONE;
+    vote_dispute.bump = ctx.bumps.vote_dispute;
 
-    ctx.accounts.vote_resolution_round.set_inner(VoteResolutionRound {
-        assertion: ctx.accounts.assertion.key(),
-        dispute: ctx.accounts.vote_dispute.key(),
-        magicblock_validator: Pubkey::default(),
-        permission_account: None,
-        delegated_vote_state: None,
-        delegated: false,
-        committed: false,
-        voting_starts_at: None,
-        voting_deadline: None,
-        reveal_deadline: None,
-        total_valid_weight: 0,
-        aggregate_votes: Default::default(),
-        final_outcome: None,
-        bump: ctx.bumps.vote_resolution_round,
-    });
+    let mut vote_round = ctx.accounts.vote_resolution_round.load_init()?;
+    vote_round.assertion = ctx.accounts.assertion.key();
+    vote_round.dispute = ctx.accounts.vote_dispute.key();
+    // PLACEHOLDER: MagicBlock ER fields — will be wired when delegation is implemented.
+    vote_round.magicblock_validator = Pubkey::default();
+    vote_round.permission_account = Pubkey::default();
+    vote_round.delegated_vote_state = Pubkey::default();
+    vote_round.delegated = BOOL_FALSE;
+    vote_round.committed = BOOL_FALSE;
+    vote_round.voting_starts_at = TIMESTAMP_NONE;
+    vote_round.voting_deadline = TIMESTAMP_NONE;
+    vote_round.reveal_deadline = TIMESTAMP_NONE;
+    vote_round.total_valid_weight = 0;
+    vote_round.aggregate_votes = Default::default();
+    vote_round.final_outcome = OUTCOME_NONE;
+    vote_round.bump = ctx.bumps.vote_resolution_round;
 
-    let assertion = &mut ctx.accounts.assertion;
-    assertion.state = AssertionState::PendingVote;
+    let mut assertion = ctx.accounts.assertion.load_mut()?;
+    assertion.state = ASSERTION_STATE_PENDING_VOTE;
     assertion.dispute_count = 2;
-    assertion.vote_dispute = Some(ctx.accounts.vote_dispute.key());
-    assertion.vote_resolution_round = Some(vote_round_key);
+    assertion.vote_dispute = ctx.accounts.vote_dispute.key();
+    assertion.vote_resolution_round = vote_round_key;
 
     Ok(())
 }

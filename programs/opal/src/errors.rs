@@ -20,8 +20,6 @@ pub enum OpalError {
     MathOverflow,
     #[msg("Bond amount is below required minimum")]
     InsufficientBondAmount,
-    #[msg("PUSD mint does not match protocol config")]
-    InvalidPusdMint,
     #[msg("Caller is not authorized")]
     Unauthorized,
     #[msg("Protocol config invariants are invalid")]

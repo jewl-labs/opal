@@ -38,7 +38,10 @@ pub mod opal {
         instructions::initialize_protocol_config::handler(ctx, args)
     }
 
-    pub fn create_assertion(ctx: Context<CreateAssertion>, args: CreateAssertionArgs) -> Result<()> {
+    pub fn create_assertion(
+        ctx: Context<CreateAssertion>,
+        args: CreateAssertionArgs,
+    ) -> Result<()> {
         instructions::create_assertion::handler(ctx, args)
     }
 
