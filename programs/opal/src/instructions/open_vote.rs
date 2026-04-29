@@ -35,8 +35,7 @@ pub struct OpenVote<'info> {
 }
 
 pub fn handler(ctx: Context<OpenVote>) -> Result<()> {
-    // Permissionless: anyone can open voting once the assertion reaches PendingVote.
-    // This ensures liveness — no single party can stall the state machine.
+    // TBD: auth policy for open_vote is undecided. Currently permissionless for liveness.
     let assertion = ctx.accounts.assertion.load()?;
     let vote_round = ctx.accounts.vote_resolution_round.load()?;
     require!(

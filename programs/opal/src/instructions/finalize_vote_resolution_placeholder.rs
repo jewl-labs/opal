@@ -34,7 +34,8 @@ pub struct FinalizeVoteResolutionPlaceholder<'info> {
     )]
     pub protocol_config: AccountLoader<'info, ProtocolConfig>,
 
-    // Boxed to stay within Solana's stack frame limit — this instruction has 11 accounts.
+    // Boxed because standard Anchor Account<'info, T> (non-zero-copy) lives on the
+    // stack, and with 11 accounts we risk exceeding Solana's ~4KB stack frame limit.
     pub pusd_mint: Box<Account<'info, Mint>>,
 
     #[account(

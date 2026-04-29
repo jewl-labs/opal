@@ -16,9 +16,6 @@ pub struct SubmitMockLlmResolutionArgs {
 
 #[derive(Accounts)]
 pub struct SubmitMockLlmResolution<'info> {
-    #[account(
-        constraint = authority.key() == protocol_config.load()?.authority
-    )]
     pub authority: Signer<'info>,
 
     #[account(
@@ -49,6 +46,13 @@ pub fn handler(
     ctx: Context<SubmitMockLlmResolution>,
     args: SubmitMockLlmResolutionArgs,
 ) -> Result<()> {
+    let protocol_config = ctx.accounts.protocol_config.load()?;
+    require!(
+        ctx.accounts.authority.key() == protocol_config.authority,
+        OpalError::Unauthorized
+    );
+    drop(protocol_config);
+
     let assertion = ctx.accounts.assertion.load()?;
     require!(
         assertion.state == ASSERTION_STATE_PENDING_LLM,

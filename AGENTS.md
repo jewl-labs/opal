@@ -241,7 +241,7 @@ All state accounts are **zero-copy** with `#[repr(C, packed)]`.
 ### Placeholder integrations
 
 - **Switchboard LLM resolver:** `LlmResolutionRound` reserves Switchboard fields (program, queue, feed, quote, etc.) but they default to `Pubkey::default()` / zeros. `submit_mock_llm_resolution` is a mock instruction gated to `protocol_config.authority` for local testing.
-- **MagicBlock voting:** `VoteResolutionRound` reserves MagicBlock fields (validator, permission account, delegated vote state) but no ER delegation is performed. `open_vote` sets `delegated = BOOL_TRUE` as a no-op placeholder. `open_vote` itself is **permissionless** — anyone can call it to advance `PendingVote` → `Voting` for liveness.
+- **MagicBlock voting:** `VoteResolutionRound` reserves MagicBlock fields (validator, permission account, delegated vote state) but no ER delegation is performed. `open_vote` sets `delegated = BOOL_TRUE` as a no-op placeholder. `open_vote` auth policy is **TBD** — currently permissionless for liveness, but this may change.
 
 ### Economic model (current)
 
@@ -251,17 +251,15 @@ All state accounts are **zero-copy** with `#[repr(C, packed)]`.
 
 ### Known quirks
 
-- **`skipPreflight: true` is required on `finalizeVoteResolutionPlaceholder` in tests.**
-  Anchor's preflight simulation throws "Unknown action 'undefined'" for this
-  specific instruction, but `.simulate()` confirms validity and the transaction
-  itself succeeds. This is a known Anchor/web3.js preflight bug — the instruction
-  is not flaky; the workaround is standard and reliable via `anchor test`.
+- **`skipPreflight: true` is used on all `.rpc()` calls in tests.**
+  Anchor's preflight simulation intermittently throws "Unknown action 'undefined'"
+  when the underlying `confirmTransaction` encounters a failed tx without proper
+  metadata. The transactions themselves are valid, but the error propagation path
+  in `@coral-xyz/anchor` is buggy. `skipPreflight: true` bypasses simulation
+  entirely and is a reliable workaround.
 - **`InvalidPusdMint` was removed.** The protocol supports any USD-pegged stablecoin.
   Mint validation in `create_assertion` uses `Unauthorized` to reject mismatched mints.
   A future PR will rename all `pusd` fields to `usd`.
 - **Deployer auth is commented out.** `initialize_protocol_config` has a commented-out
   `require!(authority.key() == crate::ID)` check so tests can init with any keypair.
   Uncomment before mainnet.
-- **`bytemuck` was removed from Cargo.toml.** Anchor's `zero_copy(unsafe)` macro
-  handles the unsafe traits internally. `ephemeral-rollups-sdk` is kept for future
-  MagicBlock integration.

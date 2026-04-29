@@ -8,125 +8,132 @@ This document describes the target architecture for the prediction-market wedge.
 
 - `AssertionAccount` does not store a tentative resolution field.
 - The current non-final answer is inferred from state: `Asserted` means default `True`; `AssertedLLM` means read `LLMResolutionRound.outcome`; `PendingVote` and `Voting` mean that LLM answer is under challenge and no final answer exists yet.
-- `outcome` is `None` until `state == Resolved`.
+- `outcome` is unset (`OUTCOME_NONE`) until `state == Resolved`.
 - `Asserted` and `AssertedLLM` are liveness states: the current answer can still be challenged.
 - `PendingLLM` and `PendingVote` are intermediary states: a dispute has been accepted, but the next resolution layer is not finished or active yet.
 - `Resolved` is terminal: `outcome` is set and irreversible consumers can settle.
-- The statement lives onchain as a string.
-- Auxiliary data lives offchain as plain text; only `auxiliary_hash` is stored onchain.
-- PUSD is the collateral asset for bonds, slashing, rewards, and fees.
-- OPAL is the voting and governance asset.
-- V1 LLM resolution uses Switchboard On-Demand/Oracle Quotes to return a numeric outcome code from a configured LLM path.
+- The statement lives onchain as a fixed-size byte array (null-terminated string, max 280 bytes).
+- Auxiliary data lives offchain as plain text; only `auxiliary_hash` is stored onchain (max 128 bytes).
+- Stablecoin is the collateral asset for bonds, slashing, rewards, and fees. Field names currently say `pusd` but the protocol supports any USD-pegged token.
+- OPAL is the voting and governance asset (not yet integrated).
+- V1 LLM resolution uses a mock instruction gated to protocol authority. Real Switchboard integration is reserved for future work.
 - The hardened future resolver may use Nosana-powered inference and/or an LLM Council, but v1 implementation should not require that.
-- Final escalation uses MagicBlock private voting with OPAL-weighted TWAV.
+- Final escalation uses MagicBlock private voting with OPAL-weighted TWAV (placeholder — no real voting yet).
 
 ## Onchain Account Model
+
+All state accounts are **zero-copy** with `#[repr(C, packed)]`. They contain only primitive types (`u8`, `i64`, `Pubkey`, `[u8; N]`, `u64`, `u16`, `u128`). No `Option<T>`, `bool`, or enums are used inside zero-copy accounts; sentinels (`Pubkey::default()`, `0`, `255`) represent unset fields.
 
 ### `AssertionAccount`
 
 The primary PDA for an assertion. It intentionally stores enough summary fields that an integrator can read one account and know the current state, whether the assertion was disputed once or twice, and which round accounts contain the LLM and vote resolutions.
 
 ```rust
+#[repr(C, packed)]
+#[account(zero_copy(unsafe))]
 pub struct AssertionAccount {
     pub id: Pubkey,
     pub asserter: Pubkey,
-    pub statement: String,
-    pub auxiliary_hash: String,
+    pub statement: [u8; 280],
+    pub auxiliary_hash: [u8; 128],
     pub bond_vault: Pubkey,
-    pub state: AssertionState,
+    pub state: u8,                  // ASSERTION_STATE_*
     pub liveness_deadline: i64,
-    pub outcome: Option<ResolutionOutcome>,
-    pub finalized_at: Option<i64>,
+    pub llm_challenge_deadline: i64,
+    pub outcome: u8,                // OUTCOME_* (255 = unset)
+    pub finalized_at: i64,          // 0 = unset
     pub dispute_count: u8,
-    pub llm_dispute: Option<Pubkey>,
-    pub vote_dispute: Option<Pubkey>,
-    pub llm_resolution_round: Option<Pubkey>,
-    pub vote_resolution_round: Option<Pubkey>,
+    pub assertion_bond_amount_pusd: u64,
+    pub llm_dispute: Pubkey,        // default = unset
+    pub vote_dispute: Pubkey,       // default = unset
+    pub llm_resolution_round: Pubkey,   // default = unset
+    pub vote_resolution_round: Pubkey,  // default = unset
     pub bump: u8,
 }
 ```
 
 Implementation notes:
 
-- On creation, `state = Asserted`, `outcome = None`, and `dispute_count = 0`.
-- While `state = Asserted`, the current non-final answer is the optimistic default `True`.
-- When the first dispute is filed, `dispute_count = 1`, `llm_dispute` is set, `llm_resolution_round` is set, and `state = PendingLLM`.
-- When the LLM result is posted, `state = AssertedLLM`; the current non-final answer is `LLMResolutionRound.outcome`.
-- When the second dispute is filed, `dispute_count = 2`, `vote_dispute` is set, `vote_resolution_round` is set, and `state = PendingVote`.
-- When voting is active, `state = Voting`; the LLM result remains the challenged result until the vote resolves.
-- When finalized, `state = Resolved` and `outcome` is set.
+- On creation, `state = ASSERTION_STATE_ASSERTED`, `outcome = OUTCOME_NONE`, and `dispute_count = 0`.
+- While `state = ASSERTED`, the current non-final answer is the optimistic default `True`.
+- When the first dispute is filed, `dispute_count = 1`, `llm_dispute` is set, `llm_resolution_round` is set, and `state = PENDING_LLM`.
+- When the LLM result is posted, `state = ASSERTED_LLM`; the current non-final answer is `LlmResolutionRound.outcome`.
+- When the second dispute is filed, `dispute_count = 2`, `vote_dispute` is set, `vote_resolution_round` is set, and `state = PENDING_VOTE`.
+- When voting is active, `state = VOTING`; the LLM result remains the challenged result until the vote resolves.
+- When finalized, `state = RESOLVED` and `outcome` is set.
 
-### `LLMDisputeAccount`
+### `LlmDisputeAccount`
 
 The first dispute account. It does not need to store the challenged resolution because the first dispute always challenges the default optimistic `True`.
 
 ```rust
-pub struct LLMDisputeAccount {
+#[repr(C, packed)]
+#[account(zero_copy(unsafe))]
+pub struct LlmDisputeAccount {
     pub assertion: Pubkey,
     pub disputer: Pubkey,
-    pub bond_amount_PUSD: u64,
+    pub bond_amount_pusd: u64,
     pub created_at: i64,
     pub resolution_round: Pubkey,
-    pub settlement_resolution: Option<ResolutionOutcome>,
-    pub dispute_correct: Option<bool>,
-    pub settled: bool,
+    pub settlement_resolution: u8,  // 255 = unset
     pub bump: u8,
 }
 ```
 
-`dispute_correct = settlement_resolution != True`. If the LLM result is not challenged, `settlement_resolution` is the LLM result. If the LLM result is challenged, `settlement_resolution` is the final vote result.
+The dispute is correct when `settlement_resolution != OUTCOME_TRUE`. If the LLM result is not challenged, `settlement_resolution` is the LLM result. If the LLM result is challenged, `settlement_resolution` is the final vote result.
 
 ### `VoteDisputeAccount`
 
-The second dispute account. It challenges the LLM result stored on `LLMResolutionRound`.
+The second dispute account. It challenges the LLM result stored on `LlmResolutionRound`.
 
 ```rust
+#[repr(C, packed)]
+#[account(zero_copy(unsafe))]
 pub struct VoteDisputeAccount {
     pub assertion: Pubkey,
     pub disputer: Pubkey,
     pub challenged_llm_resolution_round: Pubkey,
-    pub challenged_llm_resolution: ResolutionOutcome,
-    pub bond_amount_PUSD: u64,
+    pub challenged_llm_resolution: u8,  // OUTCOME_*
+    pub bond_amount_pusd: u64,
     pub created_at: i64,
     pub resolution_round: Pubkey,
-    pub settlement_resolution: Option<ResolutionOutcome>,
-    pub dispute_correct: Option<bool>,
-    pub settled: bool,
+    pub settlement_resolution: u8,  // 255 = unset
     pub bump: u8,
 }
 ```
 
-`dispute_correct = settlement_resolution != challenged_llm_resolution`.
+The dispute is correct when `settlement_resolution != challenged_llm_resolution`.
 
 ### `BondVault`
 
-A PDA-controlled PUSD token account holding assertion and dispute collateral until settlement.
+A PDA-controlled SPL token account that holds assertion and dispute collateral until settlement. It is initialized alongside the assertion and uses the assertion's PDA as its authority.
 
-### `LLMResolutionRound`
+### `LlmResolutionRound`
 
-The account tracking Switchboard-backed LLM resolution for the first dispute.
+The account tracking LLM resolution for the first dispute. Switchboard fields are reserved but currently default to `Pubkey::default()` / zeros.
 
 ```rust
-pub struct LLMResolutionRound {
+#[repr(C, packed)]
+#[account(zero_copy(unsafe))]
+pub struct LlmResolutionRound {
     pub assertion: Pubkey,
     pub dispute: Pubkey,
-    pub switchboard_program: Pubkey,
-    pub switchboard_queue: Pubkey,
-    pub switchboard_feed: Pubkey,
+    pub switchboard_program: Pubkey,    // placeholder
+    pub switchboard_queue: Pubkey,      // placeholder
+    pub switchboard_feed: Pubkey,       // placeholder
     pub switchboard_feed_hash: [u8; 32],
-    pub switchboard_quote: Option<Pubkey>,
-    pub switchboard_quote_slot: Option<u64>,
+    pub switchboard_quote: Pubkey,      // placeholder
+    pub switchboard_quote_slot: u64,
     pub max_staleness_slots: u64,
     pub prompt_hash: [u8; 32],
-    pub variable_overrides_hash: Option<[u8; 32]>,
-    pub response_hash: Option<[u8; 32]>,
-    pub evidence_hash: Option<[u8; 32]>,
-    pub outcome_code: Option<u8>,
-    pub outcome: Option<ResolutionOutcome>,
+    pub variable_overrides_hash: [u8; 32],
+    pub response_hash: [u8; 32],
+    pub evidence_hash: [u8; 32],
+    pub outcome_code: u8,       // 255 = unset
+    pub outcome: u8,            // OUTCOME_* (255 = unset)
     pub requested_at: i64,
-    pub resolved_at: Option<i64>,
-    pub challenge_deadline: Option<i64>,
-    pub settled: bool,
+    pub resolved_at: i64,       // 0 = unset
+    pub challenge_deadline: i64, // 0 = unset
     pub bump: u8,
 }
 ```
@@ -135,117 +142,114 @@ The Switchboard feed should produce a numeric outcome code. The program maps cod
 
 ### `VoteResolutionRound`
 
-The account tracking MagicBlock private voting for the second dispute.
+The account tracking private voting for the second dispute. MagicBlock fields are reserved but currently default to `Pubkey::default()` / zeros. No real voting is performed — `finalize_vote_resolution_placeholder` sets a mock outcome.
 
 ```rust
+#[repr(C, packed)]
+#[account(zero_copy(unsafe))]
 pub struct VoteResolutionRound {
     pub assertion: Pubkey,
     pub dispute: Pubkey,
-    pub magicblock_validator: Pubkey,
-    pub permission_account: Option<Pubkey>,
-    pub delegated_vote_state: Option<Pubkey>,
-    pub delegated: bool,
-    pub committed: bool,
-    pub voting_starts_at: Option<i64>,
-    pub voting_deadline: Option<i64>,
-    pub reveal_deadline: Option<i64>,
+    pub magicblock_validator: Pubkey,   // placeholder
+    pub permission_account: Pubkey,     // placeholder
+    pub delegated_vote_state: Pubkey,   // placeholder
+    pub delegated: u8,          // BOOL_TRUE/BOOL_FALSE
+    pub committed: u8,          // BOOL_TRUE/BOOL_FALSE
+    pub voting_starts_at: i64,  // 0 = unset
+    pub voting_deadline: i64,   // 0 = unset
+    pub reveal_deadline: i64,   // 0 = unset
     pub total_valid_weight: u128,
     pub aggregate_votes: VotesPerOutcome,
-    pub final_outcome: Option<ResolutionOutcome>,
-    pub settled: bool,
+    pub final_outcome: u8,      // OUTCOME_* (255 = unset)
     pub bump: u8,
 }
 ```
 
-`PendingVote` exists so the protocol can create the vote round, delegate required vote state to MagicBlock, and initialize any permission or private token plumbing before votes are accepted.
-
-### `VoteRecord`
-
-The per-voter account for an escalated assertion.
-
-```rust
-pub struct VoteRecord {
-    pub vote_round: Pubkey,
-    pub voter: Pubkey,
-    pub locked_opal: u64,
-    pub commitment: [u8; 32],
-    pub choice: Option<ResolutionOutcome>,
-    pub voted_at: i64,
-    pub revealed_at: Option<i64>,
-    pub settled: bool,
-    pub bump: u8,
-}
-```
-
-Votes are private during the active voting window. The revealed `choice` is populated only during reveal/settlement.
+`PendingVote` exists so the protocol can create the vote round and set voting deadlines before moving to `Voting`. In the current placeholder implementation, `open_vote` advances `PendingVote` → `Voting` and sets `delegated = BOOL_TRUE` as a no-op.
 
 ### `ProtocolConfig`
 
-The account containing protocol-level parameters: bond minimums and ratios, protocol fee shares, voter reward and slashing shares, liveness/challenge/voting windows, Switchboard feed config, MagicBlock validator/config, treasury address, and governance authority.
+Singleton PDA containing protocol-level parameters.
+
+```rust
+#[repr(C, packed)]
+#[account(zero_copy(unsafe))]
+pub struct ProtocolConfig {
+    pub authority: Pubkey,
+    pub pusd_mint: Pubkey,      // will be renamed to usd_mint
+    pub treasury: Pubkey,
+    pub assertion_bond_min_pusd: u64,
+    pub llm_dispute_bond_ratio_bps: u16,
+    pub vote_dispute_bond_ratio_bps: u16,
+    pub protocol_fee_bps: u16,
+    pub llm_disputer_reward_share_bps: u16,
+    pub vote_disputer_reward_share_bps: u16,
+    pub voter_reward_share_bps: u16,
+    pub treasury_share_bps: u16,
+    pub supermajority_bps: u16,
+    pub liveness_window_seconds: i64,
+    pub llm_challenge_window_seconds: i64,
+    pub vote_setup_window_seconds: i64,
+    pub voting_window_seconds: i64,
+    pub bump: u8,
+}
+```
 
 ### `Treasury`
 
-The protocol-controlled destination for configured PUSD fees and treasury allocations.
+An SPL token account owned by the protocol authority. Configured in `ProtocolConfig.treasury`.
 
 ## Instruction Flow
 
 1. `create_assertion`
    - Stores the statement and auxiliary data hash.
-   - Locks the asserter's PUSD bond.
-   - Sets `state = Asserted`, `outcome = None`, and `liveness_deadline`.
+   - Locks the asserter's stablecoin bond.
+   - Sets `state = ASSERTED`, `outcome = OUTCOME_NONE`, and `liveness_deadline`.
 
 2. `dispute_assertion`
-   - Allowed while the assertion is `Asserted` and before `liveness_deadline`.
-   - Locks the first disputer's PUSD bond.
-   - Creates `LLMDisputeAccount`.
-   - Creates `LLMResolutionRound`.
-   - Sets `state = PendingLLM`, `dispute_count = 1`, and round/dispute pointers on `AssertionAccount`.
+   - Allowed while the assertion is `ASSERTED` and before `liveness_deadline`.
+   - Locks the first disputer's stablecoin bond.
+   - Creates `LlmDisputeAccount`.
+   - Creates `LlmResolutionRound`.
+   - Sets `state = PENDING_LLM`, `dispute_count = 1`, and round/dispute pointers on `AssertionAccount`.
 
-3. `submit_llm_resolution`
-   - Called with a valid Switchboard On-Demand update or Oracle Quote for the configured LLM feed.
-   - Verifies feed identity, queue, quote freshness, and numeric outcome code.
-   - Maps the feed's numeric outcome code to `ResolutionOutcome`.
-   - Stores the LLM result on `LLMResolutionRound`.
-   - Sets `AssertionAccount.state = AssertedLLM` and opens the LLM challenge deadline.
+3. `submit_mock_llm_resolution` _(placeholder)_
+   - Gated to `protocol_config.authority`.
+   - Maps an outcome code to a resolution outcome.
+   - Stores the result on `LlmResolutionRound`.
+   - Sets `AssertionAccount.state = ASSERTED_LLM` and opens the LLM challenge deadline.
+   - In production, this will be replaced by a Switchboard oracle callback.
 
 4. `finalize_llm_resolution`
    - Allowed after the LLM challenge window if no vote dispute exists.
-   - Sets `state = Resolved` and `outcome = LLMResolutionRound.outcome`.
-   - Sets `LLMDisputeAccount.settlement_resolution`, computes `dispute_correct`, and settles bonds.
+   - Sets `state = RESOLVED` and `outcome = LlmResolutionRound.outcome`.
+   - Sets `LlmDisputeAccount.settlement_resolution`, computes correctness, and settles bonds.
 
 5. `challenge_llm_resolution`
-   - Allowed while the assertion is `AssertedLLM` and before the LLM challenge deadline.
-   - Locks the second disputer's PUSD bond.
-   - Creates `VoteDisputeAccount` with `challenged_llm_resolution = LLMResolutionRound.outcome`.
+   - Allowed while the assertion is `ASSERTED_LLM` and before the LLM challenge deadline.
+   - Locks the second disputer's stablecoin bond.
+   - Creates `VoteDisputeAccount` with `challenged_llm_resolution = LlmResolutionRound.outcome`.
    - Creates `VoteResolutionRound`.
-   - Sets `state = PendingVote`, `dispute_count = 2`, and round/dispute pointers on `AssertionAccount`.
+   - Sets `state = PENDING_VOTE`, `dispute_count = 2`, and round/dispute pointers on `AssertionAccount`.
 
-6. `open_vote`
-   - Initializes/delegates MagicBlock vote state from the base layer.
-   - Sets voting deadlines.
-   - Moves the assertion from `PendingVote` to `Voting`.
+6. `open_vote` _(placeholder)_
+   - TBD: auth policy is undecided. Currently permissionless for liveness.
+   - Sets voting deadlines on `VoteResolutionRound`.
+   - Moves the assertion from `PENDING_VOTE` to `VOTING`.
+   - Sets `delegated = BOOL_TRUE` as a no-op placeholder for MagicBlock ER delegation.
 
-7. `cast_vote`
-   - Used during `Voting`.
-   - Sent to the MagicBlock ER connection after delegation.
-   - Locks OPAL and records a private vote commitment through the custom MagicBlock voting path.
-
-8. `reveal_or_settle_vote`
-   - Used after the voting window.
-   - Sent to the ER connection while vote state is delegated.
-   - Reveals or settles private votes, computes TWAV influence, and updates aggregate totals.
-
-9. `finalize_vote_resolution`
-   - Resolves the assertion from aggregate weighted votes.
-   - Commits and undelegates vote state back to Solana when needed.
+7. `finalize_vote_resolution_placeholder` _(placeholder)_
+   - Allowed after the voting window expires.
+   - Takes a mock outcome code as argument.
    - Sets `VoteResolutionRound.final_outcome`.
-   - Sets `AssertionAccount.state = Resolved` and `AssertionAccount.outcome = VoteResolutionRound.final_outcome`.
-   - Sets settlement fields on both dispute accounts and settles PUSD/OPAL rewards and slashing.
+   - Sets `AssertionAccount.state = RESOLVED` and `AssertionAccount.outcome`.
+   - Sets settlement fields on both dispute accounts and settles bonds.
+   - In production, this will be replaced by real vote tallying and MagicBlock commit/undelegate.
 
-10. `finalize_undisputed`
-    - Allowed after `liveness_deadline` if no dispute exists.
-    - Sets `state = Resolved` and `outcome = True`.
-    - Returns the asserter bond minus configured fees.
+8. `finalize_undisputed`
+   - Allowed after `liveness_deadline` if no dispute exists.
+   - Sets `state = RESOLVED` and `outcome = TRUE`.
+   - Returns the asserter bond minus configured fees.
 
 ## State Machine
 
@@ -259,21 +263,21 @@ Asserted(default=True)
   | first dispute
   v
 PendingLLM
-  | Switchboard LLM result posted
+  | LLM result posted
   v
-AssertedLLM(LLMResolutionRound.outcome)
+AssertedLLM(LlmResolutionRound.outcome)
   | LLM challenge window expires
   v
-Resolved(LLMResolutionRound.outcome)
+Resolved(LlmResolutionRound.outcome)
 
-AssertedLLM(LLMResolutionRound.outcome)
+AssertedLLM(LlmResolutionRound.outcome)
   | second dispute
   v
 PendingVote
-  | vote round initialized
+  | vote opened
   v
 Voting
-  | MagicBlock private TWAV finalized
+  | vote resolution finalized
   v
 Resolved(VoteResolutionRound.final_outcome)
 ```
@@ -284,22 +288,22 @@ Prediction markets and other consumers should read assertion id, statement, auxi
 
 Integrator rules:
 
-- In `Asserted`, the current non-final answer is the optimistic default `True`.
-- In `AssertedLLM`, the current non-final answer is `LLMResolutionRound.outcome`.
-- In `PendingVote` and `Voting`, the LLM answer is under challenge; final answer is not available until `Resolved`.
-- Irreversible market settlement should require `state == Resolved`.
-- Consumers should ignore `AssertionAccount.outcome` unless `state == Resolved`.
+- In `ASSERTED`, the current non-final answer is the optimistic default `True`.
+- In `ASSERTED_LLM`, the current non-final answer is `LlmResolutionRound.outcome`.
+- In `PENDING_VOTE` and `VOTING`, the LLM answer is under challenge; final answer is not available until `RESOLVED`.
+- Irreversible market settlement should require `state == RESOLVED`.
+- Consumers should ignore `AssertionAccount.outcome` unless `state == RESOLVED`.
 - Consumers can inspect `dispute_count`, `llm_dispute`, `vote_dispute`, `llm_resolution_round`, and `vote_resolution_round` to understand whether the assertion was disputed once or twice and what each layer produced.
 - A later correction requires a new assertion. It must not mutate a resolved assertion.
 
 ## External Systems
 
 **Switchboard**
-V1 uses Switchboard On-Demand/Oracle Quotes to produce a numeric LLM outcome code. The feed may call an LLM through an `LlmTask` or through an HTTP endpoint, then parse/map the response into an allowed numeric outcome code. The client fetches oracle signatures/update instructions through Crossbar, and `submit_llm_resolution` verifies the quote/feed identity, queue, freshness, and value before updating Opal state.
+V1 uses a mock resolver (`submit_mock_llm_resolution`). Real Switchboard On-Demand/Oracle Quotes integration is reserved for future work. The `LlmResolutionRound` struct already reserves Switchboard fields (program, queue, feed, quote, etc.) for this purpose.
 
-Switchboard implementation requirements:
+Planned Switchboard implementation requirements:
 
-- Store the expected feed hash and queue on `LLMResolutionRound`.
+- Store the expected feed hash and queue on `LlmResolutionRound`.
 - Use the mainnet or devnet Switchboard program and queue from protocol config.
 - Verify the quote account is canonical for the expected queue/feed hash.
 - Reject stale quotes using `max_staleness_slots`.
@@ -308,9 +312,9 @@ Switchboard implementation requirements:
 - If variable overrides are used to pass assertion-specific data, store `variable_overrides_hash` and require the offchain transcript hash to match. The safer v1 default is an assertion-specific prompt/feed hash so the feed identity commits to the statement and auxiliary data.
 
 **MagicBlock**
-MagicBlock Private Ephemeral Rollups provide the private execution environment for the OPAL-weighted voting escalation. Opal programs should use the MagicBlock Anchor setup with `ephemeral-rollups-sdk`, the `#[ephemeral]` program macro, `#[delegate]` contexts for delegation, and `#[commit]` contexts for commit/undelegate.
+MagicBlock Private Ephemeral Rollups will provide the private execution environment for OPAL-weighted voting escalation. The `VoteResolutionRound` struct reserves MagicBlock fields (validator, permission account, delegated vote state) for this purpose. Currently no ER delegation is performed — `open_vote` sets `delegated = BOOL_TRUE` as a no-op.
 
-MagicBlock implementation requirements:
+Planned MagicBlock implementation requirements:
 
 - Use dual connections: base layer for initialization/delegation, ER connection for operations on delegated vote state, commits, and undelegation.
 - Resolve the devnet ER endpoint and validator together through the MagicBlock router when env overrides are absent.
@@ -325,4 +329,4 @@ MagicBlock implementation requirements:
 The Private Payments API can help build unsigned SPL token transactions for private OPAL deposit, transfer, or withdrawal flows, but Opal should not model vote casting as only a payment. The API is stateless: it builds unsigned transactions and the client signs/submits them to the indicated base or ER endpoint. If used for OPAL, the OPAL mint must be passed explicitly; do not rely on API defaults. Vote casting needs a custom private voting instruction because the protocol must preserve choice, timestamp, locked OPAL, TWAV, reveal/settlement, and slashing semantics.
 
 **Nosana and LLM Council Future Path**
-Future resolver hardening may move model inference to Nosana and/or query an LLM Council. That path should preserve the same consumer-facing finality: integrators still read resolved assertions.
+A future hardening path may use Nosana-powered inference or an LLM Council where multiple models or model operators produce independent outputs before aggregation. V1 implementation should not require this.
