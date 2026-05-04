@@ -10,6 +10,7 @@ import { useWallet } from '@/providers/wallet-context';
 
 import Container from '../common/container';
 import { Button } from '../ui/button';
+import { InputGroup } from '../ui/input-group';
 import NavbarMobile from './mobile-navbar';
 import { SearchDialog } from './search-dialog';
 
