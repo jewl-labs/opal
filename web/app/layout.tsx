@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
+import type * as React from 'react';
 
 import Container from '@/components/common/container';
 import Navbar from '@/components/common/navbar';
 import { ThemeProvider } from '@/providers/theme-provider';
+import { WalletProvider } from '@/providers/wallet-context';
 
 import { jetbrains } from './font';
 import './globals.css';
@@ -30,10 +32,12 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Container className="border-muted-foreground/50 border-x border-dashed">
-            <Navbar />
-          </Container>
-          {children}
+          <WalletProvider>
+            <Container className="border-muted-foreground/50 border-x border-dashed">
+              <Navbar />
+            </Container>
+            {children}
+          </WalletProvider>
         </ThemeProvider>
       </body>
     </html>

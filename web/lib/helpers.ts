@@ -1,17 +1,23 @@
 export function getTimeRemaining(deadline?: string) {
-    if (!deadline) return '00:00:00:00';
+    if (!deadline) return 'Expired';
     const now = new Date();
     const end = new Date(deadline);
     let diff = end.getTime() - now.getTime();
-    if (isNaN(diff) || diff < 0) return '00:00:00:00';
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    diff -= days * 1000 * 60 * 60 * 24;
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    diff -= hours * 1000 * 60 * 60;
-    const minutes = Math.floor(diff / (1000 * 60));
-    diff -= minutes * 1000 * 60;
-    const seconds = Math.floor(diff / 1000);
-    return [days, hours, minutes, seconds]
-      .map((v) => v.toString().padStart(2, '0'))
-      .join(':');
+    if (isNaN(diff) || diff < 0) return 'Expired';
+
+    const totalSeconds = Math.floor(diff / 1000);
+    if (totalSeconds === 0) return 'Expired';
+
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    const parts: string[] = [];
+    if (days > 0) parts.push(`${days}d`);
+    if (hours > 0) parts.push(`${hours}h`);
+    if (minutes > 0) parts.push(`${minutes}m`);
+    if (seconds > 0) parts.push(`${seconds}s`);
+
+    return parts.length > 0 ? parts.join(' ') : 'Expired';
 }

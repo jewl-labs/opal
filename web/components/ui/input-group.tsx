@@ -1,6 +1,6 @@
 'use client';
 
-import * as React from 'react';
+import type * as React from 'react';
 
 import { type VariantProps, cva } from 'class-variance-authority';
 
@@ -57,7 +57,12 @@ function InputGroupAddon({
         if ((e.target as HTMLElement).closest('button')) {
           return;
         }
-        e.currentTarget.parentElement?.querySelector('input')?.focus();
+        const parent = e.currentTarget.parentElement;
+        const control = parent?.querySelector('[data-slot="input-group-control"]') as
+          | HTMLInputElement
+          | HTMLTextAreaElement
+          | null;
+        control?.focus();
       }}
       {...props}
     />

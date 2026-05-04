@@ -1,7 +1,7 @@
-import { ChevronRight } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import type { AssertionAccount } from '@/types';
+import { CaretRightIcon } from '@phosphor-icons/react';
 
 export default function Timeline({ statement }: { statement: AssertionAccount | undefined }) {
   return (
@@ -18,7 +18,6 @@ export default function Timeline({ statement }: { statement: AssertionAccount | 
         >
           ASSERTED
         </span>
-        <ChevronRight className="size-3" />
         <span className="ring-secondary z-10 size-2 shrink-0 rounded-full bg-orange-400 ring-2" />
       </div>
 
@@ -43,7 +42,6 @@ export default function Timeline({ statement }: { statement: AssertionAccount | 
           02 Feb 2026
         </span>
         <span className="text-xs whitespace-nowrap uppercase">RESOLVED</span>
-        <ChevronRight className="size-3" />
         <span className="ring-secondary z-10 size-2 shrink-0 rounded-full bg-green-400 ring-2" />
       </div>
     </div>

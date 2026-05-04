@@ -36,12 +36,12 @@ export default function NavbarMobile() {
           Dashboard
         </Button>
       </Link>
-      <Link href="/statement/feed" className="w-full">
+      <Link href="/assertion/browse" className="w-full">
         <Button variant="outline" className="w-full uppercase">
           Explore Feed
         </Button>
       </Link>
-      <Link href="/statement/feed" className="w-full">
+      <Link href="/assertion/create" className="w-full">
         <Button variant="outline" className="w-full uppercase">
           Assert Statement
         </Button>

@@ -4,14 +4,14 @@ import { useState } from 'react';
 
 import { motion as m } from 'motion/react';
 
-import EvidenceSection from '@/components/assert/EvidenceSection';
-import ParamsSection from '@/components/assert/ParamsSection';
-import SectionHeader from '@/components/assert/SectionHeader';
-import StatementSection from '@/components/assert/StatementSection';
-import SummarySection from '@/components/assert/SummarySection';
+import EvidenceSection from '@/components/assertion/evidence-section';
+import ParamsSection from '@/components/assertion/params-section';
+import SectionHeader from '@/components/assertion/section-header';
+import StatementSection from '@/components/assertion/statement-section';
+import SummarySection from '@/components/assertion/summary-section';
 import Container from '@/components/common/container';
+import { ASSERTION_BOND_PUSD } from '@/data/assertion';
 
-const MIN_BOND = 10;
 const MAX_CHARS = 280;
 
 const WINDOWS = [
@@ -23,8 +23,8 @@ const WINDOWS = [
 
 type Section = 'statement' | 'params' | 'evidence' | 'summary';
 
-function formatExpiry(seconds: number) {
-  const d = new Date(Date.now() + seconds * 1000);
+function formatExpiry(baseTime: number, seconds: number) {
+  const d = new Date(baseTime + seconds * 1000);
   return d.toUTCString().replace('GMT', 'UTC').slice(0, -4);
 }
 
@@ -34,12 +34,13 @@ function hashPreview(str: string) {
   return Math.abs(h).toString(16).padStart(8, '0') + '...';
 }
 
-export default function CreateStatement() {
+export default function MakeAssertion() {
   const [open, setOpen] = useState<Section>('statement');
   const [statement, setStatement] = useState('');
-  const [bond, setBond] = useState(50);
-  const [window_, setWindow] = useState(WINDOWS[2]);
-  const [evidenceUrl, setEvidenceUrl] = useState('');
+  const bond = ASSERTION_BOND_PUSD;
+  const [createdAt] = useState(() => Date.now());
+  const [window_, setWindow] = useState<(typeof WINDOWS)[number]>(WINDOWS[2]!);
+  const [auxiliaryData, setAuxiliaryData] = useState('');
   const [walletConnected] = useState(false);
 
   const toggle = (s: Section) => setOpen((prev) => (prev === s ? 'statement' : s));
@@ -51,16 +52,14 @@ export default function CreateStatement() {
         ? 'Use a declarative statement, not a question'
         : null;
 
-  const bondWarning = bond < MIN_BOND && bond > 0 ? `Minimum bond is ${MIN_BOND} PUSD` : null;
-
   const isValid =
-    statement.length >= 10 && !statement.endsWith('?') && bond >= MIN_BOND && walletConnected;
+    statement.length >= 10 && !statement.endsWith('?') && bond === ASSERTION_BOND_PUSD && walletConnected;
 
   const buttonLabel = !walletConnected
     ? 'Connect Wallet to Assert'
     : !isValid
       ? 'Stake to Confirm'
-      : `Stake ${bond} PUSD and Assert`;
+      : `Stake ${ASSERTION_BOND_PUSD} PUSD and Assert`;
 
   return (
     <Container className="border-muted-foreground/50 relative flex h-screen flex-col overflow-hidden border-x border-dashed px-4 pt-18 pb-4">
@@ -89,27 +88,24 @@ export default function CreateStatement() {
             label="Bond & Window"
             open={open === 'params'}
             onClick={() => toggle('params')}
-            peek={`${bond} PUSD · ${window_ && window_.label ? window_.label : (WINDOWS[0]?.label ?? '24h')}`}
+            peek={`${ASSERTION_BOND_PUSD} PUSD · ${window_.label}`}
           />
           <ParamsSection
             open={open === 'params'}
             bond={bond}
-            setBond={setBond}
-            bondWarning={bondWarning}
-            minBond={MIN_BOND}
-            window_={window_ ?? WINDOWS[0] ?? { label: '24h', value: 86400 }}
+            window_={window_}
             setWindow={setWindow}
             windows={WINDOWS}
-            formatExpiry={formatExpiry}
+            formatExpiry={(seconds) => formatExpiry(createdAt, seconds)}
           />
 
           <SectionHeader
-            label="Evidence Link"
+            label="Auxiliary Data"
             open={open === 'evidence'}
             onClick={() => toggle('evidence')}
             peek={
-              evidenceUrl ? (
-                <span className="text-primary/60">{evidenceUrl}</span>
+              auxiliaryData ? (
+                <span className="text-primary/60">{auxiliaryData.slice(0, 42)}...</span>
               ) : statement.length > 20 ? (
                 <span className="text-amber-400/60">⚠ none attached</span>
               ) : undefined
@@ -117,8 +113,8 @@ export default function CreateStatement() {
           />
           <EvidenceSection
             open={open === 'evidence'}
-            evidenceUrl={evidenceUrl}
-            setEvidenceUrl={setEvidenceUrl}
+            auxiliaryData={auxiliaryData}
+            setAuxiliaryData={setAuxiliaryData}
             statementLength={statement.length}
           />
 
@@ -132,18 +128,14 @@ export default function CreateStatement() {
             open={open === 'summary'}
             statement={statement}
             bond={bond}
-            windowLabel={window_ && window_.label ? window_.label : (WINDOWS[0]?.label ?? '24h')}
-            windowValue={
-              window_ && typeof window_.value === 'number'
-                ? window_.value
-                : (WINDOWS[0]?.value ?? 86400)
-            }
-            evidenceUrl={evidenceUrl}
+            windowLabel={window_.label}
+            windowValue={window_.value}
+            auxiliaryData={auxiliaryData}
             hashPreview={hashPreview}
-            formatExpiry={formatExpiry}
+            formatExpiry={(seconds) => formatExpiry(createdAt, seconds)}
           />
 
-          <div className="border-muted-foreground/20 mt-auto border-t border-dashed p-5">
+          <div className="border-muted-foreground/50 mt-auto border-t border-dashed p-5">
             <m.button
               whileHover={isValid ? { scale: 1.005 } : {}}
               whileTap={isValid ? { scale: 0.995 } : {}}

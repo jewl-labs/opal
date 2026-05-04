@@ -2,7 +2,7 @@ import { AnimatePresence, motion as m } from 'motion/react';
 
 import { Textarea } from '@/components/ui/textarea';
 
-import Warning from './Warning';
+import Warning from './warning';
 
 interface Props {
   open: boolean;
@@ -34,7 +34,7 @@ export default function StatementSection({ open, value, setValue, warning, maxCh
               placeholder="Kanye West's Delhi concert got postponed"
               value={value}
               onChange={(e) => setValue(e.target.value.slice(0, maxChars))}
-              className="min-h-0 flex-1 resize-none text-base leading-relaxed md:text-lg"
+              className="min-h-0 flex-1 resize-none text-lg leading-relaxed md:text-xl"
             />
             <div className="mt-3 flex items-center justify-between">
               <AnimatePresence mode="wait">
@@ -45,14 +45,14 @@ export default function StatementSection({ open, value, setValue, warning, maxCh
                     key="sh"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="text-muted-foreground/50 text-md"
+                    className="text-muted-foreground/55 text-base md:text-lg"
                   >
                     Write a specific, falsifiable claim
                   </m.span>
                 )}
               </AnimatePresence>
               <span
-                className={`text-md tabular-nums ${
+                className={`text-base tabular-nums md:text-lg ${
                   value.length > maxChars * 0.9 ? 'text-amber-400' : 'text-muted-foreground/50'
                 }`}
               >

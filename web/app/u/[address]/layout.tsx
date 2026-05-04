@@ -1,7 +1,7 @@
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 import Container from '@/components/common/container';
-import DashboardNavigation from '@/components/dashboard/dashboard-navigation';
+import DashboardNavigation from '@/components/activity/activity-navigation';
 
 export default function DashboardLayout({
   children,

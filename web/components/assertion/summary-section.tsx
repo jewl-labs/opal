@@ -6,7 +6,7 @@ interface Props {
   bond: number;
   windowLabel: string;
   windowValue: number;
-  evidenceUrl: string;
+  auxiliaryData: string;
   hashPreview: (s: string) => string;
   formatExpiry: (n: number) => string;
 }
@@ -17,7 +17,7 @@ export default function SummarySection({
   bond,
   windowLabel,
   windowValue,
-  evidenceUrl,
+  auxiliaryData,
   hashPreview,
   formatExpiry,
 }: Props) {
@@ -37,40 +37,40 @@ export default function SummarySection({
             transition={{ duration: 0.2 }}
             className="flex h-full flex-col justify-center p-6"
           >
-            <div className="grid grid-cols-[120px_1fr] gap-x-6 gap-y-3 text-sm">
-              <span className="text-muted-foreground/40">Statement</span>
+            <div className="grid grid-cols-[150px_1fr] gap-x-6 gap-y-4 text-base md:text-lg">
+              <span className="text-muted-foreground/45">Statement</span>
               <span className="text-muted-foreground/80 leading-snug">
                 {statement || <span className="text-muted-foreground/25">—</span>}
               </span>
 
-              <span className="text-muted-foreground/40">Bond</span>
+              <span className="text-muted-foreground/45">Bond</span>
               <span className="text-primary">{bond} PUSD</span>
 
-              <span className="text-muted-foreground/40">Window</span>
+              <span className="text-muted-foreground/45">Window</span>
               <span className="text-muted-foreground/80">{windowLabel}</span>
 
-              <span className="text-muted-foreground/40">Expires</span>
-              <span className="text-muted-foreground/60 text-xs">
+              <span className="text-muted-foreground/45">Expires</span>
+              <span className="text-muted-foreground/70 text-base md:text-lg">
                 {formatExpiry(windowValue)}
               </span>
 
-              {evidenceUrl && (
+              {auxiliaryData && (
                 <>
-                  <span className="text-muted-foreground/40">Aux hash</span>
-                  <span className="text-muted-foreground/50 text-xs">{hashPreview(evidenceUrl)}</span>
+                  <span className="text-muted-foreground/45">Aux hash</span>
+                  <span className="text-muted-foreground/60 text-base md:text-lg">{hashPreview(auxiliaryData)}</span>
                 </>
               )}
             </div>
 
-            <div className="border-muted-foreground/10 mt-6 grid grid-cols-2 gap-4 border-t border-dashed pt-5 text-sm">
+            <div className="border-muted-foreground/10 mt-6 grid grid-cols-2 gap-4 border-t border-dashed pt-5 text-base md:text-lg">
               <div className="text-muted-foreground/35">
-                <span className="text-muted-foreground/50 mb-1 block text-xs tracking-wider uppercase">
+                <span className="text-muted-foreground/50 mb-1 block text-sm tracking-wider uppercase">
                   If undisputed
                 </span>
                 Resolves TRUE · bond returned
               </div>
               <div className="text-muted-foreground/35">
-                <span className="text-muted-foreground/50 mb-1 block text-xs tracking-wider uppercase">
+                <span className="text-muted-foreground/50 mb-1 block text-sm tracking-wider uppercase">
                   If disputed
                 </span>
                 LLM resolution triggered

@@ -11,17 +11,17 @@ export type ResolutionOutcome = "True" | "False" | "TooEarly" | "Unresolvable";
 export interface LLMResolutionRound {
   pubkey: string;
   outcomeCode: 0 | 1 | 2 | 3;        // 0=True 1=False 2=TooEarly 3=Unresolvable
-  outcome: ResolutionOutcome;
+  outcome: ResolutionOutcome | null;
   promptHash: string;
-  resolvedAt: string;                  
-  challengeDeadline: string;           
+  resolvedAt: string | null;                  
+  challengeDeadline: string | null;           
 }
 
 export interface VoteResolutionRound {
   pubkey: string;
-  votingStartsAt: string;
-  votingDeadline: string;
-  totalValidWeight: number;
+  votingStartsAt: string | null;
+  votingDeadline: string | null;
+  totalValidWeight: bigint;
   aggregateVotes: Record<ResolutionOutcome, number>; 
   finalOutcome: ResolutionOutcome | null;
 }
@@ -39,7 +39,7 @@ export interface LLMDisputeAccount {
 export interface VoteDisputeAccount {
   pubkey: string;
   disputer: string;
-  challengedLLMResolution: ResolutionOutcome;
+  challengedLLMResolution: ResolutionOutcome | null;
   bondAmountPUSD: number;
   createdAt: string;
   settlementResolution: ResolutionOutcome | null;
@@ -56,7 +56,7 @@ export interface AssertionAccount {
   bondAmountPUSD: number;
   state: AssertionState;
   livenessDeadline: string;           
-  outcome: ResolutionOutcome | null;   
+  outcome: ResolutionOutcome;   
   finalizedAt: string | null;
   disputeCount: 0 | 1 | 2;
   llmDispute: LLMDisputeAccount | null;

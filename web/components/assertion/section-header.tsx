@@ -1,5 +1,7 @@
-import { ChevronDown } from 'lucide-react';
+import type * as React from 'react';
+
 import { m } from 'motion/react';
+import { CaretDownIcon } from '@phosphor-icons/react';
 
 export default function SectionHeader({
   label,
@@ -19,7 +21,7 @@ export default function SectionHeader({
     >
       <div className="flex items-center gap-3">
         <span
-          className={`text-md tracking-widest uppercase transition-colors ${
+          className={`text-base font-medium tracking-widest uppercase transition-colors md:text-lg ${
             open ? 'text-foreground' : 'text-foreground/50'
           }`}
         >
@@ -29,14 +31,14 @@ export default function SectionHeader({
           <m.span
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="text-muted-foreground/40 max-w-50 truncate text-xs"
+            className="text-muted-foreground/45 max-w-60 truncate text-sm md:text-base"
           >
             {peek}
           </m.span>
         )}
       </div>
       <m.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
-        <ChevronDown className="text-muted-foreground/40 stroke-1 size-6" />
+        <CaretDownIcon className="text-muted-foreground/40 stroke-1 size-6" />
       </m.div>
     </button>
   );
