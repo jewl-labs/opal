@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 
+// !TBD: Switchboard fields below are placeholder scaffolding for future oracle integration.
 #[repr(C, packed)]
 #[account(zero_copy(unsafe))]
 pub struct LlmResolutionRound {

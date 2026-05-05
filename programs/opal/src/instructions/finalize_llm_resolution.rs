@@ -145,6 +145,8 @@ pub fn handler(ctx: Context<FinalizeLlmResolution>) -> Result<()> {
         OpalError::InvalidTreasuryAccount
     );
 
+    // !TBD: Reserved outcomes (TooEarly, Unresolvable) need explicit economic handling.
+    // Currently they are treated identically to False (disputer wins).
     let llm_dispute_correct = final_outcome != OUTCOME_TRUE;
 
     let (asserter_payout, llm_disputer_payout, treasury_fee) = if llm_dispute_correct {

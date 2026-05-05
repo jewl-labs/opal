@@ -35,7 +35,7 @@ pub struct OpenVote<'info> {
 }
 
 pub fn handler(ctx: Context<OpenVote>) -> Result<()> {
-    // TBD: auth policy for open_vote is undecided. Currently permissionless for liveness.
+    // !TBD: auth policy for open_vote is undecided. Currently permissionless for liveness.
     let assertion = ctx.accounts.assertion.load()?;
     let vote_round = ctx.accounts.vote_resolution_round.load()?;
     require!(
@@ -58,7 +58,7 @@ pub fn handler(ctx: Context<OpenVote>) -> Result<()> {
     vote_round.voting_starts_at = voting_starts_at;
     vote_round.voting_deadline = voting_deadline;
     vote_round.reveal_deadline = voting_deadline;
-    // PLACEHOLDER: MagicBlock delegation is currently a no-op (delegated=true but no ER tx).
+    // !TBD: PLACEHOLDER — MagicBlock delegation is currently a no-op (delegated=true but no ER tx).
     vote_round.delegated = BOOL_TRUE;
 
     let assertion = &mut ctx.accounts.assertion.load_mut()?;

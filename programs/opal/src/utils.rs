@@ -1,8 +1,14 @@
-use crate::{constants::{BPS_DENOMINATOR, OUTCOME_NONE, OUTCOME_UNRESOLVABLE, TIMESTAMP_NONE}, errors::OpalError};
+use crate::{
+    constants::{BPS_DENOMINATOR, OUTCOME_NONE, OUTCOME_UNRESOLVABLE, TIMESTAMP_NONE},
+    errors::OpalError,
+};
 use anchor_lang::prelude::*;
 
 pub fn validate_outcome_code(outcome_code: u8) -> Result<u8> {
-    require!(outcome_code <= OUTCOME_UNRESOLVABLE, OpalError::InvalidOutcomeCode);
+    require!(
+        outcome_code <= OUTCOME_UNRESOLVABLE,
+        OpalError::InvalidOutcomeCode
+    );
     Ok(outcome_code)
 }
 
@@ -27,10 +33,6 @@ pub fn is_pubkey_default(pk: &Pubkey) -> bool {
 
 pub fn is_timestamp_set(ts: i64) -> bool {
     ts != TIMESTAMP_NONE
-}
-
-pub fn is_hash_set(hash: &[u8; 32]) -> bool {
-    hash != &[0; 32]
 }
 
 pub fn is_outcome_set(outcome: u8) -> bool {
