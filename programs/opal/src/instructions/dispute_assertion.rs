@@ -1,7 +1,7 @@
 use crate::{
     constants::{
         ASSERTION_SEED, ASSERTION_STATE_ASSERTED, ASSERTION_STATE_PENDING_LLM, BOND_VAULT_SEED,
-        LLM_DISPUTE_SEED, LLM_ROUND_SEED, OUTCOME_CODE_NONE, OUTCOME_NONE, PROTOCOL_CONFIG_SEED,
+        LLM_DISPUTE_SEED, LLM_ROUND_SEED, OUTCOME_NONE, PROTOCOL_CONFIG_SEED,
         TIMESTAMP_NONE,
     },
     errors::OpalError,
@@ -130,7 +130,6 @@ pub fn handler(ctx: Context<DisputeAssertion>) -> Result<()> {
     llm_round.variable_overrides_hash = [0; 32];
     llm_round.response_hash = [0; 32];
     llm_round.evidence_hash = [0; 32];
-    llm_round.outcome_code = OUTCOME_CODE_NONE;
     llm_round.outcome = OUTCOME_NONE;
     llm_round.requested_at = now;
     llm_round.resolved_at = TIMESTAMP_NONE;

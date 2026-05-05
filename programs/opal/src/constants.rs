@@ -28,6 +28,5 @@ pub const OUTCOME_NONE: u8 = 255;
 
 // ── Sentinels for "unset" fields ──
 pub const TIMESTAMP_NONE: i64 = 0;
-pub const OUTCOME_CODE_NONE: u8 = 255;
 pub const BOOL_FALSE: u8 = 0;
 pub const BOOL_TRUE: u8 = 1;

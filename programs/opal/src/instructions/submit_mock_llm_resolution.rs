@@ -5,7 +5,7 @@ use crate::{
     },
     errors::OpalError,
     state::{AssertionAccount, LlmResolutionRound, ProtocolConfig},
-    utils::{checked_add_i64, map_outcome_code},
+    utils::{checked_add_i64, validate_outcome_code},
 };
 use anchor_lang::prelude::*;
 
@@ -61,13 +61,12 @@ pub fn handler(
     drop(assertion);
 
     let protocol_config = ctx.accounts.protocol_config.load()?;
-    let outcome = map_outcome_code(args.outcome_code)?;
+    let outcome = validate_outcome_code(args.outcome_code)?;
     let now = Clock::get()?.unix_timestamp;
     let challenge_deadline = checked_add_i64(now, protocol_config.llm_challenge_window_seconds)?;
     drop(protocol_config);
 
     let llm_round = &mut ctx.accounts.llm_resolution_round.load_mut()?;
-    llm_round.outcome_code = args.outcome_code;
     llm_round.outcome = outcome;
     llm_round.resolved_at = now;
     llm_round.challenge_deadline = challenge_deadline;

@@ -4,8 +4,7 @@
     "format:fix": "prettier * tests/* --write --ignore-unknown",
     "format": "prettier * tests/* --check --ignore-unknown",
     "gen:client": "codama run js",
-    "test": "anchor test",
-    "test:devnet": "bun test tests/opal.devnet.test.ts --timeout 60000"
+    "test": "anchor test"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.32.1",

@@ -141,8 +141,7 @@ There are **no Rust unit tests** (no `programs/opal/tests/`). All testing is don
 
 ### Math
 
-- Use `checked_*` helpers in `utils.rs`. Never use raw `+`, `-`, `*` on
-  token amounts or timestamps.
+- Use `checked_*` operations. Never use raw `+`, `-`, `*` on token amounts or timestamps.
 
 ## TypeScript
 
@@ -151,8 +150,7 @@ There are **no Rust unit tests** (no `programs/opal/tests/`). All testing is don
 - Use `AnchorProvider.env()` for the provider (set by `anchor test`).
 - Use `anchor.workspace.Opal` for the typed program.
 - Use `bun:test` (`describe`, `it`, `expect`, `beforeAll`).
-- Keep tests flat — nested `describe` blocks can interleave with singleton
-  state and cause ordering bugs.
+- Keep tests flat — nested `describe` blocks can interleave with singleton state and cause ordering bugs.
 
 ---
 

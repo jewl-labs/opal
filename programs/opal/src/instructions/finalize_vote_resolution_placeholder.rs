@@ -8,7 +8,7 @@ use crate::{
         AssertionAccount, LlmDisputeAccount, ProtocolConfig, VoteDisputeAccount,
         VoteResolutionRound,
     },
-    utils::{checked_bps, is_outcome_set, is_timestamp_set, map_outcome_code},
+    utils::{checked_bps, is_outcome_set, is_timestamp_set, validate_outcome_code},
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
@@ -151,7 +151,7 @@ pub fn handler(
         OpalError::VoteWindowNotClosed
     );
 
-    let final_outcome = map_outcome_code(args.outcome_code)?;
+    let final_outcome = validate_outcome_code(args.outcome_code)?;
 
     let assertion_bond = assertion.assertion_bond_amount_pusd;
     let llm_bond = llm_dispute.bond_amount_pusd;
