@@ -51,7 +51,7 @@ pub fn handler(
     ctx: Context<InitializeProtocolConfig>,
     args: InitializeProtocolConfigArgs,
 ) -> Result<()> {
-    // PLACEHOLDER: uncomment before mainnet to restrict init to deployer.
+    // !TBD: PLACEHOLDER — uncomment before mainnet to restrict init to deployer.
     // require!(ctx.accounts.authority.key() == crate::ID, OpalError::Unauthorized);
 
     require!(

@@ -102,10 +102,19 @@ pub struct FinalizeVoteResolutionPlaceholder<'info> {
     pub token_program: Program<'info, Token>,
 }
 
+// !TBD: PLACEHOLDER — This instruction accepts a user-supplied outcome and distributes funds.
+// In production, vote resolution will be determined by actual vote tallying from MagicBlock.
 pub fn handler(
     ctx: Context<FinalizeVoteResolutionPlaceholder>,
     args: FinalizeVoteResolutionPlaceholderArgs,
 ) -> Result<()> {
+    let protocol_config = ctx.accounts.protocol_config.load()?;
+    require!(
+        ctx.accounts.authority.key() == protocol_config.authority,
+        OpalError::Unauthorized
+    );
+    drop(protocol_config);
+
     let assertion = ctx.accounts.assertion.load()?;
     let llm_dispute = ctx.accounts.llm_dispute.load()?;
     let vote_dispute = ctx.accounts.vote_dispute.load()?;
@@ -184,6 +193,8 @@ pub fn handler(
         OpalError::InvalidTreasuryAccount
     );
 
+    // !TBD: Reserved outcomes (TooEarly, Unresolvable) need explicit economic handling.
+    // Currently they are treated identically to False (disputer wins).
     let llm_dispute_correct = final_outcome != OUTCOME_TRUE;
     let vote_dispute_correct = final_outcome != vote_dispute.challenged_llm_resolution;
 
@@ -303,7 +314,7 @@ pub fn handler(
         )?;
     }
 
-    // PLACEHOLDER: In the real flow both disputes settle to the same final_outcome
+    // !TBD: PLACEHOLDER — In the real flow both disputes settle to the same final_outcome
     // because vote resolution is the ultimate arbiter. If we ever support divergent
     // settlements (e.g., partial slashing) these lines will change.
     let mut llm_dispute = ctx.accounts.llm_dispute.load_mut()?;
@@ -315,7 +326,7 @@ pub fn handler(
     let vote_round = &mut ctx.accounts.vote_resolution_round.load_mut()?;
     vote_round.final_outcome = final_outcome;
     vote_round.committed = crate::constants::BOOL_TRUE;
-    vote_round.delegated = crate::constants::BOOL_FALSE; // placeholder: voting is "done" but no real commit happened
+    vote_round.delegated = crate::constants::BOOL_FALSE; // !TBD: voting is "done" but no real commit happened
 
     let mut assertion = ctx.accounts.assertion.load_mut()?;
     assertion.state = ASSERTION_STATE_RESOLVED;

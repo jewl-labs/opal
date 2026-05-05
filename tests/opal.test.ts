@@ -287,6 +287,7 @@ describe("opal", () => {
     ).rejects.toThrow();
   });
 
+  // !TBD: This test has zero assertions. Future work should verify config state.
   it("initializes protocol", async () => {
     proto = await setupProtocol(program, token, provider.wallet.payer);
   });
@@ -552,7 +553,6 @@ describe("opal", () => {
     await program.account.voteDisputeAccount.fetch(voteDispute);
     await program.account.voteResolutionRound.fetch(voteRound);
 
-    // skipping preflight avoids an Anchor/web3.js preflight simulation bug on this instruction.
     await program.methods
       .finalizeVoteResolutionPlaceholder({ outcomeCode: 1 })
       .accounts({
@@ -590,6 +590,8 @@ describe("opal", () => {
   });
 
   // ── Negative cases ──
+  // !TBD: All negative tests below use .rejects.toThrow() without checking
+  // specific error codes. Future work should verify the exact error variant.
   it("error: premature finalizeUndisputed", async () => {
     const id = Keypair.generate().publicKey;
     const { assertion, bondVault } = derivePDAs(id, program.programId);

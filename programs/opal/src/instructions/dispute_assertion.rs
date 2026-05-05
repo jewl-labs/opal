@@ -1,8 +1,7 @@
 use crate::{
     constants::{
         ASSERTION_SEED, ASSERTION_STATE_ASSERTED, ASSERTION_STATE_PENDING_LLM, BOND_VAULT_SEED,
-        LLM_DISPUTE_SEED, LLM_ROUND_SEED, OUTCOME_NONE, PROTOCOL_CONFIG_SEED,
-        TIMESTAMP_NONE,
+        LLM_DISPUTE_SEED, LLM_ROUND_SEED, OUTCOME_NONE, PROTOCOL_CONFIG_SEED, TIMESTAMP_NONE,
     },
     errors::OpalError,
     state::{AssertionAccount, LlmDisputeAccount, LlmResolutionRound, ProtocolConfig},

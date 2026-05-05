@@ -247,12 +247,6 @@ All state accounts are **zero-copy** with `#[repr(C, packed)]`.
 
 ### Known quirks
 
-- **`skipPreflight: true` is used on all `.rpc()` calls in tests.**
-  Anchor's preflight simulation intermittently throws "Unknown action 'undefined'"
-  when the underlying `confirmTransaction` encounters a failed tx without proper
-  metadata. The transactions themselves are valid, but the error propagation path
-  in `@coral-xyz/anchor` is buggy. `skipPreflight: true` bypasses simulation
-  entirely and is a reliable workaround.
 - **`InvalidPusdMint` was removed.** The protocol supports any USD-pegged stablecoin.
   Mint validation in `create_assertion` uses `Unauthorized` to reject mismatched mints.
   A future PR will rename all `pusd` fields to `usd`.

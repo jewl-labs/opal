@@ -32,6 +32,8 @@ pub struct CreateAssertion<'info> {
 
     pub pusd_mint: Account<'info, Mint>,
 
+    // !TBD: assertion_id is caller-supplied, allowing front-running of the assertion PDA.
+    // Consider using a hash of (asserter, nonce) to prevent this.
     #[account(
         init,
         payer = asserter,
@@ -81,7 +83,7 @@ pub fn handler(ctx: Context<CreateAssertion>, args: CreateAssertionArgs) -> Resu
     );
     require!(
         ctx.accounts.pusd_mint.key() == protocol_config.pusd_mint,
-        OpalError::Unauthorized
+        OpalError::InvalidMint
     );
 
     let now = Clock::get()?.unix_timestamp;
@@ -101,6 +103,8 @@ pub fn handler(ctx: Context<CreateAssertion>, args: CreateAssertionArgs) -> Resu
     assertion.state = ASSERTION_STATE_ASSERTED;
     assertion.liveness_deadline = liveness_deadline;
     assertion.llm_challenge_deadline = TIMESTAMP_NONE;
+    // !TBD: Zero-copy memory is all-zeros by default. If outcome were ever read before
+    // this explicit init, it would read as 0 (= OUTCOME_TRUE), not OUTCOME_NONE.
     assertion.outcome = OUTCOME_NONE;
     assertion.finalized_at = TIMESTAMP_NONE;
     assertion.dispute_count = 0;

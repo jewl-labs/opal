@@ -150,7 +150,7 @@ pub fn handler(ctx: Context<ChallengeLlmResolution>) -> Result<()> {
     let mut vote_round = ctx.accounts.vote_resolution_round.load_init()?;
     vote_round.assertion = ctx.accounts.assertion.key();
     vote_round.dispute = ctx.accounts.vote_dispute.key();
-    // PLACEHOLDER: MagicBlock ER fields — will be wired when delegation is implemented.
+    // !TBD: PLACEHOLDER — MagicBlock ER fields. Will be wired when delegation is implemented.
     vote_round.magicblock_validator = Pubkey::default();
     vote_round.permission_account = Pubkey::default();
     vote_round.delegated_vote_state = Pubkey::default();

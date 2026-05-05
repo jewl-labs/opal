@@ -22,6 +22,8 @@ pub enum OpalError {
     InsufficientBondAmount,
     #[msg("Caller is not authorized")]
     Unauthorized,
+    #[msg("Token mint does not match protocol config")]
+    InvalidMint,
     #[msg("Protocol config invariants are invalid")]
     ConfigInvariantViolation,
     #[msg("Dispute has already been settled")]

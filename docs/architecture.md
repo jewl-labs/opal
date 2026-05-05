@@ -129,7 +129,6 @@ pub struct LlmResolutionRound {
     pub variable_overrides_hash: [u8; 32],
     pub response_hash: [u8; 32],
     pub evidence_hash: [u8; 32],
-    pub outcome_code: u8,       // 255 = unset
     pub outcome: u8,            // OUTCOME_* (255 = unset)
     pub requested_at: i64,
     pub resolved_at: i64,       // 0 = unset

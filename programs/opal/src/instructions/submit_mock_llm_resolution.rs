@@ -39,7 +39,7 @@ pub struct SubmitMockLlmResolution<'info> {
     pub llm_resolution_round: AccountLoader<'info, LlmResolutionRound>,
 }
 
-// PLACEHOLDER: This is a mock instruction for local testing.
+// !TBD: PLACEHOLDER — This is a mock instruction for local testing.
 // In production, LLM resolution will be delivered by a Switchboard oracle callback
 // that updates the LlmResolutionRound outcome fields on-chain.
 pub fn handler(
@@ -51,7 +51,6 @@ pub fn handler(
         ctx.accounts.authority.key() == protocol_config.authority,
         OpalError::Unauthorized
     );
-    drop(protocol_config);
 
     let assertion = ctx.accounts.assertion.load()?;
     require!(
@@ -60,7 +59,6 @@ pub fn handler(
     );
     drop(assertion);
 
-    let protocol_config = ctx.accounts.protocol_config.load()?;
     let outcome = validate_outcome_code(args.outcome_code)?;
     let now = Clock::get()?.unix_timestamp;
     let challenge_deadline = checked_add_i64(now, protocol_config.llm_challenge_window_seconds)?;
