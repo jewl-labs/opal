@@ -52,7 +52,6 @@ All tests are TypeScript integration tests against a localnet validator. There a
 
 ```bash
 anchor test          # localnet
-bun run test:devnet  # devnet (requires .env with KEYPAIR_BYTES/CLUSTER)
 ```
 
 Current coverage: happy paths (undisputed, LLM resolution, full escalation), config validation, deadline violations, state guards, account mismatches, token balance assertions.
