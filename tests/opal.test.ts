@@ -16,8 +16,7 @@ const TOKEN_PROGRAM_ID = new PublicKey(
   "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
 );
 
-// seeds (must match Rust)
-const S = {
+const SEEDS = {
   PROTOCOL_CONFIG: Buffer.from("protocol_config"),
   ASSERTION: Buffer.from("assertion"),
   BOND_VAULT: Buffer.from("bond_vault"),
@@ -27,8 +26,7 @@ const S = {
   VOTE_ROUND: Buffer.from("vote_round"),
 };
 
-// state constants (must match Rust)
-const ST = {
+const STATE = {
   ASSERTED: 0,
   PENDING_LLM: 1,
   ASSERTED_LLM: 2,
@@ -37,7 +35,7 @@ const ST = {
   RESOLVED: 5,
 };
 
-const OUT = {
+const OUTCOME = {
   TRUE: 0,
   FALSE: 1,
   NONE: 255,
@@ -57,27 +55,27 @@ async function balanceOf(connection: Connection, ata: PublicKey) {
 
 function derivePDAs(id: PublicKey, programId: PublicKey) {
   const [assertion] = PublicKey.findProgramAddressSync(
-    [S.ASSERTION, id.toBuffer()],
+    [SEEDS.ASSERTION, id.toBuffer()],
     programId,
   );
   const [bondVault] = PublicKey.findProgramAddressSync(
-    [S.BOND_VAULT, id.toBuffer()],
+    [SEEDS.BOND_VAULT, id.toBuffer()],
     programId,
   );
   const [llmDispute] = PublicKey.findProgramAddressSync(
-    [S.LLM_DISPUTE, assertion.toBuffer()],
+    [SEEDS.LLM_DISPUTE, assertion.toBuffer()],
     programId,
   );
   const [llmRound] = PublicKey.findProgramAddressSync(
-    [S.LLM_ROUND, assertion.toBuffer()],
+    [SEEDS.LLM_ROUND, assertion.toBuffer()],
     programId,
   );
   const [voteDispute] = PublicKey.findProgramAddressSync(
-    [S.VOTE_DISPUTE, assertion.toBuffer()],
+    [SEEDS.VOTE_DISPUTE, assertion.toBuffer()],
     programId,
   );
   const [voteRound] = PublicKey.findProgramAddressSync(
-    [S.VOTE_ROUND, assertion.toBuffer()],
+    [SEEDS.VOTE_ROUND, assertion.toBuffer()],
     programId,
   );
   return { assertion, bondVault, llmDispute, llmRound, voteDispute, voteRound };
@@ -183,7 +181,7 @@ async function setupProtocol(
   authority: Keypair,
 ): Promise<ProtocolEnv> {
   const [configPda] = PublicKey.findProgramAddressSync(
-    [S.PROTOCOL_CONFIG],
+    [SEEDS.PROTOCOL_CONFIG],
     program.programId,
   );
 
@@ -225,12 +223,200 @@ async function setupProtocol(
   return { configPda, authority, treasuryAta };
 }
 
+class Assertion {
+  constructor(
+    public id: PublicKey,
+    public pdas: ReturnType<typeof derivePDAs>,
+  ) {}
+}
+
+class TestContext {
+  constructor(
+    public program: Program<Opal>,
+    public provider: AnchorProvider,
+    public connection: Connection,
+    public token: TokenEnv,
+    public proto: ProtocolEnv,
+  ) {}
+
+  newAssertion(): Assertion {
+    const id = Keypair.generate().publicKey;
+    return new Assertion(id, derivePDAs(id, this.program.programId));
+  }
+
+  async createAssertion(
+    a: Assertion,
+    statement: string,
+    bond: number,
+    auxiliaryHash = "hash",
+  ) {
+    return this.program.methods
+      .createAssertion({
+        assertionId: a.id,
+        statement,
+        auxiliaryHash,
+        assertionBondAmountPusd: new BN(bond),
+      })
+      .accounts({
+        asserter: this.token.asserter.publicKey,
+        protocolConfig: this.proto.configPda,
+        pusdMint: this.token.mint,
+        assertion: a.pdas.assertion,
+        bondVault: a.pdas.bondVault,
+        asserterPusd: this.token.asserterAta,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+      })
+      .signers([this.token.asserter])
+      .rpc({ commitment: "confirmed" });
+  }
+
+  async disputeAssertion(a: Assertion) {
+    return this.program.methods
+      .disputeAssertion()
+      .accounts({
+        disputer: this.token.llmDisputer.publicKey,
+        protocolConfig: this.proto.configPda,
+        pusdMint: this.token.mint,
+        assertion: a.pdas.assertion,
+        llmDispute: a.pdas.llmDispute,
+        llmResolutionRound: a.pdas.llmRound,
+        bondVault: a.pdas.bondVault,
+        disputerPusd: this.token.llmDisputerAta,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+      })
+      .signers([this.token.llmDisputer])
+      .rpc({ commitment: "confirmed" });
+  }
+
+  async submitMockLlmResolution(a: Assertion, outcomeCode: number) {
+    return this.program.methods
+      .submitMockLlmResolution({ outcomeCode })
+      .accounts({
+        authority: this.proto.authority.publicKey,
+        protocolConfig: this.proto.configPda,
+        assertion: a.pdas.assertion,
+        llmResolutionRound: a.pdas.llmRound,
+      })
+      .signers([this.proto.authority])
+      .rpc({ commitment: "confirmed" });
+  }
+
+  async finalizeLlmResolution(a: Assertion) {
+    return this.program.methods
+      .finalizeLlmResolution()
+      .accounts({
+        finalizer: this.provider.wallet.publicKey,
+        protocolConfig: this.proto.configPda,
+        pusdMint: this.token.mint,
+        assertion: a.pdas.assertion,
+        llmDispute: a.pdas.llmDispute,
+        llmResolutionRound: a.pdas.llmRound,
+        bondVault: a.pdas.bondVault,
+        asserterPusd: this.token.asserterAta,
+        llmDisputerPusd: this.token.llmDisputerAta,
+        treasuryPusd: this.proto.treasuryAta,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .rpc({ commitment: "confirmed" });
+  }
+
+  async challengeLlmResolution(a: Assertion) {
+    return this.program.methods
+      .challengeLlmResolution()
+      .accounts({
+        disputer: this.token.voteDisputer.publicKey,
+        protocolConfig: this.proto.configPda,
+        pusdMint: this.token.mint,
+        assertion: a.pdas.assertion,
+        llmResolutionRound: a.pdas.llmRound,
+        voteDispute: a.pdas.voteDispute,
+        voteResolutionRound: a.pdas.voteRound,
+        bondVault: a.pdas.bondVault,
+        disputerPusd: this.token.voteDisputerAta,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+      })
+      .signers([this.token.voteDisputer])
+      .rpc({ commitment: "confirmed" });
+  }
+
+  async openVote(a: Assertion) {
+    return this.program.methods
+      .openVote()
+      .accounts({
+        authority: this.proto.authority.publicKey,
+        protocolConfig: this.proto.configPda,
+        assertion: a.pdas.assertion,
+        voteResolutionRound: a.pdas.voteRound,
+      })
+      .signers([this.proto.authority])
+      .rpc({ commitment: "confirmed" });
+  }
+
+  async finalizeVoteResolutionPlaceholder(a: Assertion, outcomeCode: number) {
+    return this.program.methods
+      .finalizeVoteResolutionPlaceholder({ outcomeCode })
+      .accounts({
+        authority: this.proto.authority.publicKey,
+        protocolConfig: this.proto.configPda,
+        pusdMint: this.token.mint,
+        assertion: a.pdas.assertion,
+        llmDispute: a.pdas.llmDispute,
+        voteDispute: a.pdas.voteDispute,
+        voteResolutionRound: a.pdas.voteRound,
+        bondVault: a.pdas.bondVault,
+        asserterPusd: this.token.asserterAta,
+        llmDisputerPusd: this.token.llmDisputerAta,
+        voteDisputerPusd: this.token.voteDisputerAta,
+        treasuryPusd: this.proto.treasuryAta,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .signers([this.proto.authority])
+      .rpc({ commitment: "confirmed" });
+  }
+
+  async finalizeUndisputed(a: Assertion) {
+    return this.program.methods
+      .finalizeUndisputed()
+      .accounts({
+        finalizer: this.provider.wallet.publicKey,
+        protocolConfig: this.proto.configPda,
+        pusdMint: this.token.mint,
+        assertion: a.pdas.assertion,
+        bondVault: a.pdas.bondVault,
+        asserterPusd: this.token.asserterAta,
+        treasuryPusd: this.proto.treasuryAta,
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .rpc({ commitment: "confirmed" });
+  }
+
+  fetchAssertion(a: Assertion) {
+    return this.program.account.assertionAccount.fetch(a.pdas.assertion);
+  }
+  fetchLlmDispute(a: Assertion) {
+    return this.program.account.llmDisputeAccount.fetch(a.pdas.llmDispute);
+  }
+  fetchLlmRound(a: Assertion) {
+    return this.program.account.llmResolutionRound.fetch(a.pdas.llmRound);
+  }
+  fetchVoteDispute(a: Assertion) {
+    return this.program.account.voteDisputeAccount.fetch(a.pdas.voteDispute);
+  }
+  fetchVoteRound(a: Assertion) {
+    return this.program.account.voteResolutionRound.fetch(a.pdas.voteRound);
+  }
+}
+
 describe("opal", () => {
   let provider: AnchorProvider;
   let connection: Connection;
   let program: Program<Opal>;
   let token: TokenEnv;
   let proto: ProtocolEnv;
+  let ctx: TestContext;
 
   beforeAll(async () => {
     provider = AnchorProvider.env();
@@ -240,13 +426,12 @@ describe("opal", () => {
     token = await buildTokenEnv(connection);
   });
 
-  // ── Config validation MUST run before singleton init ──
   it("rejects invalid protocol config", async () => {
     const authority = Keypair.generate();
     await fund(connection, authority.publicKey, 10_000_000_000);
 
     const [configPda] = PublicKey.findProgramAddressSync(
-      [S.PROTOCOL_CONFIG],
+      [SEEDS.PROTOCOL_CONFIG],
       program.programId,
     );
     const treasuryAta = (
@@ -258,7 +443,7 @@ describe("opal", () => {
       )
     ).address;
 
-    await expect(
+    expect(
       program.methods
         .initializeProtocolConfig({
           assertionBondMinPusd: new BN(0),
@@ -287,63 +472,31 @@ describe("opal", () => {
     ).rejects.toThrow();
   });
 
-  // !TBD: This test has zero assertions. Future work should verify config state.
   it("initializes protocol", async () => {
     proto = await setupProtocol(program, token, provider.wallet.payer);
+    ctx = new TestContext(program, provider, connection, token, proto);
   });
 
-  // ── Happy paths ──
   it("undisputed path: creates, waits, finalizes with correct payouts", async () => {
-    const id = Keypair.generate().publicKey;
-    const { assertion, bondVault } = derivePDAs(id, program.programId);
+    const a = ctx.newAssertion();
     const bond = 200;
     const asserterStart = await balanceOf(connection, token.asserterAta);
     const treasuryStart = await balanceOf(connection, proto.treasuryAta);
 
-    await program.methods
-      .createAssertion({
-        assertionId: id,
-        statement: "Bitcoin > $100k by 2026",
-        auxiliaryHash: "hash123",
-        assertionBondAmountPusd: new BN(bond),
-      })
-      .accounts({
-        asserter: token.asserter.publicKey,
-        protocolConfig: proto.configPda,
-        pusdMint: token.mint,
-        assertion,
-        bondVault,
-        asserterPusd: token.asserterAta,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-      })
-      .signers([token.asserter])
-      .rpc({ commitment: "confirmed" });
+    await ctx.createAssertion(a, "Bitcoin > $100k by 2026", bond, "hash123");
 
-    const acc = await program.account.assertionAccount.fetch(assertion);
-    expect(acc.state).toBe(ST.ASSERTED);
+    const acc = await ctx.fetchAssertion(a);
+    expect(acc.state).toBe(STATE.ASSERTED);
     expect(acc.disputeCount).toBe(0);
-    expect(acc.outcome).toBe(OUT.NONE);
+    expect(acc.outcome).toBe(OUTCOME.NONE);
 
     await sleep(4000);
 
-    await program.methods
-      .finalizeUndisputed()
-      .accounts({
-        finalizer: provider.wallet.publicKey,
-        protocolConfig: proto.configPda,
-        pusdMint: token.mint,
-        assertion,
-        bondVault,
-        asserterPusd: token.asserterAta,
-        treasuryPusd: proto.treasuryAta,
-        tokenProgram: TOKEN_PROGRAM_ID,
-      })
-      .rpc({ commitment: "confirmed" });
+    await ctx.finalizeUndisputed(a);
 
-    const resolved = await program.account.assertionAccount.fetch(assertion);
-    expect(resolved.state).toBe(ST.RESOLVED);
-    expect(resolved.outcome).toBe(OUT.TRUE);
+    const resolved = await ctx.fetchAssertion(a);
+    expect(resolved.state).toBe(STATE.RESOLVED);
+    expect(resolved.outcome).toBe(OUTCOME.TRUE);
     expect(resolved.finalizedAt.toNumber()).toBeGreaterThan(0);
 
     // fee = 200 * 250 / 10000 = 5
@@ -356,99 +509,38 @@ describe("opal", () => {
   });
 
   it("llm resolution path: disputes, resolves via llm, pays winner", async () => {
-    const id = Keypair.generate().publicKey;
-    const { assertion, bondVault, llmDispute, llmRound } = derivePDAs(
-      id,
-      program.programId,
-    );
+    const a = ctx.newAssertion();
     const bond = 200;
 
-    await program.methods
-      .createAssertion({
-        assertionId: id,
-        statement: "ETH flips BTC",
-        auxiliaryHash: "abc",
-        assertionBondAmountPusd: new BN(bond),
-      })
-      .accounts({
-        asserter: token.asserter.publicKey,
-        protocolConfig: proto.configPda,
-        pusdMint: token.mint,
-        assertion,
-        bondVault,
-        asserterPusd: token.asserterAta,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-      })
-      .signers([token.asserter])
-      .rpc({ commitment: "confirmed" });
+    await ctx.createAssertion(a, "ETH flips BTC", bond, "abc");
 
     const disputerStart = await balanceOf(connection, token.llmDisputerAta);
 
-    await program.methods
-      .disputeAssertion()
-      .accounts({
-        disputer: token.llmDisputer.publicKey,
-        protocolConfig: proto.configPda,
-        pusdMint: token.mint,
-        assertion,
-        llmDispute,
-        llmResolutionRound: llmRound,
-        bondVault,
-        disputerPusd: token.llmDisputerAta,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-      })
-      .signers([token.llmDisputer])
-      .rpc({ commitment: "confirmed" });
+    await ctx.disputeAssertion(a);
 
-    let acc = await program.account.assertionAccount.fetch(assertion);
-    expect(acc.state).toBe(ST.PENDING_LLM);
+    let acc = await ctx.fetchAssertion(a);
+    expect(acc.state).toBe(STATE.PENDING_LLM);
     expect(acc.disputeCount).toBe(1);
 
-    await program.methods
-      .submitMockLlmResolution({ outcomeCode: 1 })
-      .accounts({
-        authority: proto.authority.publicKey,
-        protocolConfig: proto.configPda,
-        assertion,
-        llmResolutionRound: llmRound,
-      })
-      .signers([proto.authority])
-      .rpc({ commitment: "confirmed" });
+    await ctx.submitMockLlmResolution(a, 1);
 
-    acc = await program.account.assertionAccount.fetch(assertion);
-    expect(acc.state).toBe(ST.ASSERTED_LLM);
+    acc = await ctx.fetchAssertion(a);
+    expect(acc.state).toBe(STATE.ASSERTED_LLM);
 
-    const round = await program.account.llmResolutionRound.fetch(llmRound);
-    expect(round.outcome).toBe(OUT.FALSE);
+    const round = await ctx.fetchLlmRound(a);
+    expect(round.outcome).toBe(OUTCOME.FALSE);
     expect(round.challengeDeadline.toNumber()).toBeGreaterThan(0);
 
     await sleep(4000);
 
-    await program.methods
-      .finalizeLlmResolution()
-      .accounts({
-        finalizer: provider.wallet.publicKey,
-        protocolConfig: proto.configPda,
-        pusdMint: token.mint,
-        assertion,
-        llmDispute,
-        llmResolutionRound: llmRound,
-        bondVault,
-        asserterPusd: token.asserterAta,
-        llmDisputerPusd: token.llmDisputerAta,
-        treasuryPusd: proto.treasuryAta,
-        tokenProgram: TOKEN_PROGRAM_ID,
-      })
-      .rpc({ commitment: "confirmed" });
+    await ctx.finalizeLlmResolution(a);
 
-    const resolved = await program.account.assertionAccount.fetch(assertion);
-    expect(resolved.state).toBe(ST.RESOLVED);
-    expect(resolved.outcome).toBe(OUT.FALSE);
+    const resolved = await ctx.fetchAssertion(a);
+    expect(resolved.state).toBe(STATE.RESOLVED);
+    expect(resolved.outcome).toBe(OUTCOME.FALSE);
 
-    const dispute = await program.account.llmDisputeAccount.fetch(llmDispute);
-    expect(dispute.settlementResolution).toBe(OUT.FALSE);
+    const dispute = await ctx.fetchLlmDispute(a);
+    expect(dispute.settlementResolution).toBe(OUTCOME.FALSE);
 
     // disputer was correct (outcome != TRUE). Net gain = assertion bond - fee = 195.
     expect(await balanceOf(connection, token.llmDisputerAta)).toBe(
@@ -457,523 +549,113 @@ describe("opal", () => {
   });
 
   it("full escalation path: escalates to vote and resolves", async () => {
-    const id = Keypair.generate().publicKey;
-    const {
-      assertion,
-      bondVault,
-      llmDispute,
-      llmRound,
-      voteDispute,
-      voteRound,
-    } = derivePDAs(id, program.programId);
+    const a = ctx.newAssertion();
 
-    await program.methods
-      .createAssertion({
-        assertionId: id,
-        statement: "Solana TPS > 10000",
-        auxiliaryHash: "perf",
-        assertionBondAmountPusd: new BN(500),
-      })
-      .accounts({
-        asserter: token.asserter.publicKey,
-        protocolConfig: proto.configPda,
-        pusdMint: token.mint,
-        assertion,
-        bondVault,
-        asserterPusd: token.asserterAta,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-      })
-      .signers([token.asserter])
-      .rpc({ commitment: "confirmed" });
+    await ctx.createAssertion(a, "Solana TPS > 10000", 500, "perf");
+    await ctx.disputeAssertion(a);
+    await ctx.submitMockLlmResolution(a, 0);
+    await ctx.challengeLlmResolution(a);
+    await ctx.openVote(a);
 
-    await program.methods
-      .disputeAssertion()
-      .accounts({
-        disputer: token.llmDisputer.publicKey,
-        protocolConfig: proto.configPda,
-        pusdMint: token.mint,
-        assertion,
-        llmDispute,
-        llmResolutionRound: llmRound,
-        bondVault,
-        disputerPusd: token.llmDisputerAta,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-      })
-      .signers([token.llmDisputer])
-      .rpc({ commitment: "confirmed" });
-
-    await program.methods
-      .submitMockLlmResolution({ outcomeCode: 0 })
-      .accounts({
-        authority: proto.authority.publicKey,
-        protocolConfig: proto.configPda,
-        assertion,
-        llmResolutionRound: llmRound,
-      })
-      .signers([proto.authority])
-      .rpc({ commitment: "confirmed" });
-
-    await program.methods
-      .challengeLlmResolution()
-      .accounts({
-        disputer: token.voteDisputer.publicKey,
-        protocolConfig: proto.configPda,
-        pusdMint: token.mint,
-        assertion,
-        llmResolutionRound: llmRound,
-        voteDispute,
-        voteResolutionRound: voteRound,
-        bondVault,
-        disputerPusd: token.voteDisputerAta,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-      })
-      .signers([token.voteDisputer])
-      .rpc({ commitment: "confirmed" });
-
-    await program.methods
-      .openVote()
-      .accounts({
-        authority: proto.authority.publicKey,
-        protocolConfig: proto.configPda,
-        assertion,
-        voteResolutionRound: voteRound,
-      })
-      .signers([proto.authority])
-      .rpc({ commitment: "confirmed" });
-
-    let acc = await program.account.assertionAccount.fetch(assertion);
-    expect(acc.state).toBe(ST.VOTING);
+    let acc = await ctx.fetchAssertion(a);
+    expect(acc.state).toBe(STATE.VOTING);
 
     await sleep(5000);
 
     // sanity-check accounts exist before calling finalize
-    await program.account.voteDisputeAccount.fetch(voteDispute);
-    await program.account.voteResolutionRound.fetch(voteRound);
+    await ctx.fetchVoteDispute(a);
+    await ctx.fetchVoteRound(a);
 
-    await program.methods
-      .finalizeVoteResolutionPlaceholder({ outcomeCode: 1 })
-      .accounts({
-        authority: proto.authority.publicKey,
-        protocolConfig: proto.configPda,
-        pusdMint: token.mint,
-        assertion,
-        llmDispute,
-        voteDispute,
-        voteResolutionRound: voteRound,
-        bondVault,
-        asserterPusd: token.asserterAta,
-        llmDisputerPusd: token.llmDisputerAta,
-        voteDisputerPusd: token.voteDisputerAta,
-        treasuryPusd: proto.treasuryAta,
-        tokenProgram: TOKEN_PROGRAM_ID,
-      })
-      .signers([proto.authority])
-      .rpc({ commitment: "confirmed" });
+    await ctx.finalizeVoteResolutionPlaceholder(a, 1);
 
-    const resolved = await program.account.assertionAccount.fetch(assertion);
-    expect(resolved.state).toBe(ST.RESOLVED);
-    expect(resolved.outcome).toBe(OUT.FALSE);
+    const resolved = await ctx.fetchAssertion(a);
+    expect(resolved.state).toBe(STATE.RESOLVED);
+    expect(resolved.outcome).toBe(OUTCOME.FALSE);
     expect(resolved.finalizedAt.toNumber()).toBeGreaterThan(0);
 
-    const llmDisp = await program.account.llmDisputeAccount.fetch(llmDispute);
-    expect(llmDisp.settlementResolution).not.toBe(OUT.NONE);
+    const llmDisp = await ctx.fetchLlmDispute(a);
+    expect(llmDisp.settlementResolution).not.toBe(OUTCOME.NONE);
 
-    const voteDisp =
-      await program.account.voteDisputeAccount.fetch(voteDispute);
-    expect(voteDisp.settlementResolution).not.toBe(OUT.NONE);
+    const voteDisp = await ctx.fetchVoteDispute(a);
+    expect(voteDisp.settlementResolution).not.toBe(OUTCOME.NONE);
 
-    const vr = await program.account.voteResolutionRound.fetch(voteRound);
-    expect(vr.finalOutcome).toBe(OUT.FALSE);
+    const vr = await ctx.fetchVoteRound(a);
+    expect(vr.finalOutcome).toBe(OUTCOME.FALSE);
   });
 
-  // ── Negative cases ──
-  // !TBD: All negative tests below use .rejects.toThrow() without checking
-  // specific error codes. Future work should verify the exact error variant.
   it("error: premature finalizeUndisputed", async () => {
-    const id = Keypair.generate().publicKey;
-    const { assertion, bondVault } = derivePDAs(id, program.programId);
+    const a = ctx.newAssertion();
+    await ctx.createAssertion(a, "Test", 200);
 
-    await program.methods
-      .createAssertion({
-        assertionId: id,
-        statement: "Test",
-        auxiliaryHash: "h",
-        assertionBondAmountPusd: new BN(200),
-      })
-      .accounts({
-        asserter: token.asserter.publicKey,
-        protocolConfig: proto.configPda,
-        pusdMint: token.mint,
-        assertion,
-        bondVault,
-        asserterPusd: token.asserterAta,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-      })
-      .signers([token.asserter])
-      .rpc({ commitment: "confirmed" });
-
-    await expect(
-      program.methods
-        .finalizeUndisputed()
-        .accounts({
-          finalizer: provider.wallet.publicKey,
-          protocolConfig: proto.configPda,
-          pusdMint: token.mint,
-          assertion,
-          bondVault,
-          asserterPusd: token.asserterAta,
-          treasuryPusd: proto.treasuryAta,
-          tokenProgram: TOKEN_PROGRAM_ID,
-        })
-        .rpc({ commitment: "confirmed" }),
-    ).rejects.toThrow();
+    expect(ctx.finalizeUndisputed(a)).rejects.toThrow();
   });
 
   it("error: insufficient bond", async () => {
-    const id = Keypair.generate().publicKey;
-    const { assertion, bondVault } = derivePDAs(id, program.programId);
-
-    await expect(
-      program.methods
-        .createAssertion({
-          assertionId: id,
-          statement: "Fail",
-          auxiliaryHash: "x",
-          assertionBondAmountPusd: new BN(50),
-        })
-        .accounts({
-          asserter: token.asserter.publicKey,
-          protocolConfig: proto.configPda,
-          pusdMint: token.mint,
-          assertion,
-          bondVault,
-          asserterPusd: token.asserterAta,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          systemProgram: SystemProgram.programId,
-        })
-        .signers([token.asserter])
-        .rpc({ commitment: "confirmed" }),
+    const a = ctx.newAssertion();
+    expect(
+      ctx.createAssertion(a, "Fail", 50),
     ).rejects.toThrow();
   });
 
   it("error: disputing after liveness deadline", async () => {
-    const id = Keypair.generate().publicKey;
-    const { assertion, bondVault, llmDispute, llmRound } = derivePDAs(
-      id,
-      program.programId,
-    );
-
-    await program.methods
-      .createAssertion({
-        assertionId: id,
-        statement: "Late dispute",
-        auxiliaryHash: "late",
-        assertionBondAmountPusd: new BN(200),
-      })
-      .accounts({
-        asserter: token.asserter.publicKey,
-        protocolConfig: proto.configPda,
-        pusdMint: token.mint,
-        assertion,
-        bondVault,
-        asserterPusd: token.asserterAta,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-      })
-      .signers([token.asserter])
-      .rpc({ commitment: "confirmed" });
-
+    const a = ctx.newAssertion();
+    await ctx.createAssertion(a, "Late dispute", 200);
     await sleep(4000);
 
-    await expect(
-      program.methods
-        .disputeAssertion()
-        .accounts({
-          disputer: token.llmDisputer.publicKey,
-          protocolConfig: proto.configPda,
-          pusdMint: token.mint,
-          assertion,
-          llmDispute,
-          llmResolutionRound: llmRound,
-          bondVault,
-          disputerPusd: token.llmDisputerAta,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          systemProgram: SystemProgram.programId,
-        })
-        .signers([token.llmDisputer])
-        .rpc({ commitment: "confirmed" }),
-    ).rejects.toThrow();
+    expect(ctx.disputeAssertion(a)).rejects.toThrow();
   });
 
   it("error: submitMockLlmResolution when state is Asserted", async () => {
-    const id = Keypair.generate().publicKey;
-    const { assertion, bondVault, llmRound } = derivePDAs(
-      id,
-      program.programId,
-    );
+    const a = ctx.newAssertion();
+    await ctx.createAssertion(a, "No dispute", 200);
 
-    await program.methods
-      .createAssertion({
-        assertionId: id,
-        statement: "No dispute",
-        auxiliaryHash: "nodisp",
-        assertionBondAmountPusd: new BN(200),
-      })
-      .accounts({
-        asserter: token.asserter.publicKey,
-        protocolConfig: proto.configPda,
-        pusdMint: token.mint,
-        assertion,
-        bondVault,
-        asserterPusd: token.asserterAta,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-      })
-      .signers([token.asserter])
-      .rpc({ commitment: "confirmed" });
-
-    await expect(
-      program.methods
-        .submitMockLlmResolution({ outcomeCode: 0 })
-        .accounts({
-          authority: proto.authority.publicKey,
-          protocolConfig: proto.configPda,
-          assertion,
-          llmResolutionRound: llmRound,
-        })
-        .signers([proto.authority])
-        .rpc({ commitment: "confirmed" }),
+    expect(
+      ctx.submitMockLlmResolution(a, 0),
     ).rejects.toThrow();
   });
 
   it("error: challengeLlmResolution after challenge deadline", async () => {
-    const id = Keypair.generate().publicKey;
-    const {
-      assertion,
-      bondVault,
-      llmDispute,
-      llmRound,
-      voteDispute,
-      voteRound,
-    } = derivePDAs(id, program.programId);
-
-    await program.methods
-      .createAssertion({
-        assertionId: id,
-        statement: "Missed challenge",
-        auxiliaryHash: "miss",
-        assertionBondAmountPusd: new BN(200),
-      })
-      .accounts({
-        asserter: token.asserter.publicKey,
-        protocolConfig: proto.configPda,
-        pusdMint: token.mint,
-        assertion,
-        bondVault,
-        asserterPusd: token.asserterAta,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-      })
-      .signers([token.asserter])
-      .rpc({ commitment: "confirmed" });
-
-    await program.methods
-      .disputeAssertion()
-      .accounts({
-        disputer: token.llmDisputer.publicKey,
-        protocolConfig: proto.configPda,
-        pusdMint: token.mint,
-        assertion,
-        llmDispute,
-        llmResolutionRound: llmRound,
-        bondVault,
-        disputerPusd: token.llmDisputerAta,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-      })
-      .signers([token.llmDisputer])
-      .rpc({ commitment: "confirmed" });
-
-    await program.methods
-      .submitMockLlmResolution({ outcomeCode: 0 })
-      .accounts({
-        authority: proto.authority.publicKey,
-        protocolConfig: proto.configPda,
-        assertion,
-        llmResolutionRound: llmRound,
-      })
-      .signers([proto.authority])
-      .rpc({ commitment: "confirmed" });
-
+    const a = ctx.newAssertion();
+    await ctx.createAssertion(a, "Missed challenge", 200);
+    await ctx.disputeAssertion(a);
+    await ctx.submitMockLlmResolution(a, 0);
     await sleep(4000);
 
-    await expect(
-      program.methods
-        .challengeLlmResolution()
-        .accounts({
-          disputer: token.voteDisputer.publicKey,
-          protocolConfig: proto.configPda,
-          pusdMint: token.mint,
-          assertion,
-          llmResolutionRound: llmRound,
-          voteDispute,
-          voteResolutionRound: voteRound,
-          bondVault,
-          disputerPusd: token.voteDisputerAta,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          systemProgram: SystemProgram.programId,
-        })
-        .signers([token.voteDisputer])
-        .rpc({ commitment: "confirmed" }),
-    ).rejects.toThrow();
+    expect(ctx.challengeLlmResolution(a)).rejects.toThrow();
   });
 
   it("error: disputing an already-disputed assertion", async () => {
-    const id = Keypair.generate().publicKey;
-    const { assertion, bondVault, llmDispute, llmRound } = derivePDAs(
-      id,
-      program.programId,
-    );
+    const a = ctx.newAssertion();
+    await ctx.createAssertion(a, "Double dispute", 200);
+    await ctx.disputeAssertion(a);
 
-    await program.methods
-      .createAssertion({
-        assertionId: id,
-        statement: "Double dispute",
-        auxiliaryHash: "dbl",
-        assertionBondAmountPusd: new BN(200),
-      })
-      .accounts({
-        asserter: token.asserter.publicKey,
-        protocolConfig: proto.configPda,
-        pusdMint: token.mint,
-        assertion,
-        bondVault,
-        asserterPusd: token.asserterAta,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-      })
-      .signers([token.asserter])
-      .rpc({ commitment: "confirmed" });
-
-    await program.methods
-      .disputeAssertion()
-      .accounts({
-        disputer: token.llmDisputer.publicKey,
-        protocolConfig: proto.configPda,
-        pusdMint: token.mint,
-        assertion,
-        llmDispute,
-        llmResolutionRound: llmRound,
-        bondVault,
-        disputerPusd: token.llmDisputerAta,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-      })
-      .signers([token.llmDisputer])
-      .rpc({ commitment: "confirmed" });
-
-    await expect(
-      program.methods
-        .disputeAssertion()
-        .accounts({
-          disputer: token.voteDisputer.publicKey,
-          protocolConfig: proto.configPda,
-          pusdMint: token.mint,
-          assertion,
-          llmDispute,
-          llmResolutionRound: llmRound,
-          bondVault,
-          disputerPusd: token.voteDisputerAta,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          systemProgram: SystemProgram.programId,
-        })
-        .signers([token.voteDisputer])
-        .rpc({ commitment: "confirmed" }),
-    ).rejects.toThrow();
+    expect(ctx.disputeAssertion(a)).rejects.toThrow();
   });
 
   it("error: mismatched llmDispute account", async () => {
-    const id1 = Keypair.generate().publicKey;
-    const id2 = Keypair.generate().publicKey;
-    const pdas1 = derivePDAs(id1, program.programId);
-    const pdas2 = derivePDAs(id2, program.programId);
+    const a1 = ctx.newAssertion();
+    const a2 = ctx.newAssertion();
 
-    // create assertion1 and dispute it
-    await program.methods
-      .createAssertion({
-        assertionId: id1,
-        statement: "A1",
-        auxiliaryHash: "a1",
-        assertionBondAmountPusd: new BN(200),
-      })
-      .accounts({
-        asserter: token.asserter.publicKey,
-        protocolConfig: proto.configPda,
-        pusdMint: token.mint,
-        assertion: pdas1.assertion,
-        bondVault: pdas1.bondVault,
-        asserterPusd: token.asserterAta,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-      })
-      .signers([token.asserter])
-      .rpc({ commitment: "confirmed" });
-
-    await program.methods
-      .disputeAssertion()
-      .accounts({
-        disputer: token.llmDisputer.publicKey,
-        protocolConfig: proto.configPda,
-        pusdMint: token.mint,
-        assertion: pdas1.assertion,
-        llmDispute: pdas1.llmDispute,
-        llmResolutionRound: pdas1.llmRound,
-        bondVault: pdas1.bondVault,
-        disputerPusd: token.llmDisputerAta,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-      })
-      .signers([token.llmDisputer])
-      .rpc({ commitment: "confirmed" });
+    // create and dispute assertion1
+    await ctx.createAssertion(a1, "A1", 200, "a1");
+    await ctx.disputeAssertion(a1);
 
     // create assertion2 (undisputed) so we can try to pass its dispute for assertion1
-    await program.methods
-      .createAssertion({
-        assertionId: id2,
-        statement: "A2",
-        auxiliaryHash: "a2",
-        assertionBondAmountPusd: new BN(200),
-      })
-      .accounts({
-        asserter: token.asserter.publicKey,
-        protocolConfig: proto.configPda,
-        pusdMint: token.mint,
-        assertion: pdas2.assertion,
-        bondVault: pdas2.bondVault,
-        asserterPusd: token.asserterAta,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
-      })
-      .signers([token.asserter])
-      .rpc({ commitment: "confirmed" });
+    await ctx.createAssertion(a2, "A2", 200, "a2");
 
     // finalizeLlmResolution with assertion1 but llmDispute from assertion2
     // should fail because the dispute doesn't link back to assertion1
-    await expect(
+    expect(
       program.methods
         .finalizeLlmResolution()
         .accounts({
           finalizer: provider.wallet.publicKey,
           protocolConfig: proto.configPda,
           pusdMint: token.mint,
-          assertion: pdas1.assertion,
-          llmDispute: pdas2.llmDispute, // wrong dispute
-          llmResolutionRound: pdas1.llmRound,
-          bondVault: pdas1.bondVault,
+          assertion: a1.pdas.assertion,
+          llmDispute: a2.pdas.llmDispute,
+          llmResolutionRound: a1.pdas.llmRound,
+          bondVault: a1.pdas.bondVault,
           asserterPusd: token.asserterAta,
           llmDisputerPusd: token.llmDisputerAta,
           treasuryPusd: proto.treasuryAta,
