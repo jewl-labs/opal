@@ -10,7 +10,7 @@ import {
 } from "@solana/spl-token";
 
 import idl from "../target/idl/opal.json";
-import { Opal } from "../target/types/opal";
+import type { Opal } from "../target/types/opal";
 
 const TOKEN_PROGRAM_ID = new PublicKey(
   "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
@@ -220,7 +220,7 @@ async function setupProtocol(
       systemProgram: SystemProgram.programId,
     })
     .signers([authority])
-    .rpc({ commitment: "confirmed", skipPreflight: true });
+    .rpc({ commitment: "confirmed" });
 
   return { configPda, authority, treasuryAta };
 }
@@ -283,7 +283,7 @@ describe("opal", () => {
           systemProgram: SystemProgram.programId,
         })
         .signers([authority])
-        .rpc({ commitment: "confirmed", skipPreflight: true }),
+        .rpc({ commitment: "confirmed" }),
     ).rejects.toThrow();
   });
 
@@ -317,7 +317,7 @@ describe("opal", () => {
         systemProgram: SystemProgram.programId,
       })
       .signers([token.asserter])
-      .rpc({ commitment: "confirmed", skipPreflight: true });
+      .rpc({ commitment: "confirmed" });
 
     const acc = await program.account.assertionAccount.fetch(assertion);
     expect(acc.state).toBe(ST.ASSERTED);
@@ -338,7 +338,7 @@ describe("opal", () => {
         treasuryPusd: proto.treasuryAta,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
-      .rpc({ commitment: "confirmed", skipPreflight: true });
+      .rpc({ commitment: "confirmed" });
 
     const resolved = await program.account.assertionAccount.fetch(assertion);
     expect(resolved.state).toBe(ST.RESOLVED);
@@ -380,7 +380,7 @@ describe("opal", () => {
         systemProgram: SystemProgram.programId,
       })
       .signers([token.asserter])
-      .rpc({ commitment: "confirmed", skipPreflight: true });
+      .rpc({ commitment: "confirmed" });
 
     const disputerStart = await balanceOf(connection, token.llmDisputerAta);
 
@@ -399,7 +399,7 @@ describe("opal", () => {
         systemProgram: SystemProgram.programId,
       })
       .signers([token.llmDisputer])
-      .rpc({ commitment: "confirmed", skipPreflight: true });
+      .rpc({ commitment: "confirmed" });
 
     let acc = await program.account.assertionAccount.fetch(assertion);
     expect(acc.state).toBe(ST.PENDING_LLM);
@@ -414,7 +414,7 @@ describe("opal", () => {
         llmResolutionRound: llmRound,
       })
       .signers([proto.authority])
-      .rpc({ commitment: "confirmed", skipPreflight: true });
+      .rpc({ commitment: "confirmed" });
 
     acc = await program.account.assertionAccount.fetch(assertion);
     expect(acc.state).toBe(ST.ASSERTED_LLM);
@@ -440,7 +440,7 @@ describe("opal", () => {
         treasuryPusd: proto.treasuryAta,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
-      .rpc({ commitment: "confirmed", skipPreflight: true });
+      .rpc({ commitment: "confirmed" });
 
     const resolved = await program.account.assertionAccount.fetch(assertion);
     expect(resolved.state).toBe(ST.RESOLVED);
@@ -484,7 +484,7 @@ describe("opal", () => {
         systemProgram: SystemProgram.programId,
       })
       .signers([token.asserter])
-      .rpc({ commitment: "confirmed", skipPreflight: true });
+      .rpc({ commitment: "confirmed" });
 
     await program.methods
       .disputeAssertion()
@@ -501,7 +501,7 @@ describe("opal", () => {
         systemProgram: SystemProgram.programId,
       })
       .signers([token.llmDisputer])
-      .rpc({ commitment: "confirmed", skipPreflight: true });
+      .rpc({ commitment: "confirmed" });
 
     await program.methods
       .submitMockLlmResolution({ outcomeCode: 0 })
@@ -512,7 +512,7 @@ describe("opal", () => {
         llmResolutionRound: llmRound,
       })
       .signers([proto.authority])
-      .rpc({ commitment: "confirmed", skipPreflight: true });
+      .rpc({ commitment: "confirmed" });
 
     await program.methods
       .challengeLlmResolution()
@@ -530,7 +530,7 @@ describe("opal", () => {
         systemProgram: SystemProgram.programId,
       })
       .signers([token.voteDisputer])
-      .rpc({ commitment: "confirmed", skipPreflight: true });
+      .rpc({ commitment: "confirmed" });
 
     await program.methods
       .openVote()
@@ -541,7 +541,7 @@ describe("opal", () => {
         voteResolutionRound: voteRound,
       })
       .signers([proto.authority])
-      .rpc({ commitment: "confirmed", skipPreflight: true });
+      .rpc({ commitment: "confirmed" });
 
     let acc = await program.account.assertionAccount.fetch(assertion);
     expect(acc.state).toBe(ST.VOTING);
@@ -552,7 +552,7 @@ describe("opal", () => {
     await program.account.voteDisputeAccount.fetch(voteDispute);
     await program.account.voteResolutionRound.fetch(voteRound);
 
-    // skipPreflight avoids an Anchor/web3.js preflight simulation bug on this instruction.
+    // skipping preflight avoids an Anchor/web3.js preflight simulation bug on this instruction.
     await program.methods
       .finalizeVoteResolutionPlaceholder({ outcomeCode: 1 })
       .accounts({
@@ -571,7 +571,7 @@ describe("opal", () => {
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .signers([proto.authority])
-      .rpc({ commitment: "confirmed", skipPreflight: true });
+      .rpc({ commitment: "confirmed" });
 
     const resolved = await program.account.assertionAccount.fetch(assertion);
     expect(resolved.state).toBe(ST.RESOLVED);
@@ -612,7 +612,7 @@ describe("opal", () => {
         systemProgram: SystemProgram.programId,
       })
       .signers([token.asserter])
-      .rpc({ commitment: "confirmed", skipPreflight: true });
+      .rpc({ commitment: "confirmed" });
 
     await expect(
       program.methods
@@ -627,7 +627,7 @@ describe("opal", () => {
           treasuryPusd: proto.treasuryAta,
           tokenProgram: TOKEN_PROGRAM_ID,
         })
-        .rpc({ commitment: "confirmed", skipPreflight: true }),
+        .rpc({ commitment: "confirmed" }),
     ).rejects.toThrow();
   });
 
@@ -654,7 +654,7 @@ describe("opal", () => {
           systemProgram: SystemProgram.programId,
         })
         .signers([token.asserter])
-        .rpc({ commitment: "confirmed", skipPreflight: true }),
+        .rpc({ commitment: "confirmed" }),
     ).rejects.toThrow();
   });
 
@@ -683,7 +683,7 @@ describe("opal", () => {
         systemProgram: SystemProgram.programId,
       })
       .signers([token.asserter])
-      .rpc({ commitment: "confirmed", skipPreflight: true });
+      .rpc({ commitment: "confirmed" });
 
     await sleep(4000);
 
@@ -703,7 +703,7 @@ describe("opal", () => {
           systemProgram: SystemProgram.programId,
         })
         .signers([token.llmDisputer])
-        .rpc({ commitment: "confirmed", skipPreflight: true }),
+        .rpc({ commitment: "confirmed" }),
     ).rejects.toThrow();
   });
 
@@ -732,7 +732,7 @@ describe("opal", () => {
         systemProgram: SystemProgram.programId,
       })
       .signers([token.asserter])
-      .rpc({ commitment: "confirmed", skipPreflight: true });
+      .rpc({ commitment: "confirmed" });
 
     await expect(
       program.methods
@@ -744,7 +744,7 @@ describe("opal", () => {
           llmResolutionRound: llmRound,
         })
         .signers([proto.authority])
-        .rpc({ commitment: "confirmed", skipPreflight: true }),
+        .rpc({ commitment: "confirmed" }),
     ).rejects.toThrow();
   });
 
@@ -777,7 +777,7 @@ describe("opal", () => {
         systemProgram: SystemProgram.programId,
       })
       .signers([token.asserter])
-      .rpc({ commitment: "confirmed", skipPreflight: true });
+      .rpc({ commitment: "confirmed" });
 
     await program.methods
       .disputeAssertion()
@@ -794,7 +794,7 @@ describe("opal", () => {
         systemProgram: SystemProgram.programId,
       })
       .signers([token.llmDisputer])
-      .rpc({ commitment: "confirmed", skipPreflight: true });
+      .rpc({ commitment: "confirmed" });
 
     await program.methods
       .submitMockLlmResolution({ outcomeCode: 0 })
@@ -805,7 +805,7 @@ describe("opal", () => {
         llmResolutionRound: llmRound,
       })
       .signers([proto.authority])
-      .rpc({ commitment: "confirmed", skipPreflight: true });
+      .rpc({ commitment: "confirmed" });
 
     await sleep(4000);
 
@@ -826,7 +826,7 @@ describe("opal", () => {
           systemProgram: SystemProgram.programId,
         })
         .signers([token.voteDisputer])
-        .rpc({ commitment: "confirmed", skipPreflight: true }),
+        .rpc({ commitment: "confirmed" }),
     ).rejects.toThrow();
   });
 
@@ -855,7 +855,7 @@ describe("opal", () => {
         systemProgram: SystemProgram.programId,
       })
       .signers([token.asserter])
-      .rpc({ commitment: "confirmed", skipPreflight: true });
+      .rpc({ commitment: "confirmed" });
 
     await program.methods
       .disputeAssertion()
@@ -872,7 +872,7 @@ describe("opal", () => {
         systemProgram: SystemProgram.programId,
       })
       .signers([token.llmDisputer])
-      .rpc({ commitment: "confirmed", skipPreflight: true });
+      .rpc({ commitment: "confirmed" });
 
     await expect(
       program.methods
@@ -890,7 +890,7 @@ describe("opal", () => {
           systemProgram: SystemProgram.programId,
         })
         .signers([token.voteDisputer])
-        .rpc({ commitment: "confirmed", skipPreflight: true }),
+        .rpc({ commitment: "confirmed" }),
     ).rejects.toThrow();
   });
 
@@ -919,7 +919,7 @@ describe("opal", () => {
         systemProgram: SystemProgram.programId,
       })
       .signers([token.asserter])
-      .rpc({ commitment: "confirmed", skipPreflight: true });
+      .rpc({ commitment: "confirmed" });
 
     await program.methods
       .disputeAssertion()
@@ -936,7 +936,7 @@ describe("opal", () => {
         systemProgram: SystemProgram.programId,
       })
       .signers([token.llmDisputer])
-      .rpc({ commitment: "confirmed", skipPreflight: true });
+      .rpc({ commitment: "confirmed" });
 
     // create assertion2 (undisputed) so we can try to pass its dispute for assertion1
     await program.methods
@@ -957,7 +957,7 @@ describe("opal", () => {
         systemProgram: SystemProgram.programId,
       })
       .signers([token.asserter])
-      .rpc({ commitment: "confirmed", skipPreflight: true });
+      .rpc({ commitment: "confirmed" });
 
     // finalizeLlmResolution with assertion1 but llmDispute from assertion2
     // should fail because the dispute doesn't link back to assertion1
@@ -977,7 +977,7 @@ describe("opal", () => {
           treasuryPusd: proto.treasuryAta,
           tokenProgram: TOKEN_PROGRAM_ID,
         })
-        .rpc({ commitment: "confirmed", skipPreflight: true }),
+        .rpc({ commitment: "confirmed" }),
     ).rejects.toThrow();
   });
 });
