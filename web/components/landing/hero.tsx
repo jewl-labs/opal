@@ -5,6 +5,7 @@ import { motion as m } from 'motion/react';
 
 import { Button } from '../ui/button';
 import HeroBackground from './background';
+import CornerMarker from '../common/corner-marker';
 
 export default function Hero() {
   return (

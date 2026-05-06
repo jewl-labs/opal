@@ -29,6 +29,15 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const setValidatedAddress = (address: string) => {
+    const trimmed = address.trim();
+    if (isValidAddress(trimmed)) {
+      setCurrentAddress(trimmed);
+    } else {
+      setCurrentAddress(DEFAULT_WALLET_ADDRESS);
+    }
+  };
+
   return (
     <WalletContext.Provider value={{ currentAddress, setCurrentAddress: setValidatedAddress }}>
       {children}
