@@ -61,7 +61,7 @@ export default function Header({
             }
           }}
         >
-          <SelectTrigger aria-labelledby="feed-sort-label" size="sm" className="w-44 capitalize">
+          <SelectTrigger aria-labelledby="feed-sort-label" size="sm" className="w-40 capitalize">
             <SelectValue placeholder="Created Time" />
           </SelectTrigger>
           <SelectContent>
@@ -93,7 +93,7 @@ export default function Header({
             }
           }}
         >
-          <SelectTrigger aria-labelledby="feed-state-label" size="sm" className="w-34 uppercase">
+          <SelectTrigger aria-labelledby="feed-state-label" size="sm" className="w-40 uppercase">
             <SelectValue placeholder="All" />
           </SelectTrigger>
           <SelectContent>

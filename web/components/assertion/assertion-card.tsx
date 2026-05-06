@@ -35,12 +35,12 @@ export default function AssertionCard({ data }: { data: AssertionAccount }) {
           </m.h2>
 
           <div className="flex flex-col gap-2 py-2">
-            <h2 className="text-xs font-medium uppercase">
+            <p className="text-xs font-medium uppercase">
               Outcome: <span className="text-primary">{data.outcome}</span>
-            </h2>
-            <h2 className="text-xs font-medium uppercase">
+            </p>
+            <p className="text-xs font-medium uppercase">
               Time Left: <span className="text-primary">{remainingTime}</span>
-            </h2>
+            </p>
           </div>
         </div>
 

@@ -45,11 +45,13 @@ export default function Timeline({ statement }: { statement: AssertionAccount | 
 
       <div className="flex items-center gap-2">
         <span className="text-muted-foreground text-xs whitespace-nowrap uppercase">
-          {new Date(statement?.livenessDeadline || '').toLocaleDateString('en-US', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric',
-          })}
+          {statement.livenessDeadline
+            ? new Date(statement.livenessDeadline).toLocaleDateString('en-US', {
+              day: '2-digit',
+              month: 'short',
+              year: 'numeric',
+            })
+            : '-'}
         </span>
         <span className="text-xs whitespace-nowrap uppercase">RESOLVED</span>
         <span className="ring-secondary z-10 size-2 shrink-0 rounded-full bg-green-400 ring-2" />

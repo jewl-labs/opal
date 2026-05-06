@@ -28,7 +28,7 @@ export default function Process() {
             <div className="flex h-full flex-col items-center justify-end pb-12">
               <AssertIllustration />
               <p className="text-muted-foreground mt-6 text-center text-xs text-balance uppercase">
-                Post statement & bond. Default answer: True.
+                Post assertion & bond. Default answer: True.
               </p>
             </div>
           </article>
