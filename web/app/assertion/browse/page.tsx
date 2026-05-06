@@ -6,10 +6,7 @@ import Container from '@/components/common/container';
 import Header from '@/components/assertion/feed-header';
 import AssertionCard from '@/components/assertion/assertion-card';
 import { ASSERTIONS } from '@/data/assertion';
-
-type StateFilter = 'All' | 'Active' | 'Voting' | 'Resolved';
-type OutcomeFilter = 'All' | 'True' | 'False' | 'Unresolvable' | 'TooEarly';
-type SortField = 'createdAt' | 'bondAmountPUSD' | 'state' | 'outcome';
+import type { StateFilter, OutcomeFilter, SortField } from '@/types/filters';
 
 export default function Assertion() {
   const [sortField, setSortField] = useState<SortField>('createdAt');
@@ -81,9 +78,9 @@ export default function Assertion() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {assertions.map((data) => (
-              <AssertionCard key={data.id} {...data} />
+              <AssertionCard key={data.id} data={data} />
             ))}
           </div>
         )}

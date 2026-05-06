@@ -1,10 +1,10 @@
 export default function Footer() {
   return (
-    <footer className="relative overflow-x-clip">
-      <div className="px-4 py-8">
-        <h1 className="text-4xl font-bold tracking-tighter">OPAL</h1>
-        <p className="uppercase">Solana-native optimistic oracle</p>
-      </div>
+    <footer className="relative h-[30vh] overflow-clip px-4">
+      <h1
+        className="text-muted-foreground/25 text-center text-[16rem] font-medium">
+        OPAL
+      </h1>
     </footer>
   );
 }

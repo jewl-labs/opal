@@ -11,7 +11,8 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'OPAL',
-  description: '',
+  description:
+    'A Solana-native optimistic oracle for natural-language statements. Assertions default to true until disputed, then resolve through LLM and private voting layers.',
 };
 
 export default function RootLayout({

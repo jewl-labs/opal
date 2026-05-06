@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
-import { DotsThreeVerticalIcon, ListIcon, MagnifyingGlassIcon, XIcon } from '@phosphor-icons/react';
+import { ListIcon, MagnifyingGlassIcon, XIcon } from '@phosphor-icons/react';
 import { AnimatePresence } from 'motion/react';
 
 import Container from '../common/container';
@@ -47,11 +47,17 @@ export default function Navbar() {
             <span>Search</span>
             <kbd className="bg-muted rounded px-2 py-1 text-xs font-semibold">⌘ + K</kbd>
           </Button>
-          <Link href={`/u/${currentAddress}`}>
-            <Button variant="outline" size="md">
+          {currentAddress ? (
+            <Link href={`/u/${currentAddress}`}>
+              <Button variant="outline" size="md">
+                Activity
+              </Button>
+            </Link>
+          ) : (
+            <Button variant="outline" size="md" disabled>
               Activity
             </Button>
-          </Link>
+          )}
           <Button variant="outline" size="md">
             Connect Wallet
           </Button>

@@ -12,11 +12,26 @@ interface WalletContextType {
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
+function isValidAddress(address: string): boolean {
+  if (!address || typeof address !== 'string') return false;
+  const trimmed = address.trim();
+  return trimmed.length >= 32 && trimmed.length <= 50;
+}
+
 export function WalletProvider({ children }: { children: ReactNode }) {
   const [currentAddress, setCurrentAddress] = useState(DEFAULT_WALLET_ADDRESS);
 
+  const setValidatedAddress = (address: string) => {
+    const trimmed = address.trim();
+    if (isValidAddress(trimmed)) {
+      setCurrentAddress(trimmed);
+    } else {
+      setCurrentAddress(DEFAULT_WALLET_ADDRESS);
+    }
+  };
+
   return (
-    <WalletContext.Provider value={{ currentAddress, setCurrentAddress }}>
+    <WalletContext.Provider value={{ currentAddress, setCurrentAddress: setValidatedAddress }}>
       {children}
     </WalletContext.Provider>
   );

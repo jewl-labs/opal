@@ -56,7 +56,7 @@ export interface AssertionAccount {
   bondAmountPUSD: number;
   state: AssertionState;
   livenessDeadline: string;           
-  outcome: ResolutionOutcome;   
+  outcome: ResolutionOutcome | null;
   finalizedAt: string | null;
   disputeCount: 0 | 1 | 2;
   llmDispute: LLMDisputeAccount | null;

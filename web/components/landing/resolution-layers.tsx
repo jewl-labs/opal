@@ -1,32 +1,48 @@
+import CornerMarker from "../common/corner-marker";
+
 export default function ResolutionLayers() {
   return (
     <>
-      <section className="relative grid grid-cols-1 overflow-x-clip md:grid-cols-2">
-        <div>
-          <h1 className="text-muted-foreground my-12 text-center text-2xl font-semibold tracking-tight uppercase">
-            Resolution Layers
-          </h1>
+      <section className="relative grid gap-8 overflow-x-clip px-4 py-32 md:grid-cols-5">
+        <div className="col-span-3 flex flex-col justify-between gap-6">
+          <h2 className="mt-3 text-3xl font-bold tracking-tight text-center text-balance uppercase md:text-4xl">
+            State determines the current answer
+          </h2>
         </div>
-        <div className="grid w-full grid-cols-1 gap-4 px-4 py-12">
-          <div className="h-80 border border-dashed">
-            <header className="border-muted-foreground/50 flex items-center justify-between border-b border-dashed p-4">
-              <h2 className="font-semibold uppercase">Optimistic Default</h2>
-              <h2 className="font-semibold uppercase">Layer 1</h2>
-            </header>
-          </div>
-          <div className="h-80 border border-dashed">
-            <header className="border-muted-foreground/50 flex items-center justify-between border-b border-dashed p-4">
-              <h2 className="font-semibold uppercase">LLM Resolution</h2>
-              <h2 className="font-semibold uppercase">Layer 2</h2>
-            </header>
-          </div>
-          <div className="h-80 border border-dashed">
-            <header className="border-muted-foreground/50 flex items-center justify-between border-b border-dashed p-4">
-              <h2 className="font-semibold uppercase">Private Vote</h2>
-              <h2 className="font-semibold uppercase">Layer 3</h2>
-            </header>
-          </div>
+
+        <div className="col-span-2 grid gap-4">
+          {[
+            {
+              title: 'Asserted',
+              summary: 'Default answer is true. The statement can still be challenged.',
+            },
+            {
+              title: 'AssertedLLM',
+              summary: 'The first dispute resolved. Consumers read LlmResolutionRound.outcome.',
+            },
+            {
+              title: 'PendingVote / Voting',
+              summary: 'The LLM result is under challenge and the final answer is not settled yet.',
+            },
+            {
+              title: 'Resolved',
+              summary:
+                'Outcome is final, settlement is irreversible, and integrations can safely settle.',
+            },
+          ].map((item) => (
+            <article
+              key={item.title}
+              className="border-border/80 bg-background/70 border p-5 shadow-sm backdrop-blur"
+            >
+              <div className="flex items-center justify-between gap-4">
+                <h3 className="text-xl font-semibold tracking-wider uppercase">{item.title}</h3>
+                <span className="text-primary text-xs tracking-wider uppercase">State</span>
+              </div>
+              <p className="text-muted-foreground mt-4 text-sm">{item.summary}</p>
+            </article>
+          ))}
         </div>
+        <CornerMarker position="bottom"/>
       </section>
       <span className="border-muted-foreground/50 top-screen pointer-events-none absolute right-0 left-0 z-20 h-0.5 w-screen border-b border-dashed" />
     </>

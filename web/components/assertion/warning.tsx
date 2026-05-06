@@ -9,6 +9,9 @@ export default function Warning({ msg }: { msg: string }) {
       exit={{ opacity: 0, y: -4 }}
       transition={{ duration: 0.15 }}
       className="flex items-center gap-2 text-sm text-amber-400/85 md:text-base"
+      role="alert"
+      aria-live="polite"
+      aria-atomic="true"
     >
       <WarningOctagonIcon size={14} />
       {msg}
