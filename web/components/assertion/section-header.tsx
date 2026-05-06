@@ -1,4 +1,4 @@
-import type * as React from 'react';
+import type { ReactNode } from 'react';
 
 import { CaretDownIcon } from '@phosphor-icons/react';
 import { m } from 'motion/react';
@@ -14,7 +14,7 @@ export default function SectionHeader({
   label: string;
   open: boolean;
   onClick: () => void;
-  peek?: React.ReactNode;
+  peek?: ReactNode;
   showShortcut?: boolean;
   shortcutHint?: string;
 }) {

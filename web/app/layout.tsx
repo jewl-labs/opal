@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import type * as React from 'react';
+import type { ReactNode } from 'react';
 
 import Container from '@/components/common/container';
 import Navbar from '@/components/common/navbar';
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: ReactNode;
 }>) {
   return (
     <html

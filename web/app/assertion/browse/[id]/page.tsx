@@ -14,8 +14,7 @@ import { getTimeRemaining } from '@/lib/helpers';
 import { LinkBreakIcon } from '@phosphor-icons/react';
 
 export default function StatementPage() {
-  const params = useParams();
-  const id = params?.id as string;
+  const { id } = useParams();
 
   const statement = ASSERTIONS.find((s) => s.id === id);
 

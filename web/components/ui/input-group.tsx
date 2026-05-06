@@ -1,6 +1,6 @@
 'use client';
 
-import type * as React from 'react';
+import type { ComponentProps } from 'react';
 
 import { type VariantProps, cva } from 'class-variance-authority';
 
@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 
-function InputGroup({ className, ...props }: React.ComponentProps<'div'>) {
+function InputGroup({ className, ...props }: ComponentProps<'div'>) {
   return (
     <div
       data-slot="input-group"
