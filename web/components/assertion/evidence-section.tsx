@@ -1,9 +1,9 @@
+import { FileTextIcon } from '@phosphor-icons/react';
 import { AnimatePresence, motion as m } from 'motion/react';
 
 import { Textarea } from '@/components/ui/textarea';
 
 import Warning from './warning';
-import { FileTextIcon } from '@phosphor-icons/react';
 
 interface Props {
   open: boolean;
@@ -36,15 +36,15 @@ export default function EvidenceSection({
           >
             <div className="flex items-center gap-2">
               <FileTextIcon size={18} className="text-muted-foreground/50" />
-              <span className="text-muted-foreground/50 text-base md:text-lg">Auxiliary data</span>
+              <span className="text-muted-foreground/50 text-sm md:text-sm">Auxiliary data</span>
             </div>
             <Textarea
               placeholder="Describe how this statement should be resolved. Include evidence sources, ambiguity handling, edge cases, and explicit criteria for TRUE vs FALSE outcomes."
               value={auxiliaryData}
               onChange={(e) => setAuxiliaryData(e.target.value)}
-              className="border-muted-foreground/30 resize-none focus-visible:border-primary/50 min-h-40 border border-dashed bg-transparent text-lg leading-relaxed md:text-xl focus-visible:ring-0"
+              className="border-muted-foreground/30 focus-visible:border-primary/50 min-h-40 resize-none border border-dashed bg-transparent text-sm leading-relaxed focus-visible:ring-0 md:text-base"
             />
-            <span className="text-muted-foreground/35 text-base leading-relaxed md:text-lg">
+            <span className="text-muted-foreground/35 text-xs leading-relaxed md:text-sm">
               Provide a resolution spec for adjudicators. Explain ambiguity rules, acceptable
               sources, fallback assumptions, and any tie-break conditions. Only the content hash is
               stored onchain.

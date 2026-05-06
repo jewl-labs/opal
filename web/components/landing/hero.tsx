@@ -7,10 +7,10 @@ import CornerMarker from '../common/corner-marker';
 export default function Hero() {
   return (
     <>
-      <section className="relative overflow-x-clip px-4">
-        <div className="relative flex min-h-screen flex-col items-center justify-center gap-10 py-12 md:py-16">
+      <section className="relative overflow-x-clip px-4 pt-28">
+        <div className="relative flex min-h-[80vh] flex-col items-center gap-10 py-12 md:py-16">
           <div className="flex max-w-4xl flex-col items-center space-y-4">
-            <p className="text-muted-foreground ring ring-primary px-4 py-1 rounded-full text-xs font-semibold tracking-[0.35em] uppercase">
+            <p className="text-primary text-xs font-semibold tracking-[0.35em] uppercase">
               Solana-native optimistic oracle
             </p>
             <h1 className="text-center text-7xl font-bold tracking-tight text-balance uppercase md:text-6xl">

@@ -5,9 +5,10 @@ import { useEffect, useRef, useState } from 'react';
 
 import { XIcon } from '@phosphor-icons/react';
 
+import { useWallet } from '@/providers/wallet-context';
+
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { useWallet } from '@/providers/wallet-context';
 
 interface SearchDialogProps {
   isOpen: boolean;
@@ -103,7 +104,7 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 p-4 backdrop-blur-md"
+      className="bg-background/70 fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md"
       onClick={onClose}
     >
       <div
@@ -113,7 +114,7 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
         aria-modal="true"
         aria-labelledby="search-dialog-title"
       >
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-primary/70 to-transparent" />
+        <div className="via-primary/70 pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent to-transparent" />
         <Button
           aria-label="Close"
           variant="ghost"
@@ -121,14 +122,17 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
           size="icon"
           className="absolute top-3 right-3 rounded-full"
         >
-          <XIcon weight="bold"/>
+          <XIcon weight="bold" />
         </Button>
 
         <div className="border-border/50 bg-muted/20 border-b px-5 py-4 sm:px-6">
-          <p className="text-foreground text-xs font-medium uppercase tracking-[0.22em]">
+          <p
+            id="search-dialog-title"
+            className="text-foreground text-xs font-medium tracking-[0.22em] uppercase"
+          >
             Search profile
           </p>
-          <p className="text-muted-foreground mt-2 text-sm tracking-tighter text-balance leading-6">
+          <p className="text-muted-foreground mt-2 text-sm leading-6 tracking-tighter text-balance">
             Paste a valid Ethereum address, ENS name, or base58 wallet address to jump to a user
             profile.
           </p>
@@ -154,15 +158,24 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              {showError ? (
-                <p id="search-dialog-error" className="text-destructive text-sm font-medium">
-                  Enter a valid wallet address or ENS name.
-                </p>
-              ) : null}
-            </div>
-            <Button type="submit" variant="default" disabled={!isInputValid} className="sm:min-w-28 h-10">
-              Search
-            </Button>
+            {showError ? (
+              <p id="search-dialog-error" className="text-destructive text-sm font-medium">
+                Enter a valid wallet address or ENS name.
+              </p>
+            ) : (
+              <p id="search-dialog-help" className="text-muted-foreground text-sm">
+                Enter an Ethereum address, ENS name, or base58 wallet address.
+              </p>
+            )}
+          </div>
+          <Button
+            type="submit"
+            variant="default"
+            disabled={!isInputValid}
+            className="h-10 sm:min-w-28"
+          >
+            Search
+          </Button>
         </form>
       </div>
     </div>

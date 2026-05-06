@@ -34,7 +34,7 @@ export default function StatementSection({ open, value, setValue, warning, maxCh
               placeholder="Kanye West's Delhi concert got postponed"
               value={value}
               onChange={(e) => setValue(e.target.value.slice(0, maxChars))}
-              className="min-h-0 flex-1 resize-none text-base leading-relaxed md:text-lg"
+              className="min-h-0 flex-1 resize-none text-sm leading-relaxed md:text-sm"
             />
             <div className="mt-3 flex items-center justify-between">
               <AnimatePresence mode="wait">
@@ -45,14 +45,14 @@ export default function StatementSection({ open, value, setValue, warning, maxCh
                     key="sh"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="text-muted-foreground/55 text-sm md:text-base"
+                    className="text-muted-foreground/55 text-xs md:text-xs"
                   >
                     Write a specific, falsifiable claim
                   </m.span>
                 )}
               </AnimatePresence>
               <span
-                className={`text-sm tabular-nums md:text-base ${
+                className={`text-xs tabular-nums md:text-xs ${
                   value.length > maxChars * 0.9 ? 'text-amber-400' : 'text-muted-foreground/50'
                 }`}
               >

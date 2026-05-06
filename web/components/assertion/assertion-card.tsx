@@ -9,9 +9,7 @@ import { getTimeRemaining } from '@/lib/helpers';
 import type { AssertionAccount } from '@/types';
 
 export default function AssertionCard({ data }: { data: AssertionAccount }) {
-  const [remainingTime, setRemainingTime] = useState(() =>
-    getTimeRemaining(data.livenessDeadline)
-  );
+  const [remainingTime, setRemainingTime] = useState(() => getTimeRemaining(data.livenessDeadline));
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -31,12 +29,12 @@ export default function AssertionCard({ data }: { data: AssertionAccount }) {
           <m.h2
             layout
             layoutId={`statement-${data.id}`}
-            className="w-fit truncate text-lg font-medium tracking-tight md:text-xl"
+            className="w-fit truncate text-sm font-medium tracking-tight md:text-base"
           >
             {data.statement}
           </m.h2>
 
-          <div className='flex flex-col gap-2 py-2'>
+          <div className="flex flex-col gap-2 py-2">
             <h2 className="text-xs font-medium uppercase">
               Outcome: <span className="text-primary">{data.outcome}</span>
             </h2>

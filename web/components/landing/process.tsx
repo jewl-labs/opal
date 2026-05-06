@@ -1,4 +1,4 @@
-import CornerMarker from "../common/corner-marker";
+import CornerMarker from '../common/corner-marker';
 
 export default function Process() {
   return (
@@ -8,7 +8,8 @@ export default function Process() {
           <h2 className="mt-3 text-3xl font-bold tracking-tight uppercase md:text-4xl">
             Resolution advances in three layers
           </h2>
-          <p className="text-muted-foreground text-md hidden text-center leading-6 text-balance md:block">
+          <p className="text-muted-foreground hidden text-center text-base leading-6 text-balance md:block">
+            {' '}
             Each layer is economical and terminal settlement is only available once the assertion is
             fully resolved.
           </p>
@@ -20,7 +21,7 @@ export default function Process() {
               <span className="text-muted-foreground text-xs font-semibold tracking-[0.35em] uppercase">
                 01
               </span>
-              <span className="text-muted-foreground group-hover:text-primary transition-colors duration-300 ease-out text-xs font-semibold tracking-[0.35em] uppercase">
+              <span className="text-muted-foreground group-hover:text-primary text-xs font-semibold tracking-[0.35em] uppercase transition-colors duration-300 ease-out">
                 Assert
               </span>
             </header>
@@ -36,7 +37,7 @@ export default function Process() {
               <span className="text-muted-foreground text-xs font-semibold tracking-[0.35em] uppercase">
                 02
               </span>
-              <span className="text-muted-foreground group-hover:text-primary transition-colors duration-300 ease-out text-xs font-semibold tracking-[0.35em] uppercase">
+              <span className="text-muted-foreground group-hover:text-primary text-xs font-semibold tracking-[0.35em] uppercase transition-colors duration-300 ease-out">
                 Dispute
               </span>
             </header>
@@ -52,19 +53,19 @@ export default function Process() {
               <span className="text-muted-foreground text-xs font-semibold tracking-[0.35em] uppercase">
                 03
               </span>
-              <span className="text-muted-foreground group-hover:text-primary transition-colors duration-300 ease-out text-xs font-semibold tracking-[0.35em] uppercase">
+              <span className="text-muted-foreground group-hover:text-primary text-xs font-semibold tracking-[0.35em] uppercase transition-colors duration-300 ease-out">
                 Escalate
               </span>
             </header>
             <div className="flex h-full flex-col items-center justify-end pb-12">
               <EscalateIllustration />
-              <p className="text-muted-foreground mt-6 text-xs text-center leading-6 text-balance uppercase">
+              <p className="text-muted-foreground mt-6 text-center text-xs leading-6 text-balance uppercase">
                 Second dispute opens private voting; settlement on Resolved.
               </p>
             </div>
           </article>
         </div>
-        <CornerMarker position="bottom"/>
+        <CornerMarker position="bottom" />
       </section>
       <span className="border-muted-foreground/50 top-screen pointer-events-none absolute right-0 left-0 z-20 h-0.5 w-screen border-b border-dashed" />
     </>

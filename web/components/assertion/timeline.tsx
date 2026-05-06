@@ -1,13 +1,16 @@
-
 import { cn } from '@/lib/utils';
 import type { AssertionAccount } from '@/types';
 
 export default function Timeline({ statement }: { statement: AssertionAccount | undefined }) {
+  if (!statement) {
+    return null;
+  }
+
   return (
     <div className="relative flex h-[80vh] w-fit flex-col py-8">
       <div className="flex items-center gap-2">
         <span className="text-muted-foreground text-xs whitespace-nowrap uppercase">
-          {new Date(statement?.createdAt || '').toLocaleDateString('en-US', {
+          {new Date(statement.createdAt).toLocaleDateString('en-US', {
             day: '2-digit',
             month: 'short',
             year: 'numeric',
