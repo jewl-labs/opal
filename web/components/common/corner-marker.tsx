@@ -9,14 +9,14 @@ export default function CornerMarker({ position = 'top' }: CornerMarkerProps) {
     <div className="pointer-events-none absolute inset-0 overflow-visible">
       <span
         className={cn(
-          'bg-accent-foreground absolute size-2',
-          position === 'top' ? '-top-1 -left-1' : '-bottom-1 -left-1'
+          'bg-muted-foreground absolute size-1.5',
+          position === 'top' ? '-top-0.75 -left-0.75' : '-bottom-0.75 -left-0.75'
         )}
       />
       <span
         className={cn(
-          'bg-accent-foreground absolute size-2',
-          position === 'top' ? '-top-1 -right-1' : '-right-1 -bottom-1'
+          'bg-muted-foreground absolute size-1.5',
+          position === 'top' ? '-top-0.75 -right-0.75' : '-right-0.75 -bottom-0.75'
         )}
       />
     </div>

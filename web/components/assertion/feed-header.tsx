@@ -1,14 +1,10 @@
 import { ArrowDownIcon, ArrowUpIcon } from '@phosphor-icons/react';
+
+import type { OutcomeFilter, SortField, StateFilter } from '@/types/filters';
+
 import Container from '../common/container';
 import { Button } from '../ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../ui/select';
-import type { StateFilter, OutcomeFilter, SortField } from '@/types/filters';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 interface HeaderProps {
   sortField: SortField;
@@ -52,9 +48,9 @@ export default function Header({
   onOutcomeFilterChange,
 }: HeaderProps) {
   return (
-    <Container className="bg-background border-muted-foreground/50 sticky top-16 w-full justify-center z-10 flex h-16 items-center border-b border-dashed px-4">
-      <div className="scrollbar-thin flex w-full items-center gap-3 overflow-x-auto whitespace-nowrap py-1">
-        <span className="text-muted-foreground uppercase tracking-wide">
+    <Container className="bg-background border-muted-foreground/50 sticky top-16 z-10 flex h-16 w-full items-center justify-center border-b border-dashed px-4">
+      <div className="scrollbar-thin flex w-full items-center gap-3 overflow-x-auto py-1 whitespace-nowrap">
+        <span id="feed-sort-label" className="text-muted-foreground tracking-wide uppercase">
           Sort
         </span>
         <Select
@@ -65,7 +61,7 @@ export default function Header({
             }
           }}
         >
-          <SelectTrigger size="sm" className="w-44 capitalize">
+          <SelectTrigger aria-labelledby="feed-sort-label" size="sm" className="w-44 capitalize">
             <SelectValue placeholder="Created Time" />
           </SelectTrigger>
           <SelectContent>
@@ -86,7 +82,7 @@ export default function Header({
           {sortOrder === 'asc' ? <ArrowUpIcon weight="bold" /> : <ArrowDownIcon weight="bold" />}
         </Button>
 
-        <span className="text-muted-foreground ml-2 uppercase tracking-wide">
+        <span id="feed-state-label" className="text-muted-foreground ml-2 tracking-wide uppercase">
           State
         </span>
         <Select
@@ -97,7 +93,7 @@ export default function Header({
             }
           }}
         >
-          <SelectTrigger size="sm" className="w-34 uppercase">
+          <SelectTrigger aria-labelledby="feed-state-label" size="sm" className="w-34 uppercase">
             <SelectValue placeholder="All" />
           </SelectTrigger>
           <SelectContent>
@@ -109,7 +105,10 @@ export default function Header({
           </SelectContent>
         </Select>
 
-        <span className="text-muted-foreground ml-2 uppercase tracking-wide">
+        <span
+          id="feed-outcome-label"
+          className="text-muted-foreground ml-2 tracking-wide uppercase"
+        >
           Outcome
         </span>
         <Select
@@ -120,7 +119,7 @@ export default function Header({
             }
           }}
         >
-          <SelectTrigger size="sm" className="w-40 uppercase">
+          <SelectTrigger aria-labelledby="feed-outcome-label" size="sm" className="w-40 uppercase">
             <SelectValue placeholder="All" />
           </SelectTrigger>
           <SelectContent>

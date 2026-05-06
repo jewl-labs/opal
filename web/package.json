@@ -6,8 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "lint:fix": "next lint --fix",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
@@ -15,12 +15,12 @@
   },
   "lint-staged": {
     "*.{ts,tsx}": [
-      "bunx eslint --fix",
-      "bunx prettier --write"
+      "eslint --fix",
+      "prettier --write"
     ]
   },
   "simple-git-hooks": {
-    "pre-commit": "bunx lint-staged"
+    "pre-commit": "npx lint-staged"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",

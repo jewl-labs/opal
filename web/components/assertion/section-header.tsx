@@ -1,7 +1,7 @@
 import type * as React from 'react';
 
-import { m } from 'motion/react';
 import { CaretDownIcon } from '@phosphor-icons/react';
+import { m } from 'motion/react';
 
 export default function SectionHeader({
   label,
@@ -20,8 +20,10 @@ export default function SectionHeader({
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
-      className="border-muted-foreground/50 flex w-full items-center justify-between border-t border-dashed px-6 py-4 text-left transition-colors hover:bg-muted/50"
+      aria-expanded={open}
+      className="border-muted-foreground/50 hover:bg-muted/50 flex w-full items-center justify-between border-t border-dashed px-6 py-4 text-left transition-colors"
     >
       <div className="flex flex-1 items-center gap-3">
         <span
@@ -44,14 +46,14 @@ export default function SectionHeader({
           <m.span
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="ml-auto text-muted-foreground/50 text-xs font-mono"
+            className="text-muted-foreground/50 ml-auto font-mono text-xs"
           >
             {shortcutHint}
           </m.span>
         )}
       </div>
       <m.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
-        <CaretDownIcon className="text-muted-foreground/40 stroke-1 size-5" />
+        <CaretDownIcon className="text-muted-foreground/40 size-5 stroke-1" />
       </m.div>
     </button>
   );
