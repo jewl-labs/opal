@@ -106,7 +106,7 @@ export const ASSERTIONS: AssertionAccount[] = [
         TooEarly: 12800,
         Unresolvable: 4000,
       },
-      finalOutcome: "True",
+      finalOutcome: "False",
     },
     createdAt: "2026-04-08T09:00:00Z",
   },

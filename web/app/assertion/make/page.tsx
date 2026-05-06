@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { motion as m } from 'motion/react';
 
@@ -45,6 +45,41 @@ export default function MakeAssertion() {
 
   const toggle = (s: Section) => setOpen((prev) => (prev === s ? 'statement' : s));
 
+  const sectionOrder: Section[] = ['statement', 'params', 'evidence', 'summary'];
+  const currentIndex = sectionOrder.indexOf(open);
+
+  const nextSection = () => {
+    const nextIdx = currentIndex + 1;
+    if (nextIdx < sectionOrder.length) {
+      const next = sectionOrder[nextIdx];
+      if (next) setOpen(next);
+    }
+  };
+
+  const prevSection = () => {
+    const prevIdx = currentIndex - 1;
+    if (prevIdx >= 0) {
+      const prev = sectionOrder[prevIdx];
+      if (prev) setOpen(prev);
+    }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        nextSection();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'Enter') {
+        e.preventDefault();
+        prevSection();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentIndex]);
+
   const statementWarning =
     statement.length > 0 && statement.length < 10
       ? 'Too short to be resolvable'
@@ -52,6 +87,8 @@ export default function MakeAssertion() {
         ? 'Use a declarative statement, not a question'
         : null;
 
+  // Note: bond === ASSERTION_BOND_PUSD check is redundant but kept for defensive validation
+  // and potential future refactors where bond might be user-configurable
   const isValid =
     statement.length >= 10 && !statement.endsWith('?') && bond === ASSERTION_BOND_PUSD && walletConnected;
 
@@ -75,6 +112,8 @@ export default function MakeAssertion() {
             open={open === 'statement'}
             onClick={() => toggle('statement')}
             peek={statement || undefined}
+            showShortcut={open === 'statement'}
+            shortcutHint="Ctrl+Enter"
           />
           <StatementSection
             open={open === 'statement'}
@@ -87,6 +126,8 @@ export default function MakeAssertion() {
           <SectionHeader
             label="Bond & Window"
             open={open === 'params'}
+            showShortcut={open === 'params'}
+            shortcutHint="Ctrl+Enter"
             onClick={() => toggle('params')}
             peek={`${ASSERTION_BOND_PUSD} PUSD · ${window_.label}`}
           />
@@ -110,6 +151,8 @@ export default function MakeAssertion() {
                 <span className="text-amber-400/60">⚠ none attached</span>
               ) : undefined
             }
+            showShortcut={open === 'evidence'}
+            shortcutHint="Ctrl+Enter"
           />
           <EvidenceSection
             open={open === 'evidence'}
@@ -123,6 +166,8 @@ export default function MakeAssertion() {
             open={open === 'summary'}
             onClick={() => toggle('summary')}
             peek={statement ? `${statement.slice(0, 40)}…` : undefined}
+            showShortcut={open === 'summary'}
+            shortcutHint="Ready to submit?"
           />
           <SummarySection
             open={open === 'summary'}
@@ -140,7 +185,7 @@ export default function MakeAssertion() {
               whileHover={isValid ? { scale: 1.005 } : {}}
               whileTap={isValid ? { scale: 0.995 } : {}}
               disabled={!isValid}
-              className={`w-full py-4 text-sm tracking-widest uppercase transition-colors ${
+              className={`w-full py-3 text-xs tracking-widest uppercase transition-colors ${
                 isValid
                   ? 'bg-primary hover:bg-primary/90 cursor-pointer text-black'
                   : 'bg-muted/30 text-muted-foreground/25 border-muted-foreground/10 cursor-not-allowed border border-dashed'

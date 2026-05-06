@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { notFound } from 'next/navigation';
 
 import { motion as m } from 'motion/react';
 
@@ -33,7 +34,7 @@ export default function StatementPage() {
   }, [statement?.livenessDeadline]);
 
   if (!statement) {
-    return <div>not found</div>;
+    notFound();
   }
 
   return (

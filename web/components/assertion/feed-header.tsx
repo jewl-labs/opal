@@ -8,10 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select';
-
-type StateFilter = 'All' | 'Active' | 'Voting' | 'Resolved';
-type OutcomeFilter = 'All' | 'True' | 'False' | 'Unresolvable' | 'TooEarly';
-type SortField = 'createdAt' | 'bondAmountPUSD' | 'state' | 'outcome';
+import type { StateFilter, OutcomeFilter, SortField } from '@/types/filters';
 
 interface HeaderProps {
   sortField: SortField;

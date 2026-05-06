@@ -8,17 +8,17 @@ import { motion as m } from 'motion/react';
 import { getTimeRemaining } from '@/lib/helpers';
 import type { AssertionAccount } from '@/types';
 
-export default function AssertionCard(data: AssertionAccount) {
+export default function AssertionCard({ data }: { data: AssertionAccount }) {
   const [remainingTime, setRemainingTime] = useState(() =>
-    getTimeRemaining(data?.livenessDeadline)
+    getTimeRemaining(data.livenessDeadline)
   );
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setRemainingTime(getTimeRemaining(data?.livenessDeadline));
+      setRemainingTime(getTimeRemaining(data.livenessDeadline));
     }, 1000);
     return () => clearInterval(interval);
-  }, [data?.livenessDeadline]);
+  }, [data.livenessDeadline]);
 
   return (
     <Link href={`/assertion/browse/${data.id}`}>

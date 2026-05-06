@@ -1,14 +1,17 @@
 
 import { cn } from '@/lib/utils';
 import type { AssertionAccount } from '@/types';
-import { CaretRightIcon } from '@phosphor-icons/react';
 
 export default function Timeline({ statement }: { statement: AssertionAccount | undefined }) {
   return (
     <div className="relative flex h-[80vh] w-fit flex-col py-8">
       <div className="flex items-center gap-2">
         <span className="text-muted-foreground text-xs whitespace-nowrap uppercase">
-          25 Jan 2026
+          {new Date(statement?.createdAt || '').toLocaleDateString('en-US', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+          })}
         </span>
         <span
           className={cn(
@@ -16,7 +19,7 @@ export default function Timeline({ statement }: { statement: AssertionAccount | 
             statement?.state === 'Asserted' ? 'text-primary' : undefined
           )}
         >
-          ASSERTED
+          {statement?.state}
         </span>
         <span className="ring-secondary z-10 size-2 shrink-0 rounded-full bg-orange-400 ring-2" />
       </div>
@@ -39,7 +42,11 @@ export default function Timeline({ statement }: { statement: AssertionAccount | 
 
       <div className="flex items-center gap-2">
         <span className="text-muted-foreground text-xs whitespace-nowrap uppercase">
-          02 Feb 2026
+          {new Date(statement?.livenessDeadline || '').toLocaleDateString('en-US', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+          })}
         </span>
         <span className="text-xs whitespace-nowrap uppercase">RESOLVED</span>
         <span className="ring-secondary z-10 size-2 shrink-0 rounded-full bg-green-400 ring-2" />
