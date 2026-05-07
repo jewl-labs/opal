@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
-import { notFound } from 'next/navigation';
+import { useParams, notFound } from 'next/navigation';
 
 import { motion as m } from 'motion/react';
 
@@ -18,12 +17,16 @@ export default function StatementPage() {
 
   const statement = ASSERTIONS.find((s) => s.id === id);
 
-  const [remainingTime, setRemainingTime] = useState(() =>
-    getTimeRemaining(statement?.livenessDeadline)
-  );
+  if (!statement) {
+    notFound();
+  }
+
+  const [remainingTime, setRemainingTime] = useState('—');
 
   useEffect(() => {
     if (!statement?.livenessDeadline) return;
+
+    setRemainingTime(getTimeRemaining(statement.livenessDeadline));
 
     const interval = setInterval(() => {
       setRemainingTime(getTimeRemaining(statement.livenessDeadline));
@@ -31,10 +34,6 @@ export default function StatementPage() {
 
     return () => clearInterval(interval);
   }, [statement?.livenessDeadline]);
-
-  if (!statement) {
-    notFound();
-  }
 
   return (
     <Container className="border-muted-foreground/50 border-x border-dashed py-16">

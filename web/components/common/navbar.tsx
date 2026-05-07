@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { ListIcon, MagnifyingGlassIcon, XIcon } from '@phosphor-icons/react';
 import { AnimatePresence } from 'motion/react';
@@ -32,11 +32,13 @@ export default function Navbar() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  const handleCloseSearch = useCallback(() => setIsSearchOpen(false), []);
+
   return (
     <div className="bg-background fixed inset-x-0 top-0 z-30 overflow-x-clip">
       <Container className="border-muted-foreground/50 relative flex h-16 items-center justify-between border-x border-dashed px-4">
         <Link href="/">
-          <h1 className="text-xl font-semibold tracking-tight uppercase">Opal</h1>
+          <span className="text-xl font-semibold tracking-tight uppercase">Opal</span>
         </Link>
         <div className="hidden items-center gap-4 md:flex">
           <Button
@@ -77,7 +79,7 @@ export default function Navbar() {
       </Container>
       <span className="border-muted-foreground/50 absolute right-0 bottom-0 left-0 h-0.5 border-b border-dashed" />
       <AnimatePresence mode="wait">{isMobileNavbarOpen && <NavbarMobile />}</AnimatePresence>
-      <SearchDialog isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+      <SearchDialog isOpen={isSearchOpen} onClose={handleCloseSearch} />
     </div>
   );
 }

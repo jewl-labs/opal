@@ -22,6 +22,7 @@ export interface VoteResolutionRound {
   votingStartsAt: string | null;
   votingDeadline: string | null;
   totalValidWeight: bigint;
+  // !TBD: Align aggregateVotes value type with totalValidWeight (bigint vs number)
   aggregateVotes: Record<ResolutionOutcome, number>; 
   finalOutcome: ResolutionOutcome | null;
 }

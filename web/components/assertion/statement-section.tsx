@@ -29,6 +29,9 @@ export default function StatementSection({ open, value, setValue, warning, maxCh
             transition={{ duration: 0.2 }}
             className="flex h-full flex-col p-6"
           >
+            <label htmlFor="statement" className="sr-only">
+              Statement
+            </label>
             <Textarea
               id="statement"
               placeholder="Kanye West's Delhi concert got postponed"

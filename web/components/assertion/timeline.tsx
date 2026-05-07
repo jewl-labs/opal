@@ -19,10 +19,10 @@ export default function Timeline({ statement }: { statement: AssertionAccount | 
         <span
           className={cn(
             'text-xs whitespace-nowrap uppercase',
-            statement?.state === 'Asserted' ? 'text-primary' : undefined
+            statement.state === 'Asserted' ? 'text-primary' : undefined
           )}
         >
-          {statement?.state}
+          {statement.state}
         </span>
         <span className="ring-secondary z-10 size-2 shrink-0 rounded-full bg-orange-400 ring-2" />
       </div>
@@ -53,6 +53,7 @@ export default function Timeline({ statement }: { statement: AssertionAccount | 
             })
             : '-'}
         </span>
+        {/* !TBD: Make terminal state label dynamic based on assertion.state */}
         <span className="text-xs whitespace-nowrap uppercase">RESOLVED</span>
         <span className="ring-secondary z-10 size-2 shrink-0 rounded-full bg-green-400 ring-2" />
       </div>

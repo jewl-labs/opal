@@ -38,9 +38,10 @@ export default function MakeAssertion() {
   const [open, setOpen] = useState<Section>('statement');
   const [statement, setStatement] = useState('');
   const bond = ASSERTION_BOND_PUSD;
-  const [createdAt] = useState(() => Date.now());
+  const createdAt = Date.now();
   const [window_, setWindow] = useState<(typeof WINDOWS)[number]>(WINDOWS[2]!);
   const [auxiliaryData, setAuxiliaryData] = useState('');
+  // !TBD: Wire up real wallet connection when adapter is integrated
   const [walletConnected] = useState(false);
 
   const toggle = (s: Section) => setOpen((prev) => (prev === s ? 'statement' : s));

@@ -64,7 +64,7 @@ export default function NavbarMobile() {
         </Button>
       </m.div>
       <m.div variants={itemVariants} className="w-full">
-        <Link href="/dashboard" className="w-full">
+        <Link href="/" className="w-full">
           <Button variant="outline" className="w-full uppercase">
             Dashboard
           </Button>

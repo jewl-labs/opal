@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import Container from '../common/container';
 import { CurrencyDollarIcon, FilePlusIcon, GavelIcon, GridFourIcon, WarningOctagonIcon } from '@phosphor-icons/react';
 import { Button } from '../ui/button';
-import { CopySimpleIcon, CheckIcon } from '@phosphor-icons/react/dist/ssr';
+import { CopySimpleIcon, CheckIcon } from '@phosphor-icons/react';
 
 const LINKS = [
   {
@@ -51,6 +51,7 @@ export default function ActivityNavigation() {
     return () => clearTimeout(timer);
   }, [isCopied]);
 
+  // !TBD: Add error handling for clipboard API failures
   const handleCopy = async () => {
     if (address) {
       await navigator.clipboard.writeText(address);

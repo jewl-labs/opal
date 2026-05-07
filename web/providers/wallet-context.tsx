@@ -1,8 +1,10 @@
 'use client';
 
-import { createContext, useContext, useState, ReactNode } from 'react';
+import type { ReactNode } from 'react';
+import { createContext, useContext, useState } from 'react';
 
 // Hardcoded default address
+// !TBD: Replace hardcoded default address with proper Solana wallet integration
 const DEFAULT_WALLET_ADDRESS = '0x742d35Cc6634C0532925a3b844Bc9e7595f42bE2';
 
 interface WalletContextType {
