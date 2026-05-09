@@ -11,6 +11,7 @@ pub mod challenge_llm_resolution;
 pub mod configure_llm_round;
 pub mod finalize_llm_resolution;
 pub mod submit_llm_resolution;
+#[cfg(feature = "mock_llm_resolution")]
 pub mod submit_mock_llm_resolution;
 
 // vote resolution
@@ -37,6 +38,7 @@ pub use configure_llm_round::*;
 pub use finalize_llm_resolution::*;
 #[allow(ambiguous_glob_reexports)]
 pub use submit_llm_resolution::*;
+#[cfg(feature = "mock_llm_resolution")]
 #[allow(ambiguous_glob_reexports)]
 pub use submit_mock_llm_resolution::*;
 

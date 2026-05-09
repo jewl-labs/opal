@@ -4,7 +4,7 @@
     "format:fix": "prettier * tests/* --write --ignore-unknown",
     "format": "prettier * tests/* --check --ignore-unknown",
     "gen:client": "codama run js",
-    "test": "anchor test",
+    "test": "anchor build --features mock_llm_resolution && anchor test --skip-build",
     "resolver": "bun run resolver/server.ts",
     "keeper": "bun run client/submit-llm-resolution.ts"
   },
@@ -14,7 +14,7 @@
     "@solana/web3.js": "^1.98.4",
     "@solana/spl-token": "^0.4.14",
     "@solana/kit": "^6.3.1",
-    "@switchboard-xyz/on-demand": "^3.10.1"
+    "@switchboard-xyz/on-demand": "^3.9.0"
   },
   "devDependencies": {
     "@codama/nodes-from-anchor": "^1.3.9",

@@ -15,16 +15,16 @@ import {
   Connection,
   Keypair,
   PublicKey,
-  Transaction,
-  SystemProgram,
+  TransactionMessage,
+  VersionedTransaction,
   SYSVAR_INSTRUCTIONS_PUBKEY,
-  sendAndConfirmTransaction,
 } from "@solana/web3.js";
 import * as anchor from "@coral-xyz/anchor";
 import { Program, AnchorProvider, Wallet, BN } from "@coral-xyz/anchor";
 import { CrossbarClient, Queue } from "@switchboard-xyz/on-demand";
 import * as crypto from "crypto";
 import * as fs from "fs";
+import * as os from "os";
 import * as path from "path";
 
 import type { Opal } from "../target/types/opal";
@@ -186,14 +186,24 @@ export async function submitLlmResolution(
 
   // Bundle [sigVerifyIx (ix[0]), submitLlmResolutionIx (ix[1])].
   // QuoteVerifier.verify_instruction_at(0) reads the instruction at index 0.
-  const tx = new Transaction();
-  tx.add(pullIx);
-  tx.add(submitIx);
+  // VersionedTransaction is required so that address lookup tables (luts) can be applied.
+  const { blockhash, lastValidBlockHeight } =
+    await connection.getLatestBlockhash("confirmed");
+  const v0Message = new TransactionMessage({
+    payerKey: submitter.publicKey,
+    recentBlockhash: blockhash,
+    instructions: [pullIx, submitIx],
+  }).compileToV0Message(luts);
+  const versionedTx = new VersionedTransaction(v0Message);
+  versionedTx.sign([submitter]);
 
-  const sig = await sendAndConfirmTransaction(connection, tx, [submitter], {
-    commitment: "confirmed",
-    addressLookupTableAccounts: luts,
+  const sig = await connection.sendTransaction(versionedTx, {
+    maxRetries: 5,
   });
+  await connection.confirmTransaction(
+    { signature: sig, blockhash, lastValidBlockHeight },
+    "confirmed",
+  );
 
   console.log("submit_llm_resolution confirmed:", sig);
   return sig;
@@ -242,7 +252,7 @@ async function main() {
 
   const walletPath =
     process.env.ANCHOR_WALLET ??
-    path.join(process.env.HOME ?? "~", ".config/solana/id.json");
+    path.join(os.homedir(), ".config/solana/id.json");
   const authority = loadKeypairFromFile(walletPath);
 
   const connection = new Connection(RPC_URL, "confirmed");

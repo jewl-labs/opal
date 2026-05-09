@@ -19,6 +19,9 @@ import Anthropic from "@anthropic-ai/sdk";
 const PORT = parseInt(process.env.PORT ?? "3001", 10);
 const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-opus-4-7";
 
+const MAX_STATEMENT_CHARS = 2_000;
+const MAX_AUX_CHARS = 4_000;
+
 const OUTCOME_UNRESOLVABLE = 3;
 
 // All static instructions the LLM must follow. Nothing from user input goes here —
@@ -87,6 +90,7 @@ async function classifyAssertion(
     model: MODEL,
     max_tokens: 4,
     system: SYSTEM_PROMPT,
+    tools: [{ type: "web_search_20260209" as "web_search_20260209", name: "web_search" }],
     messages: [{ role: "user", content: userMessage }],
   });
 
@@ -121,6 +125,12 @@ const server = Bun.serve({
     if (!statement || typeof statement !== "string") {
       return Response.json({ error: "missing statement" }, { status: 400 });
     }
+    if (statement.length > MAX_STATEMENT_CHARS) {
+      return Response.json({ error: "statement too long" }, { status: 413 });
+    }
+    if (auxiliary_data.length > MAX_AUX_CHARS) {
+      return Response.json({ error: "auxiliary_data too long" }, { status: 413 });
+    }
 
     // 1. Regex injection guard — fast, runs before any LLM call
     if (containsInjection(statement) || containsInjection(auxiliary_data)) {
@@ -138,7 +148,8 @@ const server = Bun.serve({
         return Response.json({ outcome_code: OUTCOME_UNRESOLVABLE });
       }
     } catch (err) {
-      console.error("injection detection failed, proceeding:", err);
+      console.error("injection detection failed, returning UNRESOLVABLE:", err);
+      return Response.json({ outcome_code: OUTCOME_UNRESOLVABLE });
     }
 
     // 3. Main classification

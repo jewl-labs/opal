@@ -23,6 +23,7 @@ pub use instructions::challenge_llm_resolution::ChallengeLlmResolution;
 pub use instructions::configure_llm_round::{ConfigureLlmRound, ConfigureLlmRoundArgs};
 pub use instructions::finalize_llm_resolution::FinalizeLlmResolution;
 pub use instructions::submit_llm_resolution::{SubmitLlmResolution, SubmitLlmResolutionArgs};
+#[cfg(feature = "mock_llm_resolution")]
 pub use instructions::submit_mock_llm_resolution::{
     SubmitMockLlmResolution, SubmitMockLlmResolutionArgs,
 };
@@ -82,6 +83,7 @@ pub mod opal {
         instructions::submit_llm_resolution::handler(ctx, args)
     }
 
+    #[cfg(feature = "mock_llm_resolution")]
     pub fn submit_mock_llm_resolution(
         ctx: Context<SubmitMockLlmResolution>,
         args: SubmitMockLlmResolutionArgs,
