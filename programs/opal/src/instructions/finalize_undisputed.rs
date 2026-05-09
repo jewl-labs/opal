@@ -10,6 +10,7 @@ use crate::{
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
+/// Accounts for the `finalize_undisputed` instruction.
 #[derive(Accounts)]
 pub struct FinalizeUndisputed<'info> {
     pub finalizer: Signer<'info>,
@@ -53,6 +54,7 @@ pub struct FinalizeUndisputed<'info> {
     pub token_program: Program<'info, Token>,
 }
 
+/// Finalizes an assertion that was not disputed within the liveness window. Pays out the asserter.
 pub fn handler(ctx: Context<FinalizeUndisputed>) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
 

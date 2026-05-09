@@ -10,6 +10,7 @@ use crate::{
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
+/// Accounts for the `finalize_llm_resolution` instruction.
 #[derive(Accounts)]
 pub struct FinalizeLlmResolution<'info> {
     pub finalizer: Signer<'info>,
@@ -73,6 +74,7 @@ pub struct FinalizeLlmResolution<'info> {
     pub token_program: Program<'info, Token>,
 }
 
+/// Settles an LLM-resolved assertion after the challenge window expires. Distributes bonds.
 pub fn handler(ctx: Context<FinalizeLlmResolution>) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
 

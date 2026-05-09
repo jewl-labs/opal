@@ -10,6 +10,7 @@ use crate::{
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
+/// Accounts for the `dispute_assertion` instruction.
 #[derive(Accounts)]
 pub struct DisputeAssertion<'info> {
     #[account(mut)]
@@ -68,6 +69,7 @@ pub struct DisputeAssertion<'info> {
     pub system_program: Program<'info, System>,
 }
 
+/// Disputes an assertion within the liveness window, creating the LLM resolution round.
 pub fn handler(ctx: Context<DisputeAssertion>) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
 

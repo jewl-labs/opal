@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 
 // !TBD: #[derive(Default)] on a zero_copy sub-struct is fragile. If a non-zero default
 // is ever added, Default::default() would diverge from zero-copy initialization.
+/// Aggregated vote weights per outcome for a single vote round.
 #[repr(C, packed)]
 #[zero_copy(unsafe)]
 #[derive(Default)]
@@ -12,6 +13,7 @@ pub struct VotesPerOutcome {
     pub unresolvable_weight: u128,
 }
 
+/// Tracks voting state, MagicBlock delegation, deadlines, and the final outcome for a vote round.
 #[repr(C, packed)]
 #[account(zero_copy(unsafe))]
 pub struct VoteResolutionRound {

@@ -9,11 +9,13 @@ use crate::{
 };
 use anchor_lang::prelude::*;
 
+/// Arguments for the `submit_mock_llm_resolution` instruction.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct SubmitMockLlmResolutionArgs {
     pub outcome_code: u8,
 }
 
+/// Accounts for the `submit_mock_llm_resolution` instruction. For local testing only.
 #[derive(Accounts)]
 pub struct SubmitMockLlmResolution<'info> {
     pub authority: Signer<'info>,
@@ -42,6 +44,7 @@ pub struct SubmitMockLlmResolution<'info> {
 // !TBD: PLACEHOLDER — This is a mock instruction for local testing.
 // In production, LLM resolution will be delivered by a Switchboard oracle callback
 // that updates the LlmResolutionRound outcome fields on-chain.
+/// Submits a mock LLM resolution outcome. Authority-gated; for local testing only.
 pub fn handler(
     ctx: Context<SubmitMockLlmResolution>,
     args: SubmitMockLlmResolutionArgs,

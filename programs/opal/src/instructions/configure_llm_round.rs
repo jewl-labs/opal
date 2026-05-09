@@ -5,6 +5,7 @@ use crate::{
 };
 use anchor_lang::prelude::*;
 
+/// Arguments for the `configure_llm_round` instruction.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct ConfigureLlmRoundArgs {
     /// Switchboard oracle queue that will serve this feed.
@@ -16,6 +17,7 @@ pub struct ConfigureLlmRoundArgs {
     pub max_staleness_slots: u64,
 }
 
+/// Accounts for the `configure_llm_round` instruction.
 #[derive(Accounts)]
 pub struct ConfigureLlmRound<'info> {
     /// Must be the protocol authority.
@@ -41,6 +43,7 @@ pub struct ConfigureLlmRound<'info> {
     pub llm_resolution_round: AccountLoader<'info, LlmResolutionRound>,
 }
 
+/// Commits Switchboard oracle parameters to the LLM round so `submit_llm_resolution` can verify them.
 pub fn handler(ctx: Context<ConfigureLlmRound>, args: ConfigureLlmRoundArgs) -> Result<()> {
     // 1. Require authority
     let config = ctx.accounts.protocol_config.load()?;

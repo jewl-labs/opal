@@ -9,6 +9,7 @@ use crate::{
 };
 use anchor_lang::prelude::*;
 
+/// Accounts for the `open_vote` instruction.
 #[derive(Accounts)]
 pub struct OpenVote<'info> {
     pub authority: Signer<'info>,
@@ -34,6 +35,7 @@ pub struct OpenVote<'info> {
     pub vote_resolution_round: AccountLoader<'info, VoteResolutionRound>,
 }
 
+/// Opens the voting window on a challenged assertion and sets voting deadlines.
 pub fn handler(ctx: Context<OpenVote>) -> Result<()> {
     // !TBD: auth policy for open_vote is undecided. Currently permissionless for liveness.
     let assertion = ctx.accounts.assertion.load()?;

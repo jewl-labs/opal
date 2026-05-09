@@ -10,6 +10,7 @@ use crate::{
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
+/// Arguments for the `create_assertion` instruction.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct CreateAssertionArgs {
     pub assertion_id: Pubkey,
@@ -18,6 +19,7 @@ pub struct CreateAssertionArgs {
     pub assertion_bond_amount_pusd: u64,
 }
 
+/// Accounts for the `create_assertion` instruction.
 #[derive(Accounts)]
 #[instruction(args: CreateAssertionArgs)]
 pub struct CreateAssertion<'info> {
@@ -64,6 +66,7 @@ pub struct CreateAssertion<'info> {
     pub system_program: Program<'info, System>,
 }
 
+/// Creates a new assertion, locks the asserter's bond, and starts the liveness window.
 pub fn handler(ctx: Context<CreateAssertion>, args: CreateAssertionArgs) -> Result<()> {
     let stmt_bytes = args.statement.as_bytes();
     require!(

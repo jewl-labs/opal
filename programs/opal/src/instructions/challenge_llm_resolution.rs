@@ -14,6 +14,7 @@ use crate::{
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
+/// Accounts for the `challenge_llm_resolution` instruction.
 #[derive(Accounts)]
 pub struct ChallengeLlmResolution<'info> {
     #[account(mut)]
@@ -78,6 +79,7 @@ pub struct ChallengeLlmResolution<'info> {
     pub system_program: Program<'info, System>,
 }
 
+/// Challenges the LLM outcome within the challenge window, escalating to a vote round.
 pub fn handler(ctx: Context<ChallengeLlmResolution>) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
 

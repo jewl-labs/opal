@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 
+/// Global protocol configuration. Initialized once; holds all tunable parameters.
 #[repr(C, packed)]
 #[account(zero_copy(unsafe))]
 pub struct ProtocolConfig {

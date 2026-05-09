@@ -10,6 +10,7 @@ use crate::{
 use anchor_lang::prelude::*;
 use switchboard_on_demand::QuoteVerifier;
 
+/// Arguments for the `submit_llm_resolution` instruction.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct SubmitLlmResolutionArgs {
     /// SHA-256 of the full prompt sent to the LLM; stored onchain for auditability.
@@ -58,6 +59,7 @@ pub struct SubmitLlmResolution<'info> {
     pub instructions: AccountInfo<'info>,
 }
 
+/// Verifies a Switchboard oracle quote and writes the LLM outcome to the resolution round.
 pub fn handler(
     ctx: Context<SubmitLlmResolution>,
     args: SubmitLlmResolutionArgs,

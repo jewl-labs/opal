@@ -6,6 +6,7 @@ use crate::{
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, TokenAccount};
 
+/// Arguments for the `initialize_protocol_config` instruction.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct InitializeProtocolConfigArgs {
     pub assertion_bond_min_pusd: u64,
@@ -23,6 +24,7 @@ pub struct InitializeProtocolConfigArgs {
     pub voting_window_seconds: i64,
 }
 
+/// Accounts for the `initialize_protocol_config` instruction.
 #[derive(Accounts)]
 pub struct InitializeProtocolConfig<'info> {
     #[account(mut)]
@@ -47,6 +49,7 @@ pub struct InitializeProtocolConfig<'info> {
     pub system_program: Program<'info, System>,
 }
 
+/// Initializes the global protocol configuration. Can only be called once.
 pub fn handler(
     ctx: Context<InitializeProtocolConfig>,
     args: InitializeProtocolConfigArgs,

@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 
+/// Records a disputer's bond and links to the LLM resolution round for an assertion.
 #[repr(C, packed)]
 #[account(zero_copy(unsafe))]
 pub struct LlmDisputeAccount {

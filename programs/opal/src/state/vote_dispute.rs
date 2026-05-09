@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 
+/// Records a vote-round disputer's bond and the LLM outcome they are challenging.
 #[repr(C, packed)]
 #[account(zero_copy(unsafe))]
 pub struct VoteDisputeAccount {

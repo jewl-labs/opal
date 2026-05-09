@@ -1,6 +1,7 @@
 use crate::constants::{MAX_AUXILIARY_HASH_LEN, MAX_STATEMENT_LEN};
 use anchor_lang::prelude::*;
 
+/// Onchain record of a single assertion, its lifecycle state, bonds, and resolution links.
 #[repr(C, packed)]
 #[account(zero_copy(unsafe))]
 pub struct AssertionAccount {

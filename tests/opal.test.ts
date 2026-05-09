@@ -393,6 +393,28 @@ class TestContext {
       .rpc({ commitment: "confirmed" });
   }
 
+  async configureLlmRound(
+    a: Assertion,
+    switchboardQueue: PublicKey,
+    feedHash: Uint8Array,
+    maxStalenessSlots: number,
+  ) {
+    return this.program.methods
+      .configureLlmRound({
+        switchboardQueue,
+        switchboardFeedHash: Array.from(feedHash) as number[] & { length: 32 },
+        maxStalenessSlots: new BN(maxStalenessSlots),
+      })
+      .accounts({
+        authority: this.proto.authority.publicKey,
+        protocolConfig: this.proto.configPda,
+        assertion: a.pdas.assertion,
+        llmResolutionRound: a.pdas.llmRound,
+      })
+      .signers([this.proto.authority])
+      .rpc({ commitment: "confirmed" });
+  }
+
   fetchAssertion(a: Assertion) {
     return this.program.account.assertionAccount.fetch(a.pdas.assertion);
   }
@@ -630,6 +652,152 @@ describe("opal", () => {
     await ctx.disputeAssertion(a);
 
     expect(ctx.disputeAssertion(a)).rejects.toThrow();
+  });
+
+  it("configure_llm_round: stores oracle params on the round", async () => {
+    const a = ctx.newAssertion();
+    await ctx.createAssertion(a, "BTC > $200k by 2027", 200);
+    await ctx.disputeAssertion(a);
+
+    const queue = Keypair.generate().publicKey;
+    const feedHash = new Uint8Array(32).fill(0xab);
+
+    await ctx.configureLlmRound(a, queue, feedHash, 250);
+
+    const round = await ctx.fetchLlmRound(a);
+    expect(round.switchboardQueue.toBase58()).toBe(queue.toBase58());
+    expect(round.maxStalenessSlots.toNumber()).toBe(250);
+    expect(Buffer.from(round.switchboardFeedHash as Buffer).toString("hex")).toBe(
+      Buffer.from(feedHash).toString("hex"),
+    );
+  });
+
+  it("configure_llm_round: can be updated by authority", async () => {
+    const a = ctx.newAssertion();
+    await ctx.createAssertion(a, "ETH > $10k by 2026", 200);
+    await ctx.disputeAssertion(a);
+
+    const queue1 = Keypair.generate().publicKey;
+    const queue2 = Keypair.generate().publicKey;
+    const feedHash = new Uint8Array(32).fill(0x01);
+
+    await ctx.configureLlmRound(a, queue1, feedHash, 100);
+    await ctx.configureLlmRound(a, queue2, feedHash, 300);
+
+    const round = await ctx.fetchLlmRound(a);
+    expect(round.switchboardQueue.toBase58()).toBe(queue2.toBase58());
+    expect(round.maxStalenessSlots.toNumber()).toBe(300);
+  });
+
+  it("error: configureLlmRound rejects non-authority caller", async () => {
+    const a = ctx.newAssertion();
+    await ctx.createAssertion(a, "SOL > $1k", 200);
+    await ctx.disputeAssertion(a);
+
+    const impostor = Keypair.generate();
+    await fund(connection, impostor.publicKey, 1_000_000_000);
+
+    expect(
+      program.methods
+        .configureLlmRound({
+          switchboardQueue: Keypair.generate().publicKey,
+          switchboardFeedHash: Array.from(new Uint8Array(32)) as number[] & { length: 32 },
+          maxStalenessSlots: new BN(250),
+        })
+        .accounts({
+          authority: impostor.publicKey,
+          protocolConfig: proto.configPda,
+          assertion: a.pdas.assertion,
+          llmResolutionRound: a.pdas.llmRound,
+        })
+        .signers([impostor])
+        .rpc({ commitment: "confirmed" }),
+    ).rejects.toThrow();
+  });
+
+  it("error: configureLlmRound rejects wrong state (not disputed)", async () => {
+    const a = ctx.newAssertion();
+    await ctx.createAssertion(a, "State check", 200);
+    // assertion is ASSERTED, not PENDING_LLM
+
+    expect(
+      ctx.configureLlmRound(a, Keypair.generate().publicKey, new Uint8Array(32), 250),
+    ).rejects.toThrow();
+  });
+
+  it("error: submitLlmResolution rejects wrong state (not disputed)", async () => {
+    const a = ctx.newAssertion();
+    await ctx.createAssertion(a, "No dispute here", 200);
+    // assertion is ASSERTED, not PENDING_LLM
+
+    expect(
+      program.methods
+        .submitLlmResolution({
+          promptHash: Array.from(new Uint8Array(32)) as number[] & { length: 32 },
+        })
+        .accounts({
+          submitter: provider.wallet.publicKey,
+          protocolConfig: proto.configPda,
+          assertion: a.pdas.assertion,
+          llmResolutionRound: a.pdas.llmRound,
+          switchboardQueue: Keypair.generate().publicKey,
+          instructions: new PublicKey("Sysvar1nstructions1111111111111111111111111"),
+        })
+        .rpc({ commitment: "confirmed" }),
+    ).rejects.toThrow();
+  });
+
+  it("error: submitLlmResolution rejects mismatched queue", async () => {
+    const a = ctx.newAssertion();
+    await ctx.createAssertion(a, "Queue mismatch test", 200);
+    await ctx.disputeAssertion(a);
+
+    const configuredQueue = Keypair.generate().publicKey;
+    await ctx.configureLlmRound(a, configuredQueue, new Uint8Array(32).fill(1), 250);
+
+    const wrongQueue = Keypair.generate().publicKey;
+
+    expect(
+      program.methods
+        .submitLlmResolution({
+          promptHash: Array.from(new Uint8Array(32)) as number[] & { length: 32 },
+        })
+        .accounts({
+          submitter: provider.wallet.publicKey,
+          protocolConfig: proto.configPda,
+          assertion: a.pdas.assertion,
+          llmResolutionRound: a.pdas.llmRound,
+          switchboardQueue: wrongQueue,
+          instructions: new PublicKey("Sysvar1nstructions1111111111111111111111111"),
+        })
+        .rpc({ commitment: "confirmed" }),
+    ).rejects.toThrow();
+  });
+
+  it("error: submitLlmResolution rejects missing sigVerify instruction", async () => {
+    const a = ctx.newAssertion();
+    await ctx.createAssertion(a, "No oracle proof", 200);
+    await ctx.disputeAssertion(a);
+
+    const queue = Keypair.generate().publicKey;
+    await ctx.configureLlmRound(a, queue, new Uint8Array(32).fill(2), 250);
+
+    // queue matches but no sigVerify instruction at ix[0] — QuoteVerifier should reject
+    expect(
+      program.methods
+        .submitLlmResolution({
+          promptHash: Array.from(new Uint8Array(32)) as number[] & { length: 32 },
+        })
+        .accounts({
+          submitter: provider.wallet.publicKey,
+          protocolConfig: proto.configPda,
+          assertion: a.pdas.assertion,
+          llmResolutionRound: a.pdas.llmRound,
+          switchboardQueue: queue,
+          instructions: new PublicKey("Sysvar1nstructions1111111111111111111111111"),
+        })
+        .rpc({ commitment: "confirmed" }),
+    ).rejects.toThrow();
   });
 
   it("error: mismatched llmDispute account", async () => {

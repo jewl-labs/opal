@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 
 // !TBD: Switchboard fields below are placeholder scaffolding for future oracle integration.
+/// Tracks the Switchboard oracle parameters, outcome, and deadlines for one LLM resolution attempt.
 #[repr(C, packed)]
 #[account(zero_copy(unsafe))]
 pub struct LlmResolutionRound {

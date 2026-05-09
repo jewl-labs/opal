@@ -13,6 +13,7 @@ use crate::{
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
+/// Arguments for the `finalize_vote_resolution_placeholder` instruction.
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct FinalizeVoteResolutionPlaceholderArgs {
     pub outcome_code: u8,
@@ -24,6 +25,7 @@ enum StageWinner {
     LlmDisputer,
 }
 
+/// Accounts for the `finalize_vote_resolution_placeholder` instruction.
 #[derive(Accounts)]
 pub struct FinalizeVoteResolutionPlaceholder<'info> {
     pub authority: Signer<'info>,
@@ -104,6 +106,7 @@ pub struct FinalizeVoteResolutionPlaceholder<'info> {
 
 // !TBD: PLACEHOLDER — This instruction accepts a user-supplied outcome and distributes funds.
 // In production, vote resolution will be determined by actual vote tallying from MagicBlock.
+/// Finalizes vote resolution with a placeholder outcome and distributes all bonds. Authority-gated.
 pub fn handler(
     ctx: Context<FinalizeVoteResolutionPlaceholder>,
     args: FinalizeVoteResolutionPlaceholderArgs,
