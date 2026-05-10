@@ -7,6 +7,8 @@ pub const LLM_DISPUTE_SEED: &[u8] = b"llm_dispute";
 pub const VOTE_DISPUTE_SEED: &[u8] = b"vote_dispute";
 pub const LLM_ROUND_SEED: &[u8] = b"llm_round";
 pub const VOTE_ROUND_SEED: &[u8] = b"vote_round";
+pub const COMMITTED_VOTE_SEED: &[u8] = b"committed_vote";
+pub const VOTE_VAULT_SEED: &[u8] = b"vote_vault";
 
 pub const MAX_STATEMENT_LEN: usize = 280;
 pub const MAX_AUXILIARY_HASH_LEN: usize = 128;

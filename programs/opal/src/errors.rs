@@ -48,13 +48,33 @@ pub enum OpalError {
     #[msg("Invalid disputer token account")]
     InvalidDisputerTokenAccount,
 
-    // Vote 
+    // Vote
     #[msg("Vote is not open")]
     VoteNotOpen,
     #[msg("Voting window is still open")]
     VoteWindowNotClosed,
     #[msg("Challenge deadline is missing")]
     MissingChallengeDeadline,
+    #[msg("Vote has already been cast by this address")]
+    VoteAlreadyCast,
+    #[msg("Vote has not been revealed")]
+    VoteNotRevealed,
+    #[msg("Voting window has not opened yet")]
+    VoteWindowNotOpen,
+    #[msg("Vote commitment does not match the revealed values")]
+    InvalidVoteCommitment,
+    #[msg("Reveal window has not opened yet — voting is still active")]
+    RevealWindowNotOpen,
+    #[msg("Reveal window has closed")]
+    RevealWindowClosed,
+    #[msg("Vote reward has already been claimed")]
+    VoteRewardAlreadyClaimed,
+    #[msg("Voter did not vote with the majority outcome")]
+    VoterNotMajority,
+    #[msg("No votes were revealed before the deadline")]
+    NoVotesCast,
+    #[msg("Vote round has not been finalized yet")]
+    VoteNotFinalized,
 
     // Config / auth 
     #[msg("Caller is not authorized")]

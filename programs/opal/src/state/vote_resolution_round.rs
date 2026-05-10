@@ -30,6 +30,10 @@ pub struct VoteResolutionRound {
     pub voting_deadline: i64,
     pub reveal_deadline: i64,
     pub total_valid_weight: u128,
+    /// Sum of all voter bonds locked at cast time (revealed or not).
+    pub total_vote_bond: u128,
+    /// PUSD available for majority voter reward claims, set at finalization.
+    pub voter_reward_pool: u128,
     pub aggregate_votes: VotesPerOutcome,
     pub final_outcome: u8,
     pub bump: u8,
