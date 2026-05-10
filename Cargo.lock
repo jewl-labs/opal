@@ -1774,6 +1774,7 @@ dependencies = [
  "anchor-lang",
  "anchor-spl",
  "ephemeral-rollups-sdk",
+ "sha2 0.10.9",
  "switchboard-on-demand",
 ]
 

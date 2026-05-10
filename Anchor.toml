@@ -1,12 +1,12 @@
 [toolchain]
-package_manager = "bun"
+package_manager = "npm"
 
 [features]
 resolution = true
 skip-lint = false
 
 [programs.localnet]
-opal = "8NCcxyAzKiAHxJ9DMnADtxShYutS9w81wHcXqgCavTBy"
+opal = "72kZgK51BsRWaLVcMriBuskWbn4d5E4P9HVeV3oBFp2y"
 
 [registry]
 url = "https://api.apr.dev"
