@@ -23,25 +23,29 @@ pub use instructions::challenge_llm_resolution::ChallengeLlmResolution;
 pub use instructions::configure_llm_round::{ConfigureLlmRound, ConfigureLlmRoundArgs};
 pub use instructions::finalize_llm_resolution::FinalizeLlmResolution;
 pub use instructions::submit_llm_resolution::{SubmitLlmResolution, SubmitLlmResolutionArgs};
-#[cfg(feature = "mock_llm_resolution")]
+// Authority-gated; for local testing only. #[program] does not support #[cfg] on individual fns.
 pub use instructions::submit_mock_llm_resolution::{
     SubmitMockLlmResolution, SubmitMockLlmResolutionArgs,
 };
 
 // vote resolution
+pub use instructions::cast_vote::{CastVote, CastVoteArgs};
+pub use instructions::claim_vote_reward::ClaimVoteReward;
+pub use instructions::finalize_vote_resolution::FinalizeVoteResolution;
 pub use instructions::finalize_vote_resolution_placeholder::{
     FinalizeVoteResolutionPlaceholder, FinalizeVoteResolutionPlaceholderArgs,
 };
 pub use instructions::open_vote::OpenVote;
+pub use instructions::reveal_vote::{RevealVote, RevealVoteArgs};
 
-declare_id!("8NCcxyAzKiAHxJ9DMnADtxShYutS9w81wHcXqgCavTBy");
+declare_id!("72kZgK51BsRWaLVcMriBuskWbn4d5E4P9HVeV3oBFp2y");
 
 #[program]
 pub mod opal {
 
     use super::*;
 
-    // Protocol 
+    // Protocol
 
     pub fn initialize_protocol_config(
         ctx: Context<InitializeProtocolConfig>,
@@ -50,7 +54,7 @@ pub mod opal {
         instructions::initialize_protocol_config::handler(ctx, args)
     }
 
-    // Assertion lifecycle 
+    // Assertion lifecycle
 
     pub fn create_assertion(
         ctx: Context<CreateAssertion>,
@@ -67,7 +71,7 @@ pub mod opal {
         instructions::dispute_assertion::handler(ctx)
     }
 
-    // LLM resolution 
+    // LLM resolution
 
     pub fn configure_llm_round(
         ctx: Context<ConfigureLlmRound>,
@@ -83,7 +87,6 @@ pub mod opal {
         instructions::submit_llm_resolution::handler(ctx, args)
     }
 
-    #[cfg(feature = "mock_llm_resolution")]
     pub fn submit_mock_llm_resolution(
         ctx: Context<SubmitMockLlmResolution>,
         args: SubmitMockLlmResolutionArgs,
@@ -99,10 +102,26 @@ pub mod opal {
         instructions::challenge_llm_resolution::handler(ctx)
     }
 
-    // Vote resolution 
+    // Vote resolution
 
     pub fn open_vote(ctx: Context<OpenVote>) -> Result<()> {
         instructions::open_vote::handler(ctx)
+    }
+
+    pub fn cast_vote(ctx: Context<CastVote>, args: CastVoteArgs) -> Result<()> {
+        instructions::cast_vote::handler(ctx, args)
+    }
+
+    pub fn reveal_vote(ctx: Context<RevealVote>, args: RevealVoteArgs) -> Result<()> {
+        instructions::reveal_vote::handler(ctx, args)
+    }
+
+    pub fn finalize_vote_resolution(ctx: Context<FinalizeVoteResolution>) -> Result<()> {
+        instructions::finalize_vote_resolution::handler(ctx)
+    }
+
+    pub fn claim_vote_reward(ctx: Context<ClaimVoteReward>) -> Result<()> {
+        instructions::claim_vote_reward::handler(ctx)
     }
 
     pub fn finalize_vote_resolution_placeholder(

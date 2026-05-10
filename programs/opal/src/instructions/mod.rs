@@ -11,12 +11,15 @@ pub mod challenge_llm_resolution;
 pub mod configure_llm_round;
 pub mod finalize_llm_resolution;
 pub mod submit_llm_resolution;
-#[cfg(feature = "mock_llm_resolution")]
 pub mod submit_mock_llm_resolution;
 
 // vote resolution
+pub mod cast_vote;
+pub mod claim_vote_reward;
+pub mod finalize_vote_resolution;
 pub mod finalize_vote_resolution_placeholder;
 pub mod open_vote;
+pub mod reveal_vote;
 
 // Re-exports
 
@@ -38,11 +41,18 @@ pub use configure_llm_round::*;
 pub use finalize_llm_resolution::*;
 #[allow(ambiguous_glob_reexports)]
 pub use submit_llm_resolution::*;
-#[cfg(feature = "mock_llm_resolution")]
 #[allow(ambiguous_glob_reexports)]
 pub use submit_mock_llm_resolution::*;
 
 #[allow(ambiguous_glob_reexports)]
+pub use cast_vote::*;
+#[allow(ambiguous_glob_reexports)]
+pub use claim_vote_reward::*;
+#[allow(ambiguous_glob_reexports)]
+pub use finalize_vote_resolution::*;
+#[allow(ambiguous_glob_reexports)]
 pub use finalize_vote_resolution_placeholder::*;
 #[allow(ambiguous_glob_reexports)]
 pub use open_vote::*;
+#[allow(ambiguous_glob_reexports)]
+pub use reveal_vote::*;

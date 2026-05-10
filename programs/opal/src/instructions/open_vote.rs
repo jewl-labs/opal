@@ -1,17 +1,19 @@
 use crate::{
     constants::{
-        ASSERTION_SEED, ASSERTION_STATE_PENDING_VOTE, ASSERTION_STATE_VOTING, BOOL_TRUE,
-        PROTOCOL_CONFIG_SEED, VOTE_ROUND_SEED,
+        ASSERTION_SEED, ASSERTION_STATE_PENDING_VOTE, ASSERTION_STATE_VOTING, PROTOCOL_CONFIG_SEED,
+        VOTE_ROUND_SEED, VOTE_VAULT_SEED,
     },
     errors::OpalError,
     state::{AssertionAccount, ProtocolConfig, VoteResolutionRound},
     utils::checked_add_i64,
 };
 use anchor_lang::prelude::*;
+use anchor_spl::token::{Mint, Token, TokenAccount};
 
 /// Accounts for the `open_vote` instruction.
 #[derive(Accounts)]
 pub struct OpenVote<'info> {
+    #[account(mut)]
     pub authority: Signer<'info>,
 
     #[account(
@@ -19,6 +21,8 @@ pub struct OpenVote<'info> {
         bump,
     )]
     pub protocol_config: AccountLoader<'info, ProtocolConfig>,
+
+    pub pusd_mint: Account<'info, Mint>,
 
     #[account(
         mut,
@@ -33,9 +37,23 @@ pub struct OpenVote<'info> {
         bump = vote_resolution_round.load()?.bump,
     )]
     pub vote_resolution_round: AccountLoader<'info, VoteResolutionRound>,
+
+    /// Holds voter PUSD bonds for this round. Initialized here so cast_vote can transfer into it.
+    #[account(
+        init,
+        payer = authority,
+        token::mint = pusd_mint,
+        token::authority = vote_resolution_round,
+        seeds = [VOTE_VAULT_SEED, vote_resolution_round.key().as_ref()],
+        bump,
+    )]
+    pub vote_vault: Account<'info, TokenAccount>,
+
+    pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
 }
 
-/// Opens the voting window on a challenged assertion and sets voting deadlines.
+/// Opens the voting window: sets all deadlines and initializes the vote vault. Permissionless.
 pub fn handler(ctx: Context<OpenVote>) -> Result<()> {
     // !TBD: auth policy for open_vote is undecided. Currently permissionless for liveness.
     let assertion = ctx.accounts.assertion.load()?;
@@ -55,13 +73,14 @@ pub fn handler(ctx: Context<OpenVote>) -> Result<()> {
     let protocol_config = ctx.accounts.protocol_config.load()?;
     let voting_starts_at = checked_add_i64(now, protocol_config.vote_setup_window_seconds)?;
     let voting_deadline = checked_add_i64(voting_starts_at, protocol_config.voting_window_seconds)?;
+    let reveal_deadline =
+        checked_add_i64(voting_deadline, protocol_config.vote_reveal_window_seconds)?;
+    drop(protocol_config);
 
     let vote_round = &mut ctx.accounts.vote_resolution_round.load_mut()?;
     vote_round.voting_starts_at = voting_starts_at;
     vote_round.voting_deadline = voting_deadline;
-    vote_round.reveal_deadline = voting_deadline;
-    // !TBD: PLACEHOLDER — MagicBlock delegation is currently a no-op (delegated=true but no ER tx).
-    vote_round.delegated = BOOL_TRUE;
+    vote_round.reveal_deadline = reveal_deadline;
 
     let assertion = &mut ctx.accounts.assertion.load_mut()?;
     assertion.state = ASSERTION_STATE_VOTING;

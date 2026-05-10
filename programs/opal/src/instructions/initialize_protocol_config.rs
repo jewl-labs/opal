@@ -22,6 +22,7 @@ pub struct InitializeProtocolConfigArgs {
     pub llm_challenge_window_seconds: i64,
     pub vote_setup_window_seconds: i64,
     pub voting_window_seconds: i64,
+    pub vote_reveal_window_seconds: i64,
 }
 
 /// Accounts for the `initialize_protocol_config` instruction.
@@ -82,7 +83,8 @@ pub fn handler(
         args.liveness_window_seconds > 0
             && args.llm_challenge_window_seconds > 0
             && args.vote_setup_window_seconds >= 0
-            && args.voting_window_seconds > 0,
+            && args.voting_window_seconds > 0
+            && args.vote_reveal_window_seconds > 0,
         OpalError::InvalidWindowConfiguration
     );
 
@@ -116,6 +118,7 @@ pub fn handler(
     config.llm_challenge_window_seconds = args.llm_challenge_window_seconds;
     config.vote_setup_window_seconds = args.vote_setup_window_seconds;
     config.voting_window_seconds = args.voting_window_seconds;
+    config.vote_reveal_window_seconds = args.vote_reveal_window_seconds;
     config.bump = ctx.bumps.protocol_config;
 
     Ok(())

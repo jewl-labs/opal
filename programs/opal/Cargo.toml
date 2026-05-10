@@ -22,6 +22,7 @@ custom-panic = []
 
 [dependencies]
 anchor-lang = { version = "0.32.1", features = [] }
+sha2 = { version = "0.10", default-features = false }
 anchor-spl = { version = "0.32.1", features = ["token"] }
 ephemeral-rollups-sdk = { version = "0.8.0", features = ["anchor", "access-control"] }
 switchboard-on-demand = "0.8.0"
