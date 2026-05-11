@@ -636,4 +636,40 @@ describe("opal-devnet", () => {
 
     ctx = new TestContext(program, provider, connection, token, proto);
   });
+
+  it(
+    "undisputed path: creates, waits, finalizes with correct payouts on devnet",
+    { timeout: 120_000 },
+    async () => {
+      const a = ctx.newAssertion();
+      const bond = 200;
+      const asserterStart = await balanceOf(connection, token.asserterAta);
+      const treasuryStart = await balanceOf(connection, proto.treasuryAta);
+
+      await ctx.createAssertion(a, "Bitcoin > $100k by 2026", bond, "hash123");
+
+      const acc = await ctx.fetchAssertion(a);
+      expect(acc.state).toBe(STATE.ASSERTED);
+      expect(acc.disputeCount).toBe(0);
+      expect(acc.outcome).toBe(OUTCOME.NONE);
+
+      await sleep(5000); // 3s liveness window + 2s buffer
+
+      await ctx.finalizeUndisputed(a);
+
+      const resolved = await ctx.fetchAssertion(a);
+      expect(resolved.state).toBe(STATE.RESOLVED);
+      expect(resolved.outcome).toBe(OUTCOME.TRUE);
+      expect(resolved.finalizedAt.toNumber()).toBeGreaterThan(0);
+
+      // fee = 200 * 250 / 10000 = 5
+      expect(await balanceOf(connection, token.asserterAta)).toBe(
+        asserterStart - bond + (bond - 5),
+      );
+      expect(await balanceOf(connection, proto.treasuryAta)).toBe(
+        treasuryStart + 5,
+      );
+    },
+  );
+});
 });
