@@ -1,11 +1,12 @@
-import CornerMarker from "../common/corner-marker";
+'use client';
+import { motion as m } from 'motion/react';
 
 export default function Consumer() {
   return (
     <>
-      <section className="relative overflow-x-clip px-4 py-32">
-        <div className="mb-16 max-w-3xl mx-auto">
-          <h2 className="mt-3 text-3xl font-bold tracking-tight text-balance text-center uppercase md:text-4xl">
+      <section className="relative overflow-x-clip px-4 py-24">
+        <div className="mx-auto mb-16 max-w-3xl">
+          <h2 className="mt-3 text-center text-3xl font-bold tracking-tight text-balance uppercase md:text-4xl">
             Built for integrators, challengers, and protocol operators
           </h2>
         </div>
@@ -43,7 +44,26 @@ export default function Consumer() {
             </article>
           ))}
         </div>
-        <CornerMarker position="bottom"/>
+        <m.span
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 0.2, repeat: Infinity }}
+          className="border-primary absolute bottom-4 left-4 z-20 size-4 border-b border-l"
+        />
+        <m.span
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 0.2, repeat: Infinity }}
+          className="border-primary absolute top-6 left-4 z-20 size-4 border-t border-l"
+        />
+        <m.span
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 0.2, repeat: Infinity }}
+          className="border-primary absolute right-4 bottom-4 z-20 size-4 border-r border-b"
+        />
+        <m.span
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 0.2, repeat: Infinity }}
+          className="border-primary absolute top-6 right-4 z-20 size-4 border-t border-r"
+        />
       </section>
       <span className="border-muted-foreground/50 top-screen pointer-events-none absolute right-0 left-0 z-20 h-0.5 w-screen border-b border-dashed" />
     </>

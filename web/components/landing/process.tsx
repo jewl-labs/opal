@@ -1,9 +1,10 @@
-import CornerMarker from '../common/corner-marker';
+'use client';
+import { motion as m } from 'motion/react';
 
 export default function Process() {
   return (
     <>
-      <section className="relative overflow-x-clip px-4 py-32">
+      <section className="relative overflow-x-clip px-4 py-24">
         <div className="mb-16 flex flex-col items-center gap-4">
           <h2 className="mt-3 text-3xl font-bold tracking-tight uppercase md:text-4xl">
             Resolution advances in three layers
@@ -41,7 +42,7 @@ export default function Process() {
                 Dispute
               </span>
             </header>
-            <div className="flex h-full flex-col items-center justify-end pb-12">
+            <div className=">pb-12 flex h-full flex-col items-center justify-end">
               <DisputeIllustration />
               <p className="text-muted-foreground mt-6 text-center text-xs text-balance uppercase">
                 First dispute opens the LLM round.
@@ -65,7 +66,26 @@ export default function Process() {
             </div>
           </article>
         </div>
-        <CornerMarker position="bottom" />
+        <m.span
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 0.2, repeat: Infinity }}
+          className="border-primary absolute bottom-4 left-4 z-20 size-4 border-b border-l"
+        />
+        <m.span
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 0.2, repeat: Infinity }}
+          className="border-primary absolute top-6 left-4 z-20 size-4 border-t border-l"
+        />
+        <m.span
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 0.2, repeat: Infinity }}
+          className="border-primary absolute right-4 bottom-4 z-20 size-4 border-r border-b"
+        />
+        <m.span
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 0.2, repeat: Infinity }}
+          className="border-primary absolute top-6 right-4 z-20 size-4 border-t border-r"
+        />
       </section>
       <span className="border-muted-foreground/50 top-screen pointer-events-none absolute right-0 left-0 z-20 h-0.5 w-screen border-b border-dashed" />
     </>

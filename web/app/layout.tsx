@@ -6,7 +6,7 @@ import Navbar from '@/components/common/navbar';
 import { ThemeProvider } from '@/providers/theme-provider';
 import { WalletProvider } from '@/providers/wallet-context';
 
-import { jetbrains } from './font';
+import { Disket, Excon } from './font';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -21,11 +21,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${jetbrains.className} h-full antialiased`}
-      suppressHydrationWarning
-    >
+    <html lang="en" className={`${Disket.className} h-full antialiased`} suppressHydrationWarning>
       <body className="relative overflow-x-clip">
         <ThemeProvider
           attribute="class"

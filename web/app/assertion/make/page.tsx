@@ -69,8 +69,7 @@ export default function MakeAssertion() {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'Enter') {
         e.preventDefault();
         prevSection();
-      }
-      else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         e.preventDefault();
         nextSection();
       }
@@ -90,7 +89,10 @@ export default function MakeAssertion() {
   // Note: bond === ASSERTION_BOND_PUSD check is redundant but kept for defensive validation
   // and potential future refactors where bond might be user-configurable
   const isValid =
-    statement.length >= 10 && !statement.endsWith('?') && bond === ASSERTION_BOND_PUSD && walletConnected;
+    statement.length >= 10 &&
+    !statement.endsWith('?') &&
+    bond === ASSERTION_BOND_PUSD &&
+    walletConnected;
 
   const buttonLabel = !walletConnected
     ? 'Connect Wallet to Assert'

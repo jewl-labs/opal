@@ -1,11 +1,12 @@
-import CornerMarker from "../common/corner-marker";
+'use client';
+import { motion as m } from 'motion/react';
 
 export default function ResolutionLayers() {
   return (
     <>
-      <section className="relative grid gap-8 overflow-x-clip px-4 py-32 md:grid-cols-5">
+      <section className="relative grid gap-8 overflow-x-clip px-4 py-24 md:grid-cols-5">
         <div className="col-span-3 flex flex-col justify-between gap-6">
-          <h2 className="mt-3 text-3xl font-bold tracking-tight text-center text-balance uppercase md:text-4xl">
+          <h2 className="mt-3 text-center text-3xl font-bold tracking-tight text-balance uppercase md:text-4xl">
             State determines the current answer
           </h2>
         </div>
@@ -42,7 +43,27 @@ export default function ResolutionLayers() {
             </article>
           ))}
         </div>
-        <CornerMarker position="bottom"/>
+
+        <m.span
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 0.2, repeat: Infinity }}
+          className="border-primary absolute bottom-4 left-4 z-20 size-4 border-b border-l"
+        />
+        <m.span
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 0.2, repeat: Infinity }}
+          className="border-primary absolute top-6 left-4 z-20 size-4 border-t border-l"
+        />
+        <m.span
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 0.2, repeat: Infinity }}
+          className="border-primary absolute right-4 bottom-4 z-20 size-4 border-r border-b"
+        />
+        <m.span
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 0.2, repeat: Infinity }}
+          className="border-primary absolute top-6 right-4 z-20 size-4 border-t border-r"
+        />
       </section>
       <span className="border-muted-foreground/50 top-screen pointer-events-none absolute right-0 left-0 z-20 h-0.5 w-screen border-b border-dashed" />
     </>

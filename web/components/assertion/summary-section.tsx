@@ -11,6 +11,18 @@ interface Props {
   formatExpiry: (n: number) => string;
 }
 
+function compactExpiry(expiry: string) {
+  const date = new Date(expiry);
+  if (Number.isNaN(date.getTime())) return expiry;
+
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date);
+}
+
 export default function SummarySection({
   open,
   statement,
@@ -35,47 +47,45 @@ export default function SummarySection({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="flex h-full flex-col justify-center p-6"
+            className="flex h-full flex-col justify-center p-6 md:p-7"
           >
-            <div className="grid grid-cols-[150px_1fr] gap-x-6 gap-y-4 text-sm md:text-sm">
-              <span className="text-muted-foreground/45">Statement</span>
-              <span className="text-muted-foreground/80 leading-snug">
-                {statement || <span className="text-muted-foreground/25">—</span>}
-              </span>
-
-              <span className="text-muted-foreground/45">Bond</span>
-              <span className="text-primary">{bond} PUSD</span>
-
-              <span className="text-muted-foreground/45">Window</span>
-              <span className="text-muted-foreground/80">{windowLabel}</span>
-
-              <span className="text-muted-foreground/45">Expires</span>
-              <span className="text-muted-foreground/70 text-sm md:text-sm">
-                {formatExpiry(windowValue)}
-              </span>
-
-              {auxiliaryData && (
-                <>
-                  <span className="text-muted-foreground/45">Aux hash</span>
-                  <span className="text-muted-foreground/60 text-sm md:text-sm">
-                    {hashPreview(auxiliaryData)}
-                  </span>
-                </>
-              )}
+            <div className="mx-auto max-w-3xl text-center">
+              <p className="text-foreground text-lg leading-relaxed md:text-xl">
+                {statement || <span className="text-muted-foreground/45">—</span>}
+              </p>
             </div>
 
-            <div className="border-muted-foreground/10 mt-6 grid grid-cols-2 gap-4 border-t border-dashed pt-5 text-xs md:text-xs">
-              <div className="text-muted-foreground/35">
-                <span className="text-muted-foreground/50 mb-1 block text-sm tracking-wider uppercase">
-                  If undisputed
-                </span>
-                Resolves TRUE · bond returned
+            <div className="mx-auto mt-6 grid w-full max-w-3xl grid-cols-2 gap-4 md:grid-cols-4">
+              <div className="min-w-0">
+                <div className="text-muted-foreground/75 text-[10px] tracking-[0.18em] uppercase">
+                  Bond
+                </div>
+                <div className="text-primary mt-1 text-sm">{bond} PUSD</div>
               </div>
-              <div className="text-muted-foreground/35">
-                <span className="text-muted-foreground/50 mb-1 block text-sm tracking-wider uppercase">
-                  If disputed
-                </span>
-                LLM resolution triggered
+
+              <div className="min-w-0">
+                <div className="text-muted-foreground/75 text-[10px] tracking-[0.18em] uppercase">
+                  Window
+                </div>
+                <div className="text-foreground mt-1 truncate text-sm">{windowLabel}</div>
+              </div>
+
+              <div className="min-w-0">
+                <div className="text-muted-foreground/75 text-[10px] tracking-[0.18em] uppercase">
+                  Expires
+                </div>
+                <div className="text-foreground mt-1 text-sm">
+                  {compactExpiry(formatExpiry(windowValue))}
+                </div>
+              </div>
+
+              <div className="min-w-0">
+                <div className="text-muted-foreground/75 text-[10px] tracking-[0.18em] uppercase">
+                  Aux Hash
+                </div>
+                <div className="text-foreground mt-1 truncate text-sm">
+                  {auxiliaryData ? hashPreview(auxiliaryData) : '—'}
+                </div>
               </div>
             </div>
           </m.div>

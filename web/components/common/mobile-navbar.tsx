@@ -59,7 +59,7 @@ export default function NavbarMobile() {
       className="bg-background fixed inset-x-0 top-16 z-10 flex flex-col gap-4 border-x border-b border-dashed p-8 shadow-lg"
     >
       <m.div variants={itemVariants}>
-        <Button variant="outline" className="uppercase w-full">
+        <Button variant="outline" className="w-full uppercase">
           Connect Wallet
         </Button>
       </m.div>
