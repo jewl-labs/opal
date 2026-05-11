@@ -671,5 +671,103 @@ describe("opal-devnet", () => {
       );
     },
   );
+
+  it(
+    "LLM resolution path: resolves via real Switchboard oracle on devnet",
+    { timeout: 300_000 },
+    async () => {
+      const a = ctx.newAssertion();
+      const bond = 200;
+
+      // 1. Create assertion
+      await ctx.createAssertion(a, "ETH flips BTC", bond, "abc");
+
+      // 2. Dispute within liveness (3s)
+      await ctx.disputeAssertion(a);
+      const llmRound = await ctx.fetchLlmRound(a);
+      expect(llmRound.outcome).toBe(OUTCOME.NONE);
+
+      // 3. Set up Switchboard feed and configure LLM round
+      const { feedHash, queuePubkey } = await setupSwitchboardFeed(
+        ctx.provider.wallet.payer,
+        connection,
+      );
+      await configureLlmRoundForSwitchboard(ctx, a, feedHash, queuePubkey, 300);
+
+      // 4. Generate a predictable prompt hash (SHA-256 of test prompt)
+      // For devnet testing, use a fixed 32-byte array
+      const promptHash = new Array(32).fill(0);
+      promptHash[0] = 1; // non-zero to distinguish from unset
+
+      // 5. Build and send the 2-ix Switchboard resolution transaction
+      const tx = await buildSwitchboardResolutionTx(
+        ctx,
+        a,
+        feedHash,
+        queuePubkey,
+        300,
+        promptHash,
+      );
+
+      // Sign with authority (fee payer and submitter)
+      tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+      const signedTx = await ctx.provider.wallet.signTransaction(tx);
+      const txSig = await connection.sendRawTransaction(signedTx.serialize(), {
+        skipPreflight: true,
+        maxRetries: 3,
+      });
+      await connection.confirmTransaction(txSig, "confirmed");
+
+      // 6. Verify LLM outcome was set
+      const updatedRound = await ctx.fetchLlmRound(a);
+      expect(updatedRound.outcome).not.toBe(OUTCOME.NONE);
+      expect(updatedRound.outcome).toBeLessThanOrEqual(3); // valid outcome codes 0-3
+
+      const updatedAssertion = await ctx.fetchAssertion(a);
+      expect(updatedAssertion.state).toBe(STATE.ASSERTED_LLM);
+
+      // 7. Wait for challenge window to close (30s + 5s buffer)
+      await sleep(35000);
+
+      // 8. Finalize LLM resolution
+      const asserterStart = await balanceOf(connection, token.asserterAta);
+      const llmDisputerStart = await balanceOf(connection, token.llmDisputerAta);
+      const treasuryStart = await balanceOf(connection, proto.treasuryAta);
+
+      await ctx.finalizeLlmResolution(a);
+
+      // 9. Verify resolution
+      const resolved = await ctx.fetchAssertion(a);
+      expect(resolved.state).toBe(STATE.RESOLVED);
+      expect(resolved.finalizedAt.toNumber()).toBeGreaterThan(0);
+
+      // 10. Verify payouts
+      // dispute_bond = bond * 5000 / 10000 = 100
+      // fee = bond * 250 / 10000 = 5
+      const disputeBond = 100;
+      const fee = 5;
+
+      // If LLM outcome is FALSE (1): disputer wins, gets dispute_bond + (assertion_bond - fee)
+      // If LLM outcome is TRUE (0): asserter wins, gets assertion_bond - fee
+      if (resolved.outcome === OUTCOME.FALSE) {
+        // Disputer wins
+        expect(await balanceOf(connection, token.llmDisputerAta)).toBe(
+          llmDisputerStart + disputeBond + (bond - fee),
+        );
+        expect(await balanceOf(connection, token.asserterAta)).toBe(
+          asserterStart - bond + (bond - fee), // doesn't change more
+        );
+      } else {
+        // Asserter wins (outcome TRUE)
+        expect(await balanceOf(connection, token.asserterAta)).toBe(
+          asserterStart - bond + (bond - fee) + (bond - fee) - disputeBond,
+        );
+      }
+      // Treasury always gets fee
+      expect(await balanceOf(connection, proto.treasuryAta)).toBe(
+        treasuryStart + fee,
+      );
+    },
+  );
 });
 });
