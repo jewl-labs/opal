@@ -6,6 +6,7 @@
     "gen:client": "codama run js",
     "test": "anchor build --features mock_llm_resolution && anchor test --skip-build",
     "resolver": "bun run resolver/server.ts",
+    "test:devnet": "bun test tests/opal.devnet.test.ts --timeout 600000",
     "keeper": "bun run client/submit-llm-resolution.ts"
   },
   "dependencies": {

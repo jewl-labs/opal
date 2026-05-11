@@ -7,6 +7,8 @@ skip-lint = false
 
 [programs.localnet]
 opal = "8NCcxyAzKiAHxJ9DMnADtxShYutS9w81wHcXqgCavTBy"
+[programs.devnet]
+opal = "8NCcxyAzKiAHxJ9DMnADtxShYutS9w81wHcXqgCavTBy"
 
 [registry]
 url = "https://api.apr.dev"
