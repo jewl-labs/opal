@@ -1,5 +1,13 @@
 import { describe, it, expect, beforeAll } from "bun:test";
-import { Connection, Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
+import {
+  Connection,
+  Keypair,
+  PublicKey,
+  SystemProgram,
+  Transaction,
+} from "@solana/web3.js";
+import { CrossbarClient } from "@switchboard-xyz/common";
+import { OracleQuote, Queue } from "@switchboard-xyz/on-demand";
 import * as anchor from "@coral-xyz/anchor";
 import { Program, AnchorProvider, Wallet, BN } from "@coral-xyz/anchor";
 import {
@@ -43,8 +51,18 @@ const OUTCOME = {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-const SWITCHBOARD_DEVNET_PROGRAM = "Aio4gaXjXzJNVLtzwtNVmSqGKpANtXhybbkhtAC94ji2";
-const DEFAULT_SWITCHBOARD_QUEUE = "EYiAmGSdsQTuCw413V5BzaruWuCCSDgTPtBGvLkXHbe7";
+const SWITCHBOARD_DEVNET_PROGRAM =
+  "Aio4gaXjXzJNVLtzwtNVmSqGKpANtXhybbkhtAC94ji2";
+const DEFAULT_SWITCHBOARD_QUEUE =
+  "EYiAmGSdsQTuCw413V5BzaruWuCCSDgTPtBGvLkXHbe7";
+
+const CROSSBAR_URL = "https://crossbar.switchboard.xyz";
+const SYSVAR_INSTRUCTIONS_PUBKEY = new PublicKey(
+  "Sysvar1nstructions1111111111111111111111111",
+);
+const cb = new CrossbarClient(CROSSBAR_URL);
+
+const SWITCHBOARD_QUEUE_PUBKEY = new PublicKey(DEFAULT_SWITCHBOARD_QUEUE);
 
 const DEVNET_PROGRAM_ID = "8NCcxyAzKiAHxJ9DMnADtxShYutS9w81wHcXqgCavTBy";
 
@@ -474,6 +492,94 @@ class TestContext {
   }
 }
 
+async function setupSwitchboardFeed(
+  _payer: Keypair,
+  _connection: Connection,
+): Promise<{ feedHash: Uint8Array; queuePubkey: PublicKey }> {
+  const envFeedHash =
+    Bun.env.SWITCHBOARD_FEED_HASH || process.env.SWITCHBOARD_FEED_HASH;
+  if (envFeedHash) {
+    const hex = envFeedHash.replace(/^0x/, "");
+    if (hex.length !== 64)
+      throw new Error(`Invalid SWITCHBOARD_FEED_HASH: expected 64 hex chars`);
+    const bytes = Buffer.from(hex, "hex");
+    return {
+      feedHash: new Uint8Array(bytes),
+      queuePubkey: SWITCHBOARD_QUEUE_PUBKEY,
+    };
+  }
+
+  throw new Error(
+    "SWITCHBOARD_FEED_HASH env var not set. " +
+      "Set it to a known devnet feed hash (64 hex chars) that returns integer values 0-3. " +
+      "Example: create a feed at https://ondemand.switchboard.xyz/devnet",
+  );
+}
+
+async function buildSwitchboardResolutionTx(
+  ctx: TestContext,
+  assertion: Assertion,
+  feedHash: Uint8Array,
+  queuePubkey: PublicKey,
+  _maxStalenessSlots: number,
+  promptHash: number[],
+): Promise<Transaction> {
+  const feedHashHexStr = `0x${Buffer.from(feedHash).toString("hex")}`;
+
+  const sbProgram = { provider: { connection: ctx.connection } } as any;
+  const queue = new Queue(sbProgram, queuePubkey);
+
+  const sigVerifyIx = await queue.fetchQuoteIx(cb, [feedHashHexStr], {
+    numSignatures: 1,
+    instructionIdx: 0,
+  });
+
+  const submitIx = await ctx.program.methods
+    .submitLlmResolution({
+      promptHash: promptHash as number[] & { length: 32 },
+    })
+    .accounts({
+      submitter: ctx.provider.wallet.publicKey,
+      protocolConfig: ctx.proto.configPda,
+      assertion: assertion.pdas.assertion,
+      llmResolutionRound: assertion.pdas.llmRound,
+      switchboardQueue: queuePubkey,
+      instructions: SYSVAR_INSTRUCTIONS_PUBKEY,
+    })
+    .instruction();
+
+  const tx = new Transaction();
+  tx.add(sigVerifyIx);
+  tx.add(submitIx);
+  tx.feePayer = ctx.provider.wallet.publicKey;
+
+  return tx;
+}
+
+async function configureLlmRoundForSwitchboard(
+  ctx: TestContext,
+  assertion: Assertion,
+  feedHash: Uint8Array,
+  queuePubkey: PublicKey,
+  maxStalenessSlots: number = 300,
+): Promise<string> {
+  return ctx.configureLlmRound(
+    assertion,
+    queuePubkey,
+    feedHash,
+    maxStalenessSlots,
+  );
+}
+
+function getSwitchboardQuotePubkey(feedHash: Uint8Array): PublicKey {
+  const feedHashHexStr = `0x${Buffer.from(feedHash).toString("hex")}`;
+  const [quotePubkey] = OracleQuote.getCanonicalPubkey(
+    SWITCHBOARD_QUEUE_PUBKEY,
+    [feedHashHexStr],
+  );
+  return quotePubkey;
+}
+
 describe("opal-devnet", () => {
   let provider: AnchorProvider;
   let connection: Connection;
@@ -484,7 +590,8 @@ describe("opal-devnet", () => {
 
   beforeAll(async () => {
     const rpcUrl =
-      Bun.env.SOLANA_RPC_URL || process.env.SOLANA_RPC_URL ||
+      Bun.env.SOLANA_RPC_URL ||
+      process.env.SOLANA_RPC_URL ||
       "https://api.devnet.solana.com";
     connection = new Connection(rpcUrl, "confirmed");
 
