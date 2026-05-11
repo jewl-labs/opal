@@ -769,5 +769,99 @@ describe("opal-devnet", () => {
       );
     },
   );
+
+  it(
+    "full escalation path: disputes, LLM, challenges, votes, resolves on devnet",
+    { timeout: 600_000 },
+    async () => {
+      const a = ctx.newAssertion();
+      const bond = 200;
+      const disputeBond = 100; // bond * 5000 / 10000
+      const voteDisputeBond = 60; // bond * 3000 / 10000
+      const fee = 5; // bond * 250 / 10000
+
+      // 1. Create assertion
+      await ctx.createAssertion(a, "SOL flips ETH in 2026", bond, "hash456");
+
+      // 2. Dispute within liveness window (3s)
+      await ctx.disputeAssertion(a);
+
+      // 3. Configure Switchboard and submit LLM resolution
+      const { feedHash, queuePubkey } = await setupSwitchboardFeed(
+        ctx.provider.wallet.payer,
+        connection,
+      );
+      await configureLlmRoundForSwitchboard(ctx, a, feedHash, queuePubkey, 300);
+
+      const promptHash = new Array(32).fill(0) as number[];
+      promptHash[1] = 1;
+
+      const tx = await buildSwitchboardResolutionTx(
+        ctx, a, feedHash, queuePubkey, 300, promptHash,
+      );
+      tx.feePayer = ctx.provider.wallet.publicKey;
+      tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+      const signedTx = await ctx.provider.wallet.signTransaction(tx);
+      const txSig = await connection.sendRawTransaction(
+        signedTx.serialize(), { skipPreflight: true, maxRetries: 3 }
+      );
+      await connection.confirmTransaction(txSig, "confirmed");
+
+      // 4. Wait for challenge window (30s + 5s buffer)
+      await sleep(35000);
+
+      // 5. Capture starting balances
+      const asserterStart = await balanceOf(connection, token.asserterAta);
+      const llmDisputerStart = await balanceOf(connection, token.llmDisputerAta);
+      const voteDisputerStart = await balanceOf(connection, token.voteDisputerAta);
+      const treasuryStart = await balanceOf(connection, proto.treasuryAta);
+
+      // 6. Challenge LLM resolution
+      await ctx.challengeLlmResolution(a);
+      const voteDispute = await ctx.fetchVoteDispute(a);
+      expect(voteDispute.bondAmountPusd.toNumber()).toBe(voteDisputeBond);
+
+      // 7. Open vote
+      await ctx.openVote(a);
+      const voteRound = await ctx.fetchVoteRound(a);
+      expect(voteRound.delegated).toBe(1);
+
+      // 8. Wait for voting window (60s setup + 300s voting + 10s buffer = 370s)
+      await sleep(370000);
+
+      // 9. Finalize vote resolution (authority supplies outcome)
+      // Use OUTCOME_FALSE so LLM disputer wins stage A, vote disputer correct (challenged LLM)
+      await ctx.finalizeVoteResolutionPlaceholder(a, OUTCOME.FALSE);
+
+      // 10. Verify resolved
+      const resolved = await ctx.fetchAssertion(a);
+      expect(resolved.state).toBe(STATE.RESOLVED);
+      expect(resolved.outcome).toBe(OUTCOME.FALSE);
+      expect(resolved.finalizedAt.toNumber()).toBeGreaterThan(0);
+
+      // 11. Both disputes settled
+      const llmDisputeFinal = await ctx.fetchLlmDispute(a);
+      const voteDisputeFinal = await ctx.fetchVoteDispute(a);
+      expect(llmDisputeFinal.settlementResolution).not.toBe(OUTCOME.NONE);
+      expect(voteDisputeFinal.settlementResolution).not.toBe(OUTCOME.NONE);
+
+      // 12. Verify payouts (all 4 parties)
+      // Stage A: LLM dispute — outcome is FALSE, so LLM disputer WINS
+      // Stage B: Vote dispute — challenged LLM, final=FALSE, LLM was right
+      // Vote disputer bond → goes to LLM stage winner minus fee
+      // LLM disputer gets: disputeBond + (bond - fee) + (voteDisputeBond - fee)
+      const llmDisputerExpected = llmDisputerStart + disputeBond + (bond - fee) + (voteDisputeBond - fee);
+      expect(await balanceOf(connection, token.llmDisputerAta)).toBe(llmDisputerExpected);
+
+      // Vote disputer: bond is slashed (goes to stage winner + treasury)
+      expect(await balanceOf(connection, token.voteDisputerAta)).toBe(
+        voteDisputerStart - voteDisputeBond,
+      );
+
+      // Treasury: gets fees from both stages
+      const treasuryExpected = treasuryStart + fee + fee;
+      expect(await balanceOf(connection, proto.treasuryAta)).toBe(treasuryExpected);
+    },
+  );
 });
 });
