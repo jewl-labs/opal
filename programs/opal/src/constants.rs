@@ -26,6 +26,8 @@ pub const OUTCOME_TOO_EARLY: u8 = 2; // reserved — not used in current resolut
 pub const OUTCOME_UNRESOLVABLE: u8 = 3; // reserved — not used in current resolution paths
 pub const OUTCOME_NONE: u8 = 255;
 
+pub const VOTE_RECORD_SEED: &[u8] = b"vote_record";
+
 // ── Sentinels for "unset" fields ──
 pub const TIMESTAMP_NONE: i64 = 0;
 pub const BOOL_FALSE: u8 = 0;
