@@ -1,26 +1,30 @@
 'use client';
 
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 
-import { ASSERTIONS } from '@/data/assertion';
+import { filterAssertionsByAddress } from '@/data/assertion';
 import { computeAssertionStats, topControversialAssertion } from '@/lib/assertion-stats';
 import { getTimeRemaining } from '@/lib/helpers';
 
 export default function Activity() {
-  const stats = computeAssertionStats(ASSERTIONS as any);
-  const top = topControversialAssertion(ASSERTIONS as any);
+  const params = useParams<{ address: string }>();
+  const address = Array.isArray(params?.address) ? params.address[0] : params?.address;
+  const assertions = filterAssertionsByAddress(address);
+  const stats = computeAssertionStats(assertions as any);
+  const top = topControversialAssertion(assertions as any);
 
   return (
     <div className="flex flex-col gap-8 px-4 py-6 sm:px-6 sm:py-8">
       <Hero top={top as any} stats={stats as any} />
-      <Stats stats={stats as any} assertions={ASSERTIONS as any} />
+      <Stats stats={stats as any} assertions={assertions as any} />
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-        <ProtocolActivity />
-        <ResolutionBreakdown />
-        <ReputationPanel />
+        <ProtocolActivity assertions={assertions as any} />
+        <ResolutionBreakdown assertions={assertions as any} />
+        <ReputationPanel assertions={assertions as any} />
       </div>
 
-      <RecentAssertions />
+      <RecentAssertions assertions={assertions as any} />
     </div>
   );
 }
@@ -99,33 +103,65 @@ function Stats({ stats, assertions }: { stats: any; assertions: any[] }) {
   );
 }
 
-function ProtocolActivity() {
-  const activity = [
-    {
-      title: 'ASSERTION CREATED',
-      description: 'kanye west delhi concert postponed',
-      time: '2H AGO',
-      color: 'bg-orange-400',
-    },
-    {
-      title: 'LLM DISPUTE OPENED',
-      description: 'fusion energy powers a city grid',
-      time: '5H AGO',
-      color: 'bg-red-400',
-    },
-    {
-      title: 'VOTING STARTED',
-      description: 'mars colony established by 2030',
-      time: '9H AGO',
-      color: 'bg-purple-400',
-    },
-    {
-      title: 'ASSERTION FINALIZED',
-      description: 'openai releases gpt-6 before 2027',
-      time: '1D AGO',
-      color: 'bg-green-400',
-    },
-  ];
+function ProtocolActivity({ assertions }: { assertions: any[] }) {
+  const activity = assertions
+    .flatMap((assertion) => {
+      const items = [] as {
+        title: string;
+        description: string;
+        time: string;
+        color: string;
+        timestamp: number;
+      }[];
+
+      if (assertion.createdAt) {
+        const ts = new Date(assertion.createdAt).getTime();
+        items.push({
+          title: 'ASSERTION CREATED',
+          description: assertion.statement,
+          time: new Date(ts).toLocaleDateString().toUpperCase(),
+          color: 'bg-orange-400',
+          timestamp: ts,
+        });
+      }
+
+      if (assertion.llmDispute?.createdAt) {
+        const ts = new Date(assertion.llmDispute.createdAt).getTime();
+        items.push({
+          title: 'LLM DISPUTE OPENED',
+          description: assertion.statement,
+          time: new Date(ts).toLocaleDateString().toUpperCase(),
+          color: 'bg-red-400',
+          timestamp: ts,
+        });
+      }
+
+      if (assertion.voteResolutionRound?.votingStartsAt) {
+        const ts = new Date(assertion.voteResolutionRound.votingStartsAt).getTime();
+        items.push({
+          title: 'VOTING STARTED',
+          description: assertion.statement,
+          time: new Date(ts).toLocaleDateString().toUpperCase(),
+          color: 'bg-purple-400',
+          timestamp: ts,
+        });
+      }
+
+      if (assertion.finalizedAt) {
+        const ts = new Date(assertion.finalizedAt).getTime();
+        items.push({
+          title: 'ASSERTION FINALIZED',
+          description: assertion.statement,
+          time: new Date(ts).toLocaleDateString().toUpperCase(),
+          color: 'bg-green-400',
+          timestamp: ts,
+        });
+      }
+
+      return items;
+    })
+    .sort((a, b) => b.timestamp - a.timestamp)
+    .slice(0, 4);
 
   return (
     <Panel title="Protocol Activity">
@@ -158,30 +194,51 @@ function ProtocolActivity() {
   );
 }
 
-function ResolutionBreakdown() {
+function ResolutionBreakdown({ assertions }: { assertions: any[] }) {
+  const counters = assertions.reduce(
+    (acc, assertion) => {
+      const raw = assertion.voteResolutionRound?.finalOutcome || assertion.outcome || 'PENDING';
+      const normalized = raw
+        .replace('TooEarly', 'TOO EARLY')
+        .replace('Unresolvable', 'UNRESOLVABLE')
+        .toUpperCase();
+
+      if (normalized === 'TRUE') acc.true += 1;
+      if (normalized === 'FALSE') acc.false += 1;
+      if (normalized === 'TOO EARLY') acc.tooEarly += 1;
+      if (normalized === 'UNRESOLVABLE') acc.unresolvable += 1;
+
+      return acc;
+    },
+    { true: 0, false: 0, tooEarly: 0, unresolvable: 0 }
+  );
+
+  const total = counters.true + counters.false + counters.tooEarly + counters.unresolvable || 1;
+  const pct = (value: number) => `${Math.round((value / total) * 100)}%`;
+
   const data = [
     {
       label: 'TRUE',
-      value: 18,
-      width: '72%',
+      value: counters.true,
+      width: pct(counters.true),
       color: 'bg-primary',
     },
     {
       label: 'FALSE',
-      value: 9,
-      width: '40%',
+      value: counters.false,
+      width: pct(counters.false),
       color: 'bg-red-400',
     },
     {
       label: 'TOO EARLY',
-      value: 3,
-      width: '18%',
+      value: counters.tooEarly,
+      width: pct(counters.tooEarly),
       color: 'bg-cyan-400',
     },
     {
       label: 'UNRESOLVABLE',
-      value: 2,
-      width: '12%',
+      value: counters.unresolvable,
+      width: pct(counters.unresolvable),
       color: 'bg-zinc-400',
     },
   ];
@@ -212,7 +269,30 @@ function ResolutionBreakdown() {
   );
 }
 
-function ReputationPanel() {
+function ReputationPanel({ assertions }: { assertions: any[] }) {
+  const { correct, incorrect } = assertions.reduce(
+    (acc, assertion) => {
+      if (assertion.llmDispute?.settled) {
+        assertion.llmDispute.disputeCorrect ? (acc.correct += 1) : (acc.incorrect += 1);
+      }
+      if (assertion.voteDispute?.settled) {
+        assertion.voteDispute.disputeCorrect ? (acc.correct += 1) : (acc.incorrect += 1);
+      }
+      return acc;
+    },
+    { correct: 0, incorrect: 0 }
+  );
+
+  const totalSettled = correct + incorrect;
+  const reputationScore = totalSettled > 0 ? Math.round((correct / totalSettled) * 100) : 0;
+  const alignment = totalSettled > 0 ? `${Math.round((correct / totalSettled) * 100)}%` : '—';
+  const assertionsOverturned = assertions.filter(
+    (assertion) =>
+      assertion.voteResolutionRound?.finalOutcome &&
+      assertion.outcome &&
+      assertion.voteResolutionRound.finalOutcome !== assertion.outcome
+  ).length;
+
   return (
     <Panel title="Oracle Reputation">
       <div className="flex flex-col gap-8">
@@ -220,32 +300,36 @@ function ReputationPanel() {
           <div className="flex flex-col">
             <span className="text-muted-foreground text-[10px] uppercase">Reputation Score</span>
 
-            <span className="text-primary text-6xl font-semibold tracking-tighter">78</span>
+            <span className="text-primary text-6xl font-semibold tracking-tighter">
+              {reputationScore}
+            </span>
           </div>
 
           <div className="flex flex-col items-end gap-1">
-            <span className="text-primary text-[8px] uppercase">HIGH ACCURACY</span>
+            <span className="text-primary text-[8px] uppercase">ACCURACY</span>
 
-            <span className="text-muted-foreground text-[10px] uppercase">TOP 12%</span>
+            <span className="text-muted-foreground text-[10px] uppercase">
+              {alignment === '—' ? 'NO HISTORY' : 'TOP 20%'}
+            </span>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-6">
-          <MiniMeta label="Correct Disputes" value="23" />
+          <MiniMeta label="Correct Disputes" value={String(correct)} />
 
-          <MiniMeta label="Incorrect Disputes" value="4" />
+          <MiniMeta label="Incorrect Disputes" value={String(incorrect)} />
 
-          <MiniMeta label="Vote Alignment" value="81%" />
+          <MiniMeta label="Vote Alignment" value={alignment} />
 
-          <MiniMeta label="Assertions Overturned" value="7" />
+          <MiniMeta label="Assertions Overturned" value={String(assertionsOverturned)} />
         </div>
       </div>
     </Panel>
   );
 }
 
-function RecentAssertions() {
-  const rows = ASSERTIONS.slice(0, 6).map((a) => ({
+function RecentAssertions({ assertions }: { assertions: any[] }) {
+  const rows = assertions.slice(0, 6).map((a) => ({
     id: a.id,
     statement: a.statement,
     stage: a.state,

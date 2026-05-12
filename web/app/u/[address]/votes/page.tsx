@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { useState } from 'react';
 
-import { ASSERTIONS } from '@/data/assertion';
+import { filterAssertionsByAddress } from '@/data/assertion';
 import { computeAssertionStats } from '@/lib/assertion-stats';
 
 type VoteStatus = 'ALL' | 'ACTIVE' | 'ALIGNED' | 'MISALIGNED';
@@ -20,10 +21,10 @@ interface VoteView {
 }
 
 // Derive votes from assertions with voteResolutionRound
-function deriveVotes(): VoteView[] {
+function deriveVotes(assertions: any[]): VoteView[] {
   const votes: VoteView[] = [];
 
-  ASSERTIONS.forEach((a) => {
+  assertions.forEach((a) => {
     if (a.voteResolutionRound) {
       const totalVotes = Object.values(a.voteResolutionRound.aggregateVotes).reduce(
         (sum, v) => sum + v,
@@ -82,11 +83,14 @@ const OUTCOME_COLOR: Record<string, string> = {
 };
 
 export default function VotesPage() {
+  const params = useParams<{ address: string }>();
+  const address = Array.isArray(params?.address) ? params.address[0] : params?.address;
+  const assertions = filterAssertionsByAddress(address);
   const [filter, setFilter] = useState<VoteStatus>('ALL');
   const [search, setSearch] = useState('');
 
-  const votes = deriveVotes();
-  const stats = computeAssertionStats(ASSERTIONS as any);
+  const votes = deriveVotes(assertions as any);
+  const stats = computeAssertionStats(assertions as any);
   const rows = votes.filter((v) => {
     const matchFilter = filter === 'ALL' || v.status === filter;
     const matchSearch = !search || v.statement.toLowerCase().includes(search.toLowerCase());

@@ -7,40 +7,42 @@ export default function Consumer() {
       <section className="relative overflow-x-clip px-4 py-24">
         <div className="mx-auto mb-16 max-w-3xl">
           <h2 className="mt-3 text-center text-3xl font-bold tracking-tight text-balance uppercase md:text-4xl">
-            Built for integrators, challengers, and protocol operators
+            Built for integrators
           </h2>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
           {[
             {
               title: 'Prediction markets',
-              text: 'Settle subjective markets only when the assertion reaches Resolved. Consumers can read the state machine and wait for the terminal outcome.',
+              text: 'Settle subjective markets only after the assertion reaches Resolved. Read the state machine and wait for the terminal outcome.',
             },
             {
               title: 'Disputers',
-              text: 'Challenge optimistic defaults or challenged LLM outputs for direct economic upside. The protocol is designed to reward accurate disputes.',
+              text: 'Challenge optimistic defaults or questionable LLM outputs for direct economic upside. The protocol rewards accurate disputes.',
             },
             {
               title: 'Builders',
-              text: 'One assertion PDA can expose the current state, round pointers, dispute count, and final answer for downstream applications.',
+              text: 'One assertion PDA exposes current state, round pointers, dispute count, and the final answer for downstream apps.',
             },
             {
               title: 'Future operators',
-              text: 'Switchboard, Nosana, and MagicBlock integrations are reserved in the accounts, but v1 does not require those systems to be live.',
+              text: 'Switchboard, Nosana, and MagicBlock integrations are reserved in accounts, but v1 does not require them to be live.',
             },
           ].map((item) => (
             <article
               key={item.title}
-              className="border-border/80 bg-background/70 border p-6 shadow-sm backdrop-blur"
+              className="border-border/50 hover:border-border bg-background/70 group flex h-full flex-col border border-dashed py-6 shadow-sm backdrop-blur transition duration-300 ease-out"
             >
-              <header className="border-muted-foreground/40 flex items-start justify-between gap-4 border-b border-dashed pb-4">
-                <h3 className="text-lg font-semibold tracking-tight uppercase">{item.title}</h3>
-                <span className="text-primary text-xs font-semibold tracking-[0.35em] uppercase">
+              <header className="border-border/50 group-hover:border-border flex items-center justify-between gap-4 border-b border-dashed px-6 pb-4">
+                <h3 className="text-xs font-semibold tracking-tight uppercase">{item.title}</h3>
+                <span className="text-muted-foreground group-hover:text-primary text-xs font-semibold tracking-[0.35em] uppercase transition duration-300 ease-out">
                   Opal
                 </span>
               </header>
-              <p className="text-muted-foreground mt-5 text-sm leading-7">{item.text}</p>
+              <p className="text-muted-foreground mt-5 px-6 text-xs text-balance leading-7 uppercase">
+                {item.text}
+              </p>
             </article>
           ))}
         </div>

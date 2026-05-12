@@ -6,7 +6,7 @@ import Navbar from '@/components/common/navbar';
 import { ThemeProvider } from '@/providers/theme-provider';
 import { WalletProvider } from '@/providers/wallet-context';
 
-import { Disket, Excon } from './font';
+import { Disket } from './font';
 import './globals.css';
 
 export const metadata: Metadata = {

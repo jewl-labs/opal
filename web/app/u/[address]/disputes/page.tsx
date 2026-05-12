@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { useState } from 'react';
 
-import { ASSERTIONS } from '@/data/assertion';
+import { filterAssertionsByAddress } from '@/data/assertion';
 import { computeAssertionStats } from '@/lib/assertion-stats';
 
 type DisputeStatus = 'ALL' | 'LLM' | 'VOTING' | 'WON' | 'LOST';
@@ -20,10 +21,10 @@ interface DisputeView {
 }
 
 // Derive disputes from assertions
-function deriveDisputes(): DisputeView[] {
+function deriveDisputes(assertions: any[]): DisputeView[] {
   const disputes: DisputeView[] = [];
 
-  ASSERTIONS.forEach((a) => {
+  assertions.forEach((a) => {
     // LLM disputes
     if (a.llmDispute) {
       const status = a.llmDispute.settled ? (a.llmDispute.disputeCorrect ? 'WON' : 'LOST') : 'LLM';
@@ -83,11 +84,14 @@ const STATUS_META: Record<
 };
 
 export default function DisputesPage() {
+  const params = useParams<{ address: string }>();
+  const address = Array.isArray(params?.address) ? params.address[0] : params?.address;
+  const assertions = filterAssertionsByAddress(address);
   const [filter, setFilter] = useState<DisputeStatus>('ALL');
   const [search, setSearch] = useState('');
 
-  const disputes = deriveDisputes();
-  const stats = computeAssertionStats(ASSERTIONS as any);
+  const disputes = deriveDisputes(assertions as any);
+  const stats = computeAssertionStats(assertions as any);
   const rows = disputes.filter((d) => {
     const matchFilter = filter === 'ALL' || d.status === filter;
     const matchSearch = !search || d.statement.toLowerCase().includes(search.toLowerCase());

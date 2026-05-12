@@ -44,13 +44,10 @@ export default function StatementPage() {
 
   const handleDispute = () => {
     if (disputeReason.trim()) {
-      console.log('Dispute submitted:', { assertionId: id, reason: disputeReason });
       setDisputeReason('');
       setShowDisputeModal(false);
     }
   };
-
-  const totalBondPool = assertion.bondAmountPUSD * (1 + assertion.disputeCount);
 
   return (
     <Container className="border-muted-foreground/50 border-x border-dashed py-16">
@@ -179,6 +176,7 @@ export default function StatementPage() {
                     <Link
                       href={assertion.auxiliaryUrl}
                       target="_blank"
+                      rel="noreferrer noopener"
                       className="text-primary hover:text-primary/80 text-sm uppercase underline transition-colors"
                     >
                       Open Evidence Source →

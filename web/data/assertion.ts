@@ -323,3 +323,15 @@ export const ASSERTIONS: AssertionAccount[] = [
     createdAt: '2026-01-12T11:00:00Z',
   },
 ];
+
+export function filterAssertionsByAddress(address?: string | string[] | null) {
+  const normalized = Array.isArray(address) ? address[0] : address;
+  if (!normalized) return [];
+
+  return ASSERTIONS.filter((assertion) => {
+    if (assertion.asserter === normalized) return true;
+    if (assertion.llmDispute?.disputer === normalized) return true;
+    if (assertion.voteDispute?.disputer === normalized) return true;
+    return false;
+  });
+}

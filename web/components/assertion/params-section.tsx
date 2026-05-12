@@ -1,4 +1,4 @@
-import { Clock, ClockIcon } from '@phosphor-icons/react';
+import { ClockIcon } from '@phosphor-icons/react';
 import { AnimatePresence, motion as m } from 'motion/react';
 
 interface WindowOption {
@@ -29,15 +29,6 @@ function formatRelativeExpiry(expiryText: string) {
   }
 
   return hours > 0 ? `in ${hours}h` : 'soon';
-}
-
-function getWindowMeta(label: string) {
-  // single-accent minimal styling for all durations
-  return {
-    tone: 'border-muted-foreground/20 bg-transparent text-muted-foreground',
-    accent: 'bg-primary/60',
-    note: '',
-  };
 }
 
 export default function ParamsSection({

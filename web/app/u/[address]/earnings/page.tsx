@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { useState } from 'react';
 
-import { ASSERTIONS } from '@/data/assertion';
+import { filterAssertionsByAddress } from '@/data/assertion';
 import { computeAssertionStats } from '@/lib/assertion-stats';
 
 type EarningType = 'ALL' | 'DISPUTE_WIN' | 'VOTE_REWARD' | 'BOND_RETURN';
@@ -18,10 +19,10 @@ interface Earning {
 }
 
 // Derive earnings from assertions
-function deriveEarnings(): Earning[] {
+function deriveEarnings(assertions: any[]): Earning[] {
   const earnings: Earning[] = [];
 
-  ASSERTIONS.forEach((assertion) => {
+  assertions.forEach((assertion) => {
     // Dispute wins
     if (assertion.llmDispute?.settled && assertion.llmDispute?.disputeCorrect) {
       earnings.push({
@@ -90,12 +91,15 @@ const TYPE_META: Record<
 };
 
 export default function EarningsPage() {
+  const params = useParams<{ address: string }>();
+  const address = Array.isArray(params?.address) ? params.address[0] : params?.address;
+  const assertions = filterAssertionsByAddress(address);
   const [filter, setFilter] = useState<EarningType>('ALL');
   const [search, setSearch] = useState('');
 
-  const earnings = deriveEarnings();
+  const earnings = deriveEarnings(assertions as any);
 
-  const stats = computeAssertionStats(ASSERTIONS as any);
+  const stats = computeAssertionStats(assertions as any);
 
   const rows = earnings.filter((e) => {
     const matchFilter = filter === 'ALL' || e.type === filter;

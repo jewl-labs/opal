@@ -9,29 +9,29 @@ import HeroBackground from './background';
 export default function Hero() {
   return (
     <>
-      <section className="relative overflow-x-clip px-4 pt-28">
-        <div className="relative flex min-h-[77vh] translate-y-8 flex-col items-center gap-10 py-12 md:py-16">
+      <section className="relative overflow-x-clip px-4">
+        <div className="relative flex justify-center min-h-[90vh] translate-y-8 flex-col items-center gap-10 py-12 md:py-16">
           <div className="flex max-w-4xl flex-col items-center space-y-4">
             <p className="text-primary text-xs font-semibold tracking-[0.35em] uppercase">
               Solana-native optimistic oracle
             </p>
-            <h1 className="mt-4 text-center text-7xl font-bold tracking-tighter text-balance uppercase md:text-6xl">
+            <h1 className="mt-4 text-center text-4xl font-bold tracking-tighter text-balance uppercase md:text-6xl">
               Stake Your <span className="text-primary">Truth</span>
             </h1>
-            <p className="text-muted-foreground max-w-3xl text-center text-base leading-7 font-medium text-balance uppercase md:text-sm">
+            <p className="text-muted-foreground max-w-3xl text-center text-sm leading-7 font-medium text-balance uppercase md:text-sm">
               Opal resolves assertions through a default optimistic answer, a first LLM resolution
               round, and a final private voting escalation.
             </p>
           </div>
 
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <div className="flex flex-col gap-4 sm:flex-row w-full md:justify-center sm:items-center">
             <Link href="/assertion/make" className="w-full sm:w-auto">
-              <Button size="lg" className="w-full sm:px-8">
+              <Button size="lg" className="w-full sm:px-8 uppercase">
                 Make Assertion
               </Button>
             </Link>
             <Link href="/assertion/browse" className="w-full sm:w-auto">
-              <Button size="lg" variant="outline" className="w-full sm:px-8">
+              <Button size="lg" variant="outline" className="w-full sm:px-8 uppercase">
                 Browse Assertions
               </Button>
             </Link>

@@ -1,9 +1,10 @@
 'use client';
 
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { useState } from 'react';
 
-import { ASSERTIONS } from '@/data/assertion';
+import { filterAssertionsByAddress } from '@/data/assertion';
 import { computeAssertionStats } from '@/lib/assertion-stats';
 import { getTimeRemaining } from '@/lib/helpers';
 
@@ -21,8 +22,8 @@ interface AssertionView {
 }
 
 // Derive assertions from data
-function deriveAssertions(): AssertionView[] {
-  return ASSERTIONS.map((a) => {
+function deriveAssertions(assertions: any[]): AssertionView[] {
+  return assertions.map((a) => {
     const raw = (a.state || '').toLowerCase();
     let stateKey: AssertionStateFilter = 'ASSERTED';
 
@@ -69,20 +70,23 @@ const OUTCOME_COLOR: Record<string, string> = {
 };
 
 export default function AssertionsPage() {
+  const params = useParams<{ address: string }>();
+  const address = Array.isArray(params?.address) ? params.address[0] : params?.address;
+  const assertions = filterAssertionsByAddress(address);
   const [filter, setFilter] = useState<AssertionStateFilter>('ALL');
   const [search, setSearch] = useState('');
 
-  const assertions = deriveAssertions();
-  const stats = computeAssertionStats(ASSERTIONS as any);
-  const rows = assertions.filter((a) => {
+  const rowsSource = deriveAssertions(assertions as any);
+  const stats = computeAssertionStats(assertions as any);
+  const rows = rowsSource.filter((a) => {
     const matchFilter = filter === 'ALL' || a.state === filter;
     const matchSearch = !search || a.statement.toLowerCase().includes(search.toLowerCase());
     return matchFilter && matchSearch;
   });
 
   const countByState = (state: AssertionStateFilter): number => {
-    if (state === 'ALL') return assertions.length;
-    return assertions.filter((a) => a.state === state).length;
+    if (state === 'ALL') return rowsSource.length;
+    return rowsSource.filter((a) => a.state === state).length;
   };
 
   return (

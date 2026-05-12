@@ -2,8 +2,7 @@
 
 import { ReactNode, createContext, useContext, useState } from 'react';
 
-// Hardcoded default address
-const DEFAULT_WALLET_ADDRESS = '0x742d35Cc6634C0532925a3b844Bc9e7595f42bE2';
+import { MOCK_WALLET_ADDRESS } from '@/data/wallet';
 
 interface WalletContextType {
   currentAddress: string;
@@ -19,14 +18,14 @@ function isValidAddress(address: string): boolean {
 }
 
 export function WalletProvider({ children }: { children: ReactNode }) {
-  const [currentAddress, setCurrentAddress] = useState(DEFAULT_WALLET_ADDRESS);
+  const [currentAddress, setCurrentAddress] = useState(MOCK_WALLET_ADDRESS);
 
   const setValidatedAddress = (address: string) => {
     const trimmed = address.trim();
     if (isValidAddress(trimmed)) {
       setCurrentAddress(trimmed);
     } else {
-      setCurrentAddress(DEFAULT_WALLET_ADDRESS);
+      setCurrentAddress(MOCK_WALLET_ADDRESS);
     }
   };
 

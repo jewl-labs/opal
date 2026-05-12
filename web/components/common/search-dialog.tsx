@@ -31,6 +31,8 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
   const [attempted, setAttempted] = useState(false);
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const lastFocusedRef = useRef<HTMLElement | null>(null);
 
   const normalized = walletAddress.trim();
   const isInputValid = isValidSearchAddress(normalized);
@@ -38,13 +40,36 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
 
   useEffect(() => {
     if (!isOpen) return;
+    lastFocusedRef.current = document.activeElement as HTMLElement | null;
     inputRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
+      if (e.key === 'Tab') {
+        const dialog = dialogRef.current;
+        if (!dialog) return;
+        const focusables = dialog.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
   }, [isOpen, onClose]);
+
+  useEffect(() => {
+    if (isOpen) return;
+    lastFocusedRef.current?.focus?.();
+  }, [isOpen]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,6 +99,7 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="search-dialog-title"
+        ref={dialogRef}
       >
         {/* Top bar */}
         <div className="border-border flex items-center justify-between border-b px-4 py-3">
