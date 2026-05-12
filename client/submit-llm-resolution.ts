@@ -28,6 +28,7 @@ import * as os from "os";
 import * as path from "path";
 
 import type { Opal } from "../target/types/opal";
+import { OracleJob } from "@switchboard-xyz/common";
 
 // Seeds (mirror constants.rs)
 const SEEDS = {
@@ -90,7 +91,7 @@ function buildFeedJobDefinition(
   statement: string,
   auxiliaryHash: string,
 ): { jobJson: string; feedHash: Uint8Array } {
-  const job = {
+  const job = OracleJob.fromObject({
     tasks: [
       {
         httpTask: {
@@ -102,11 +103,11 @@ function buildFeedJobDefinition(
       },
       {
         jsonParseTask: {
-          path: "$.outcome_code",
+          path: "$.output.resolution_code",
         },
       },
     ],
-  };
+  });
   const jobJson = JSON.stringify(job);
   const feedHash = new Uint8Array(
     crypto.createHash("sha256").update(jobJson).digest(),
