@@ -21,6 +21,9 @@ pub struct InitializeProtocolConfigArgs {
     pub llm_challenge_window_seconds: i64,
     pub vote_setup_window_seconds: i64,
     pub voting_window_seconds: i64,
+    pub reveal_window_seconds: i64,
+    pub opal_mint: Pubkey,
+    pub min_quorum_weight: u64,
 }
 
 #[derive(Accounts)]
@@ -79,7 +82,8 @@ pub fn handler(
         args.liveness_window_seconds > 0
             && args.llm_challenge_window_seconds > 0
             && args.vote_setup_window_seconds >= 0
-            && args.voting_window_seconds > 0,
+            && args.voting_window_seconds > 0
+            && args.reveal_window_seconds > 0,
         OpalError::InvalidWindowConfiguration
     );
 
@@ -113,6 +117,9 @@ pub fn handler(
     config.llm_challenge_window_seconds = args.llm_challenge_window_seconds;
     config.vote_setup_window_seconds = args.vote_setup_window_seconds;
     config.voting_window_seconds = args.voting_window_seconds;
+    config.reveal_window_seconds = args.reveal_window_seconds;
+    config.opal_mint = args.opal_mint;
+    config.min_quorum_weight = args.min_quorum_weight;
     config.bump = ctx.bumps.protocol_config;
 
     Ok(())
