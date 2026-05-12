@@ -1279,6 +1279,11 @@ dependencies = [
  "anchor-lang",
  "anchor-spl",
  "ephemeral-rollups-sdk",
+<<<<<<< HEAD
+=======
+ "sha2 0.10.9",
+ "switchboard-on-demand",
+>>>>>>> d652c21 (add claim reward and finalize vote resolution)
 ]
 
 [[package]]

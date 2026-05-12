@@ -18,11 +18,17 @@ idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 anchor-debug = []
 custom-heap = []
 custom-panic = []
+test-mode = []
 
 [dependencies]
 anchor-lang = { version = "0.32.1", features = [] }
 anchor-spl = { version = "0.32.1", features = ["token"] }
 ephemeral-rollups-sdk = { version = "0.8.0", features = ["anchor", "access-control"] }
+<<<<<<< HEAD
+=======
+switchboard-on-demand = "0.8.0"
+sha2 = { version = "0.10", default-features = false }
+>>>>>>> d652c21 (add claim reward and finalize vote resolution)
 
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(target_os, values("solana"))'] }
