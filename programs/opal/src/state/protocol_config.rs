@@ -19,5 +19,8 @@ pub struct ProtocolConfig {
     pub llm_challenge_window_seconds: i64,
     pub vote_setup_window_seconds: i64,
     pub voting_window_seconds: i64,
+    pub reveal_window_seconds: i64,
+    pub opal_mint: Pubkey,
+    pub min_quorum_weight: u64,
     pub bump: u8,
 }

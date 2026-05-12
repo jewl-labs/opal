@@ -30,5 +30,6 @@ pub struct VoteResolutionRound {
     pub total_valid_weight: u128,
     pub aggregate_votes: VotesPerOutcome,
     pub final_outcome: u8,
+    pub voter_reward_pool: u64,
     pub bump: u8,
 }
