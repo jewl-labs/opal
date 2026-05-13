@@ -125,7 +125,9 @@ pub fn handler(ctx: Context<ClaimVoteReward>) -> Result<()> {
         &bump_bytes,
     ]];
 
-    // Return the full OPAL balance to the voter regardless of outcome.
+    // Transfer the live escrow balance (not the snapshot) so close_account
+    // always sees a zero balance, even if dust was sent to the PDA externally.
+    let escrow_balance = ctx.accounts.opal_escrow.amount;
     token::transfer(
         CpiContext::new_with_signer(
             ctx.accounts.token_program.to_account_info(),
@@ -136,7 +138,7 @@ pub fn handler(ctx: Context<ClaimVoteReward>) -> Result<()> {
             },
             record_signer_seeds,
         ),
-        opal_weight,
+        escrow_balance,
     )?;
 
     // Close the OPAL escrow — rent lamports go back to voter.
