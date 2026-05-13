@@ -1,6 +1,6 @@
 use crate::{
     constants::{
-        ASSERTION_STATE_VOTING, BOOL_FALSE, BOOL_TRUE, OUTCOME_NONE, PROTOCOL_CONFIG_SEED,
+        BOOL_FALSE, BOOL_TRUE, OUTCOME_NONE, PROTOCOL_CONFIG_SEED,
         VOTE_RECORD_SEED, VOTE_ROUND_SEED,
     },
     errors::OpalError,
@@ -59,12 +59,6 @@ pub fn handler(ctx: Context<CastVote>, args: CastVoteArgs) -> Result<()> {
     let vote_round = ctx.accounts.vote_resolution_round.load()?;
 
     let assertion = vote_round.assertion;
-    let assertion_state = {
-        // We only have the vote_round here — check via its delegated state flag.
-        // State is enforced by checking vote_round timing windows instead of assertion directly.
-        ASSERTION_STATE_VOTING
-    };
-    let _ = assertion_state; // suppress unused warning
 
     require!(
         vote_round.delegated == BOOL_TRUE,

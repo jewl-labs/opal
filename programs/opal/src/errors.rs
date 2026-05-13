@@ -2,34 +2,45 @@ use anchor_lang::prelude::*;
 
 #[error_code]
 pub enum OpalError {
+    // State / timing
     #[msg("Invalid assertion state for this transition")]
     InvalidState,
     #[msg("Operation deadline has already passed")]
     DeadlinePassed,
     #[msg("Operation deadline has not been reached yet")]
     DeadlineNotReached,
+
+    // Assertion / dispute
     #[msg("Assertion has already been disputed")]
     AssertionAlreadyDisputed,
     #[msg("Vote dispute already exists")]
     VoteDisputeAlreadyExists,
+    #[msg("Dispute has already been settled")]
+    AlreadySettled,
+
+    // Oracle / outcome
     #[msg("LLM outcome is missing")]
     LlmOutcomeMissing,
     #[msg("Invalid outcome code")]
     InvalidOutcomeCode,
+    #[msg("Switchboard oracle quote verification failed")]
+    InvalidQuote,
+    #[msg("Feed account or hash does not match what was committed at dispute time")]
+    InvalidFeed,
+    #[msg("No feed data returned in the Switchboard oracle quote")]
+    NoFeedData,
+
+    // Math
     #[msg("Math overflow")]
     MathOverflow,
+
+    // Bond / token
     #[msg("Bond amount is below required minimum")]
     InsufficientBondAmount,
-    #[msg("Caller is not authorized")]
-    Unauthorized,
+    #[msg("Insufficient balance in bond vault")]
+    InsufficientVaultBalance,
     #[msg("Token mint does not match protocol config")]
     InvalidMint,
-<<<<<<< HEAD
-    #[msg("Protocol config invariants are invalid")]
-    ConfigInvariantViolation,
-    #[msg("Dispute has already been settled")]
-    AlreadySettled,
-=======
     #[msg("Invalid treasury token account")]
     InvalidTreasuryAccount,
     #[msg("Invalid asserter token account")]
@@ -38,7 +49,6 @@ pub enum OpalError {
     InvalidDisputerTokenAccount,
 
     // Vote
->>>>>>> b01045f (update constants and add error codes for voting)
     #[msg("Vote is not open")]
     VoteNotOpen,
     #[msg("Voting window is still open")]
@@ -69,10 +79,8 @@ pub enum OpalError {
     InvalidOpalTokenAccount,
     #[msg("Challenge deadline is missing")]
     MissingChallengeDeadline,
-<<<<<<< HEAD
-=======
 
-    // Config / auth 
+    // Config / auth
     #[msg("Caller is not authorized")]
     Unauthorized,
     #[msg("Protocol config invariants are invalid")]
@@ -87,25 +95,12 @@ pub enum OpalError {
     UndelegationFailed,
 
     // Validation
->>>>>>> b01045f (update constants and add error codes for voting)
     #[msg("Assertion statement exceeds max length")]
     StatementTooLong,
     #[msg("Auxiliary hash exceeds max length")]
     AuxiliaryHashTooLong,
-    #[msg("Invalid treasury token account")]
-    InvalidTreasuryAccount,
-    #[msg("Invalid asserter token account")]
-    InvalidAsserterTokenAccount,
-    #[msg("Invalid disputer token account")]
-    InvalidDisputerTokenAccount,
     #[msg("Assertion and related account link mismatch")]
     AssertionLinkMismatch,
     #[msg("Resolution round link mismatch")]
     RoundLinkMismatch,
-    #[msg("Insufficient balance in bond vault")]
-    InsufficientVaultBalance,
-    #[msg("Assertion bond minimum must be greater than zero")]
-    InvalidAssertionBondMinimum,
-    #[msg("Invalid window configuration")]
-    InvalidWindowConfiguration,
 }

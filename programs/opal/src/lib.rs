@@ -8,13 +8,20 @@ pub mod utils;
 
 pub use instructions::*;
 
-pub use instructions::challenge_llm_resolution::ChallengeLlmResolution;
+// protocol
+pub use instructions::initialize_protocol_config::{
+    InitializeProtocolConfig, InitializeProtocolConfigArgs,
+};
+
+// assertion lifecycle
 pub use instructions::create_assertion::{CreateAssertion, CreateAssertionArgs};
 pub use instructions::dispute_assertion::DisputeAssertion;
-pub use instructions::finalize_llm_resolution::FinalizeLlmResolution;
-<<<<<<< HEAD
 pub use instructions::finalize_undisputed::FinalizeUndisputed;
-=======
+
+// llm resolution
+pub use instructions::challenge_llm_resolution::ChallengeLlmResolution;
+pub use instructions::configure_llm_round::{ConfigureLlmRound, ConfigureLlmRoundArgs};
+pub use instructions::finalize_llm_resolution::FinalizeLlmResolution;
 pub use instructions::submit_llm_resolution::{SubmitLlmResolution, SubmitLlmResolutionArgs};
 pub use instructions::submit_mock_llm_resolution::{
     SubmitMockLlmResolution, SubmitMockLlmResolutionArgs,
@@ -24,19 +31,10 @@ pub use instructions::submit_mock_llm_resolution::{
 pub use instructions::cast_vote::{CastVote, CastVoteArgs};
 pub use instructions::claim_vote_reward::ClaimVoteReward;
 pub use instructions::finalize_vote_resolution::FinalizeVoteResolution;
->>>>>>> 9a3a0be (add open vote and undelegate vote round instructions)
 pub use instructions::finalize_vote_resolution_placeholder::{
     FinalizeVoteResolutionPlaceholder, FinalizeVoteResolutionPlaceholderArgs,
 };
-pub use instructions::initialize_protocol_config::{
-    InitializeProtocolConfig, InitializeProtocolConfigArgs,
-};
 pub use instructions::open_vote::OpenVote;
-<<<<<<< HEAD
-pub use instructions::submit_mock_llm_resolution::{
-    SubmitMockLlmResolution, SubmitMockLlmResolutionArgs,
-};
-=======
 pub use instructions::reveal_vote::{RevealVote, RevealVoteArgs};
 pub use instructions::undelegate_vote_round::UndelegateVoteRound;
 
@@ -44,7 +42,6 @@ pub use instructions::undelegate_vote_round::UndelegateVoteRound;
 pub use instructions::open_vote_mock::OpenVoteMock;
 #[cfg(feature = "test-mode")]
 pub use instructions::undelegate_vote_round_mock::UndelegateVoteRoundMock;
->>>>>>> 9a3a0be (add open vote and undelegate vote round instructions)
 
 declare_id!("8NCcxyAzKiAHxJ9DMnADtxShYutS9w81wHcXqgCavTBy");
 
@@ -53,12 +50,16 @@ pub mod opal {
 
     use super::*;
 
+    // Protocol
+
     pub fn initialize_protocol_config(
         ctx: Context<InitializeProtocolConfig>,
         args: InitializeProtocolConfigArgs,
     ) -> Result<()> {
         instructions::initialize_protocol_config::handler(ctx, args)
     }
+
+    // Assertion lifecycle
 
     pub fn create_assertion(
         ctx: Context<CreateAssertion>,
@@ -75,6 +76,22 @@ pub mod opal {
         instructions::dispute_assertion::handler(ctx)
     }
 
+    // LLM resolution
+
+    pub fn configure_llm_round(
+        ctx: Context<ConfigureLlmRound>,
+        args: ConfigureLlmRoundArgs,
+    ) -> Result<()> {
+        instructions::configure_llm_round::handler(ctx, args)
+    }
+
+    pub fn submit_llm_resolution(
+        ctx: Context<SubmitLlmResolution>,
+        args: SubmitLlmResolutionArgs,
+    ) -> Result<()> {
+        instructions::submit_llm_resolution::handler(ctx, args)
+    }
+
     pub fn submit_mock_llm_resolution(
         ctx: Context<SubmitMockLlmResolution>,
         args: SubmitMockLlmResolutionArgs,
@@ -89,6 +106,8 @@ pub mod opal {
     pub fn challenge_llm_resolution(ctx: Context<ChallengeLlmResolution>) -> Result<()> {
         instructions::challenge_llm_resolution::handler(ctx)
     }
+
+    // Vote resolution
 
     pub fn open_vote(ctx: Context<OpenVote>) -> Result<()> {
         instructions::open_vote::handler(ctx)
