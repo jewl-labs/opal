@@ -1,6 +1,6 @@
 use crate::{
     constants::{
-        BOOL_FALSE, BOOL_TRUE, OUTCOME_NONE, PROTOCOL_CONFIG_SEED,
+        BOOL_FALSE, BOOL_TRUE, OPAL_ESCROW_SEED, OUTCOME_NONE, PROTOCOL_CONFIG_SEED,
         VOTE_RECORD_SEED, VOTE_ROUND_SEED,
     },
     errors::OpalError,
@@ -8,7 +8,7 @@ use crate::{
     utils::is_timestamp_set,
 };
 use anchor_lang::prelude::*;
-use anchor_spl::token::TokenAccount;
+use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct CastVoteArgs {
@@ -42,13 +42,29 @@ pub struct CastVote<'info> {
     )]
     pub vote_record: AccountLoader<'info, VoteRecord>,
 
-    /// Voter's OPAL token account — balance is snapshotted as voting weight.
+    pub opal_mint: Account<'info, Mint>,
+
+    /// Voter's OPAL token account — balance is locked into escrow as voting weight.
     #[account(
-        token::mint = protocol_config.load()?.opal_mint,
+        mut,
+        token::mint = opal_mint,
         token::authority = voter,
+        constraint = opal_mint.key() == protocol_config.load()?.opal_mint @ OpalError::InvalidMint,
     )]
     pub voter_opal: Account<'info, TokenAccount>,
 
+    /// Escrow PDA that holds voter's OPAL for the duration of the vote round.
+    #[account(
+        init,
+        payer = voter,
+        token::mint = opal_mint,
+        token::authority = vote_record,
+        seeds = [OPAL_ESCROW_SEED, vote_resolution_round.key().as_ref(), voter.key().as_ref()],
+        bump,
+    )]
+    pub opal_escrow: Account<'info, TokenAccount>,
+
+    pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
 }
 
@@ -57,8 +73,6 @@ pub fn handler(ctx: Context<CastVote>, args: CastVoteArgs) -> Result<()> {
 
     let protocol_config = ctx.accounts.protocol_config.load()?;
     let vote_round = ctx.accounts.vote_resolution_round.load()?;
-
-    let assertion = vote_round.assertion;
 
     require!(
         vote_round.delegated == BOOL_TRUE,
@@ -76,12 +90,24 @@ pub fn handler(ctx: Context<CastVote>, args: CastVoteArgs) -> Result<()> {
         now < vote_round.voting_deadline,
         OpalError::CommitWindowClosed
     );
-    let _ = assertion;
     drop(vote_round);
     drop(protocol_config);
 
     let opal_weight = ctx.accounts.voter_opal.amount;
     require!(opal_weight > 0, OpalError::InsufficientBondAmount);
+
+    // Lock voter's entire OPAL balance into escrow to prevent double-spending.
+    token::transfer(
+        CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            Transfer {
+                from: ctx.accounts.voter_opal.to_account_info(),
+                to: ctx.accounts.opal_escrow.to_account_info(),
+                authority: ctx.accounts.voter.to_account_info(),
+            },
+        ),
+        opal_weight,
+    )?;
 
     let mut record = ctx.accounts.vote_record.load_init()?;
     record.voter = ctx.accounts.voter.key();

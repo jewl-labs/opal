@@ -20,9 +20,7 @@ pub use instructions::finalize_undisputed::FinalizeUndisputed;
 
 // llm resolution
 pub use instructions::challenge_llm_resolution::ChallengeLlmResolution;
-pub use instructions::configure_llm_round::{ConfigureLlmRound, ConfigureLlmRoundArgs};
 pub use instructions::finalize_llm_resolution::FinalizeLlmResolution;
-pub use instructions::submit_llm_resolution::{SubmitLlmResolution, SubmitLlmResolutionArgs};
 pub use instructions::submit_mock_llm_resolution::{
     SubmitMockLlmResolution, SubmitMockLlmResolutionArgs,
 };
@@ -77,20 +75,6 @@ pub mod opal {
     }
 
     // LLM resolution
-
-    pub fn configure_llm_round(
-        ctx: Context<ConfigureLlmRound>,
-        args: ConfigureLlmRoundArgs,
-    ) -> Result<()> {
-        instructions::configure_llm_round::handler(ctx, args)
-    }
-
-    pub fn submit_llm_resolution(
-        ctx: Context<SubmitLlmResolution>,
-        args: SubmitLlmResolutionArgs,
-    ) -> Result<()> {
-        instructions::submit_llm_resolution::handler(ctx, args)
-    }
 
     pub fn submit_mock_llm_resolution(
         ctx: Context<SubmitMockLlmResolution>,

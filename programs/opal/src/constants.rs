@@ -27,6 +27,7 @@ pub const OUTCOME_UNRESOLVABLE: u8 = 3; // reserved — not used in current reso
 pub const OUTCOME_NONE: u8 = 255;
 
 pub const VOTE_RECORD_SEED: &[u8] = b"vote_record";
+pub const OPAL_ESCROW_SEED: &[u8] = b"opal_escrow";
 
 // ── Sentinels for "unset" fields ──
 pub const TIMESTAMP_NONE: i64 = 0;

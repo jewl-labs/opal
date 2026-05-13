@@ -28,6 +28,7 @@ const SEEDS = {
   LLM_ROUND: Buffer.from("llm_round"),
   VOTE_ROUND: Buffer.from("vote_round"),
   VOTE_RECORD: Buffer.from("vote_record"),
+  OPAL_ESCROW: Buffer.from("opal_escrow"),
 };
 
 const STATE = {
@@ -110,6 +111,18 @@ function deriveVoteRecord(
 ): PublicKey {
   const [pk] = PublicKey.findProgramAddressSync(
     [SEEDS.VOTE_RECORD, voteRound.toBuffer(), voter.toBuffer()],
+    programId,
+  );
+  return pk;
+}
+
+function deriveOpalEscrow(
+  voteRound: PublicKey,
+  voter: PublicKey,
+  programId: PublicKey,
+): PublicKey {
+  const [pk] = PublicKey.findProgramAddressSync(
+    [SEEDS.OPAL_ESCROW, voteRound.toBuffer(), voter.toBuffer()],
     programId,
   );
   return pk;
@@ -510,6 +523,11 @@ class TestContext {
       voter.publicKey,
       this.program.programId,
     );
+    const opalEscrow = deriveOpalEscrow(
+      a.pdas.voteRound,
+      voter.publicKey,
+      this.program.programId,
+    );
     return this.program.methods
       .castVote({ commitHash })
       .accounts({
@@ -517,7 +535,10 @@ class TestContext {
         protocolConfig: this.proto.configPda,
         voteResolutionRound: a.pdas.voteRound,
         voteRecord,
+        opalMint: this.token.opalMint,
         voterOpal: voterOpalAta,
+        opalEscrow,
+        tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
       .signers([voter])
@@ -571,8 +592,14 @@ class TestContext {
     a: Assertion,
     voter: Keypair,
     voterPusdAta: PublicKey,
+    voterOpalAta: PublicKey,
   ) {
     const voteRecord = deriveVoteRecord(
+      a.pdas.voteRound,
+      voter.publicKey,
+      this.program.programId,
+    );
+    const opalEscrow = deriveOpalEscrow(
       a.pdas.voteRound,
       voter.publicKey,
       this.program.programId,
@@ -581,10 +608,13 @@ class TestContext {
       .claimVoteReward()
       .accounts({
         voter: voter.publicKey,
+        opalMint: this.token.opalMint,
         pusdMint: this.token.mint,
         assertion: a.pdas.assertion,
         voteResolutionRound: a.pdas.voteRound,
         voteRecord,
+        voterOpal: voterOpalAta,
+        opalEscrow,
         bondVault: a.pdas.bondVault,
         voterPusd: voterPusdAta,
         tokenProgram: TOKEN_PROGRAM_ID,
@@ -1083,7 +1113,7 @@ describe("opal", () => {
 
       // voter_reward_pool = 37 stays in vault
       const voterBefore = await balanceOf(connection, token.voterPusdAtas[0]);
-      await ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0]);
+      await ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0], token.voterOpalAtas[0]);
       // Single voter → gets all 37
       expect(await balanceOf(connection, token.voterPusdAtas[0])).toBe(
         voterBefore + 37,
@@ -1131,8 +1161,8 @@ describe("opal", () => {
       const v0Before = await balanceOf(connection, token.voterPusdAtas[0]);
       const v1Before = await balanceOf(connection, token.voterPusdAtas[1]);
 
-      await ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0]);
-      await ctx.claimVoteReward(a, token.voters[1], token.voterPusdAtas[1]);
+      await ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0], token.voterOpalAtas[0]);
+      await ctx.claimVoteReward(a, token.voters[1], token.voterPusdAtas[1], token.voterOpalAtas[1]);
 
       // voter0: 37 * 3000/5000 = 22; voter1: 37 * 2000/5000 = 14 (integer truncation)
       expect(await balanceOf(connection, token.voterPusdAtas[0])).toBe(
@@ -1182,6 +1212,9 @@ describe("opal", () => {
 
       const resolved = await ctx.fetchAssertion(a);
       expect(resolved.outcome).toBe(OUTCOME.TRUE);
+
+      await ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0], token.voterOpalAtas[0]);
+      await ctx.claimVoteReward(a, token.voters[2], token.voterPusdAtas[2], token.voterOpalAtas[2]);
     });
 
     it("open_vote_mock transitions assertion to VOTING state", async () => {
@@ -1252,6 +1285,10 @@ describe("opal", () => {
 
       const finalVr = await ctx.fetchVoteRound(a);
       expect(finalVr.finalOutcome).toBe(OUTCOME.UNRESOLVABLE);
+
+      await ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0], token.voterOpalAtas[0]);
+      await ctx.claimVoteReward(a, token.voters[1], token.voterPusdAtas[1], token.voterOpalAtas[1]);
+      await ctx.claimVoteReward(a, token.voters[2], token.voterPusdAtas[2], token.voterOpalAtas[2]);
     });
 
     it("no supermajority → UNRESOLVABLE (TRUE=60%, below 67% threshold)", async () => {
@@ -1286,6 +1323,9 @@ describe("opal", () => {
 
       const resolved = await ctx.fetchAssertion(a);
       expect(resolved.outcome).toBe(OUTCOME.UNRESOLVABLE);
+
+      await ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0], token.voterOpalAtas[0]);
+      await ctx.claimVoteReward(a, token.voters[1], token.voterPusdAtas[1], token.voterOpalAtas[1]);
     });
 
     it("zero reveals → quorum not met error", async () => {
@@ -1307,9 +1347,12 @@ describe("opal", () => {
 
       // total_valid_weight = 0 < min_quorum_weight = 1 → QuorumNotMet
       await expect(ctx.finalizeVoteResolution(a)).rejects.toThrow();
+
+      // Reveal deadline has passed — recover escrowed OPAL even without finalization.
+      await ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0], token.voterOpalAtas[0]);
     });
 
-    it("UNRESOLVABLE outcome: voters cannot claim reward (unresolvable bucket has no weight)", async () => {
+    it("UNRESOLVABLE outcome: voters reclaim escrowed OPAL (no PUSD, unresolvable bucket has no weight)", async () => {
       const a = ctx.newAssertion();
       await ctx.setupVoting(a, 500, OUTCOME.TRUE);
 
@@ -1332,10 +1375,10 @@ describe("opal", () => {
       const finalVr = await ctx.fetchVoteRound(a);
       expect(finalVr.finalOutcome).toBe(OUTCOME.UNRESOLVABLE);
 
-      // No one voted UNRESOLVABLE → winning bucket weight = 0 → claim fails
-      await expect(
-        ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0]),
-      ).rejects.toThrow();
+      // No one voted UNRESOLVABLE → winning bucket weight = 0 → no PUSD, but OPAL escrow returned
+      await ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0], token.voterOpalAtas[0]);
+      await ctx.claimVoteReward(a, token.voters[1], token.voterPusdAtas[1], token.voterOpalAtas[1]);
+      await ctx.claimVoteReward(a, token.voters[2], token.voterPusdAtas[2], token.voterOpalAtas[2]);
     });
   });
 
@@ -1356,7 +1399,8 @@ describe("opal", () => {
       const a = ctx.newAssertion();
       await ctx.setupVoting(a, 500, OUTCOME.TRUE);
 
-      const hash1 = computeCommitHash(OUTCOME.TRUE, randomNonce());
+      const nonce = randomNonce();
+      const hash1 = computeCommitHash(OUTCOME.TRUE, nonce);
       const hash2 = computeCommitHash(OUTCOME.FALSE, randomNonce());
 
       await ctx.castVote(a, token.voters[0], token.voterOpalAtas[0], hash1);
@@ -1364,6 +1408,13 @@ describe("opal", () => {
       await expect(
         ctx.castVote(a, token.voters[0], token.voterOpalAtas[0], hash2),
       ).rejects.toThrow();
+
+      // Cleanup: complete the cycle to return voter[0]'s escrowed OPAL.
+      await sleep(6000);
+      await ctx.revealVote(a, token.voters[0], OUTCOME.TRUE, nonce);
+      await sleep(6000);
+      await ctx.finalizeVoteResolution(a);
+      await ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0], token.voterOpalAtas[0]);
     });
 
     it("error: cast_vote with wrong OPAL mint", async () => {
@@ -1399,6 +1450,10 @@ describe("opal", () => {
       await expect(
         ctx.revealVote(a, token.voters[0], OUTCOME.TRUE, nonce),
       ).rejects.toThrow();
+
+      // Cleanup: wait past both windows, recover escrowed OPAL.
+      await sleep(11000);
+      await ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0], token.voterOpalAtas[0]);
     });
 
     it("error: reveal_vote after reveal_deadline", async () => {
@@ -1409,11 +1464,14 @@ describe("opal", () => {
       const hash = computeCommitHash(OUTCOME.TRUE, nonce);
       await ctx.castVote(a, token.voters[0], token.voterOpalAtas[0], hash);
 
-      await sleep(11000); // past both voting (3s) AND reveal (3s) windows
+      await sleep(11000); // past both voting (5s) AND reveal (5s) windows
 
       await expect(
         ctx.revealVote(a, token.voters[0], OUTCOME.TRUE, nonce),
       ).rejects.toThrow();
+
+      // Reveal deadline already passed — recover escrowed OPAL.
+      await ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0], token.voterOpalAtas[0]);
     });
 
     it("error: reveal_vote with wrong nonce", async () => {
@@ -1430,6 +1488,9 @@ describe("opal", () => {
       await expect(
         ctx.revealVote(a, token.voters[0], OUTCOME.TRUE, wrongNonce),
       ).rejects.toThrow();
+
+      await sleep(6000);
+      await ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0], token.voterOpalAtas[0]);
     });
 
     it("error: reveal_vote with wrong outcome (hash mismatch)", async () => {
@@ -1446,6 +1507,9 @@ describe("opal", () => {
       await expect(
         ctx.revealVote(a, token.voters[0], OUTCOME.FALSE, nonce),
       ).rejects.toThrow();
+
+      await sleep(6000);
+      await ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0], token.voterOpalAtas[0]);
     });
 
     it("error: reveal_vote twice for same voter", async () => {
@@ -1463,6 +1527,10 @@ describe("opal", () => {
       await expect(
         ctx.revealVote(a, token.voters[0], OUTCOME.TRUE, nonce),
       ).rejects.toThrow();
+
+      await sleep(6000);
+      await ctx.finalizeVoteResolution(a);
+      await ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0], token.voterOpalAtas[0]);
     });
 
     it("error: voter A cannot reveal voter B's vote", async () => {
@@ -1492,6 +1560,9 @@ describe("opal", () => {
           .signers([token.voters[1]])
           .rpc({ commitment: "confirmed" }),
       ).rejects.toThrow();
+
+      await sleep(6000);
+      await ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0], token.voterOpalAtas[0]);
     });
   });
 
@@ -1512,6 +1583,11 @@ describe("opal", () => {
 
       // Still in reveal window — should reject
       await expect(ctx.finalizeVoteResolution(a)).rejects.toThrow();
+
+      // Cleanup: wait for reveal window to close, finalize, claim.
+      await sleep(6000);
+      await ctx.finalizeVoteResolution(a);
+      await ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0], token.voterOpalAtas[0]);
     });
 
     it("error: finalize twice (already settled)", async () => {
@@ -1532,6 +1608,8 @@ describe("opal", () => {
 
       // Second call should fail
       await expect(ctx.finalizeVoteResolution(a)).rejects.toThrow();
+
+      await ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0], token.voterOpalAtas[0]);
     });
 
     it("error: finalizeVoteResolution wrong assertion state", async () => {
@@ -1571,10 +1649,10 @@ describe("opal", () => {
       const resolved = await ctx.fetchAssertion(a);
       expect(resolved.outcome).toBe(OUTCOME.TRUE);
 
-      // voter2 voted FALSE (wrong side) — cannot claim
-      await expect(
-        ctx.claimVoteReward(a, token.voters[2], token.voterPusdAtas[2]),
-      ).rejects.toThrow();
+      // voter2 voted FALSE (wrong side) — gets OPAL back, no PUSD reward
+      await ctx.claimVoteReward(a, token.voters[2], token.voterPusdAtas[2], token.voterOpalAtas[2]);
+      await ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0], token.voterOpalAtas[0]);
+      await ctx.claimVoteReward(a, token.voters[1], token.voterPusdAtas[1], token.voterOpalAtas[1]);
     });
 
     it("error: voter cannot claim twice", async () => {
@@ -1595,11 +1673,11 @@ describe("opal", () => {
       await ctx.finalizeVoteResolution(a);
 
       // First claim — succeeds
-      await ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0]);
+      await ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0], token.voterOpalAtas[0]);
 
       // Second claim — VoteRecord closed by `close = voter`, account gone
       await expect(
-        ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0]),
+        ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0], token.voterOpalAtas[0]),
       ).rejects.toThrow();
     });
 
@@ -1631,10 +1709,9 @@ describe("opal", () => {
       await sleep(6000);
       await ctx.finalizeVoteResolution(a);
 
-      // voter0 voted True (same as final outcome) but never revealed → no reward
-      await expect(
-        ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0]),
-      ).rejects.toThrow();
+      // voter0 never revealed → gets OPAL back, no PUSD reward
+      await ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0], token.voterOpalAtas[0]);
+      await ctx.claimVoteReward(a, token.voters[1], token.voterPusdAtas[1], token.voterOpalAtas[1]);
     });
 
     it("error: claim before finalize_vote_resolution is called", async () => {
@@ -1648,14 +1725,14 @@ describe("opal", () => {
         token.voterOpalAtas[0],
         computeCommitHash(OUTCOME.TRUE, nonce),
       );
-      await sleep(6000);
-      await ctx.revealVote(a, token.voters[0], OUTCOME.TRUE, nonce);
-      await sleep(6000);
-      // Do NOT call finalizeVoteResolution — voteRound.committed = 0
-
+      // Try to claim immediately — reveal_deadline has not passed and round is not committed.
       await expect(
-        ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0]),
+        ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0], token.voterOpalAtas[0]),
       ).rejects.toThrow();
+
+      // Cleanup: wait past both windows, recover escrowed OPAL.
+      await sleep(11000);
+      await ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0], token.voterOpalAtas[0]);
     });
   });
 
@@ -1691,7 +1768,7 @@ describe("opal", () => {
       );
 
       for (let i = 0; i < 3; i++) {
-        await ctx.claimVoteReward(a, token.voters[i], token.voterPusdAtas[i]);
+        await ctx.claimVoteReward(a, token.voters[i]!, token.voterPusdAtas[i]!, token.voterOpalAtas[i]!);
       }
 
       const balancesAfter = await Promise.all(
@@ -1736,6 +1813,8 @@ describe("opal", () => {
       expect(await balanceOf(connection, token.voteDisputerAta)).toBe(
         voteDisputerBefore + 110,
       );
+
+      await ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0], token.voterOpalAtas[0]);
     });
 
     it("treasury receives correct fee from both dispute stages", async () => {
@@ -1763,6 +1842,8 @@ describe("opal", () => {
       expect(await balanceOf(connection, proto.treasuryAta)).toBe(
         treasuryBefore + 9,
       );
+
+      await ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0], token.voterOpalAtas[0]);
     });
   });
 
@@ -1810,6 +1891,10 @@ describe("opal", () => {
       expect(record.revealed).toBe(0);
       expect(record.outcome).toBe(OUTCOME.NONE);
       expect(record.rewardClaimed).toBe(0);
+
+      // Cleanup: wait past reveal_deadline, recover escrowed OPAL.
+      await sleep(11000);
+      await ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0], token.voterOpalAtas[0]);
     });
 
     it("VoteRecord updated correctly after reveal_vote", async () => {
@@ -1827,6 +1912,11 @@ describe("opal", () => {
       expect(record.revealed).toBe(1);
       expect(record.outcome).toBe(OUTCOME.FALSE);
       expect(Buffer.from(record.nonce).equals(nonce)).toBe(true);
+
+      // Cleanup: finalize and claim to return escrowed OPAL.
+      await sleep(6000);
+      await ctx.finalizeVoteResolution(a);
+      await ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0], token.voterOpalAtas[0]);
     });
 
     it("VoteRecord closed and rent refunded after claim", async () => {
@@ -1850,7 +1940,7 @@ describe("opal", () => {
         "confirmed",
       );
 
-      await ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0]);
+      await ctx.claimVoteReward(a, token.voters[0], token.voterPusdAtas[0], token.voterOpalAtas[0]);
 
       // VoteRecord should no longer exist
       const voteRecordPk = deriveVoteRecord(
