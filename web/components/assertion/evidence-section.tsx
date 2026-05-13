@@ -34,30 +34,21 @@ export default function EvidenceSection({
             transition={{ duration: 0.2 }}
             className="flex h-full flex-col p-6"
           >
-<<<<<<< HEAD
-=======
             <div className="flex items-center gap-2">
               <FileTextIcon size={18} className="text-muted-foreground/50" />
               <span className="text-muted-foreground/50 text-sm md:text-sm">Auxiliary data</span>
             </div>
-<<<<<<< HEAD
->>>>>>> ba81415 (fix: resolved few more coderabbit reviews)
-            <Textarea
-              placeholder="Add supporting notes or links."
-=======
+            <Textarea placeholder="Add supporting notes or links." />{' '}
             <label htmlFor="auxiliary-data" className="sr-only">
               Auxiliary Data
             </label>
             <Textarea
               id="auxiliary-data"
               placeholder="Describe how this statement should be resolved. Include evidence sources, ambiguity handling, edge cases, and explicit criteria for TRUE vs FALSE outcomes."
->>>>>>> 272e5b5 (fix eslint and type imports)
               value={auxiliaryData}
               onChange={(e) => setAuxiliaryData(e.target.value)}
-<<<<<<< HEAD
               className="min-h-0 flex-1 resize-none text-sm leading-relaxed md:text-sm"
             />
-
             <div className="mt-3 flex items-center justify-between">
               <AnimatePresence mode="wait">
                 {!auxiliaryData && statementLength > 20 ? (
@@ -81,18 +72,6 @@ export default function EvidenceSection({
                 {auxiliaryData.length}
               </span>
             </div>
-=======
-              className="border-muted-foreground/30 focus-visible:border-primary/50 min-h-40 resize-none border border-dashed bg-transparent text-sm leading-relaxed focus-visible:ring-0 md:text-base"
-            />
-            <span className="text-muted-foreground/35 text-xs leading-relaxed md:text-sm">
-              Provide a resolution spec for adjudicators. Explain ambiguity rules, acceptable
-              sources, fallback assumptions, and any tie-break conditions. Only the content hash is
-              stored onchain.
-            </span>
-            {!auxiliaryData && statementLength > 20 && (
-              <Warning msg="No auxiliary data — higher chance of Unresolvable outcome" />
-            )}
->>>>>>> ba81415 (fix: resolved few more coderabbit reviews)
           </m.div>
         )}
       </AnimatePresence>

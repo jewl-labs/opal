@@ -70,7 +70,7 @@ export default function ActivityNavigation() {
 
   return (
     <Container className="bg-background border-muted-foreground/50 sticky top-16 z-20 border-b border-dashed">
-      <div className="scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent flex w-full items-center justify-between overflow-x-auto">
+      <div className="scrollbar-thumb-muted-foreground/20 flex w-full scrollbar-thin scrollbar-track-transparent items-center justify-between overflow-x-auto">
         <div className="flex w-max snap-x snap-mandatory gap-2 px-4 py-3 md:w-fit">
           {LINKS.map(({ label, path, icon: Icon }) => {
             const href = path ? `${basePath}/${path}` : basePath;

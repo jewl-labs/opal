@@ -43,35 +43,32 @@ export default function MakeAssertion() {
   const [createdAt] = useState(() => Date.now());
   const [window_, setWindow] = useState<(typeof WINDOWS)[number]>(WINDOWS[2]!);
   const [auxiliaryData, setAuxiliaryData] = useState('');
-  // !TBD: Wire up real wallet connection when adapter is integrated
   const [walletConnected] = useState(false);
 
   const toggle = (s: Section) => setOpen((prev) => (prev === s ? 'statement' : s));
-
-  const currentIndex = SECTION_ORDER.indexOf(open);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'Enter') {
         e.preventDefault();
-        prevSection();
+        setOpen((prev) => {
+          const idx = SECTION_ORDER.indexOf(prev);
+          const prevIdx = idx - 1;
+          return prevIdx >= 0 ? SECTION_ORDER[prevIdx]! : prev;
+        });
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         e.preventDefault();
-        nextSection();
-      }
-      else if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-        e.preventDefault();
-        const nextIdx = currentIndex + 1;
-        if (nextIdx < SECTION_ORDER.length) {
-          const next = SECTION_ORDER[nextIdx];
-          if (next) setOpen(next);
-        }
+        setOpen((prev) => {
+          const idx = SECTION_ORDER.indexOf(prev);
+          const nextIdx = idx + 1;
+          return nextIdx < SECTION_ORDER.length ? SECTION_ORDER[nextIdx]! : prev;
+        });
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentIndex]);
+  }, []);
 
   const statementWarning =
     statement.length > 0 && statement.length < 10
@@ -80,13 +77,7 @@ export default function MakeAssertion() {
         ? 'Use a declarative statement, not a question'
         : null;
 
-  // Note: bond === ASSERTION_BOND_PUSD check is redundant but kept for defensive validation
-  // and potential future refactors where bond might be user-configurable
-  const isValid =
-    statement.length >= 10 &&
-    !statement.endsWith('?') &&
-    bond === ASSERTION_BOND_PUSD &&
-    walletConnected;
+  const isValid = statement.length >= 10 && !statement.endsWith('?') && walletConnected;
 
   const buttonLabel = !walletConnected
     ? 'Connect Wallet to Assert'
@@ -142,7 +133,9 @@ export default function MakeAssertion() {
             onClick={() => toggle('evidence')}
             peek={
               auxiliaryData ? (
-                <span className="text-primary/60">{auxiliaryData.slice(0, 42)}...</span>
+                <span className="text-primary/60">
+                  {auxiliaryData.length > 42 ? auxiliaryData.slice(0, 42) + '...' : auxiliaryData}
+                </span>
               ) : statement.length > 20 ? (
                 <span className="text-amber-400/60">⚠ none attached</span>
               ) : undefined

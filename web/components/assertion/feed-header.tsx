@@ -51,7 +51,7 @@ export default function Header({
 }: HeaderProps) {
   return (
     <Container className="bg-background border-muted-foreground/50 sticky top-16 z-10 flex h-16 w-full items-center justify-center border-b border-dashed">
-      <div className="scrollbar-thin flex w-full items-center gap-2 overflow-x-auto px-4 py-1 whitespace-nowrap">
+      <div className="flex w-full scrollbar-thin items-center gap-2 overflow-x-auto px-4 py-1 whitespace-nowrap">
         <span
           id="feed-sort-label"
           className="text-muted-foreground text-[11px] tracking-[0.24em] uppercase"

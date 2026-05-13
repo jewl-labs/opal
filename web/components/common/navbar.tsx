@@ -10,15 +10,8 @@ import { useWallet } from '@/providers/wallet-context';
 
 import Container from '../common/container';
 import { Button } from '../ui/button';
-import CornerMarker from './corner-marker';
 import NavbarMobile from './mobile-navbar';
 import { SearchDialog } from './search-dialog';
-
-function shortenAddress(address: string) {
-  if (!address) return '';
-  if (address.length <= 12) return address;
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
-}
 
 export default function Navbar() {
   const [isMobileNavbarOpen, setIsMobileNavbarOpen] = useState<boolean>(false);
@@ -74,7 +67,6 @@ export default function Navbar() {
             {isMobileNavbarOpen ? <XIcon /> : <ListIcon />}
           </Button>
         </div>
-        <CornerMarker position="bottom" />
       </Container>
       <span className="border-muted-foreground/50 absolute right-0 bottom-0 left-0 h-0.5 border-b border-dashed" />
       <AnimatePresence mode="wait">{isMobileNavbarOpen && <NavbarMobile />}</AnimatePresence>
