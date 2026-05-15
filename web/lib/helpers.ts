@@ -6,6 +6,7 @@ export function getTimeRemaining(deadline?: string) {
   if (isNaN(diff) || diff < 0) return 'Expired';
 
   const totalSeconds = Math.floor(diff / 1000);
+  if (totalSeconds === 0) return 'Expired';
 
   const days = Math.floor(totalSeconds / 86400);
   const hours = Math.floor((totalSeconds % 86400) / 3600);
@@ -16,7 +17,7 @@ export function getTimeRemaining(deadline?: string) {
   if (days > 0) parts.push(`${days}d`);
   if (hours > 0) parts.push(`${hours}h`);
   if (minutes > 0) parts.push(`${minutes}m`);
-  if (seconds > 0 || parts.length === 0) parts.push(`${seconds}s`);
+  if (seconds > 0) parts.push(`${seconds}s`);
 
   return parts.length > 0 ? parts.join(' ') : 'Expired';
 }

@@ -10,7 +10,6 @@ import { useWallet } from '@/providers/wallet-context';
 
 import Container from '../common/container';
 import { Button } from '../ui/button';
-import CornerMarker from './corner-marker';
 import NavbarMobile from './mobile-navbar';
 import { SearchDialog } from './search-dialog';
 
@@ -43,25 +42,19 @@ export default function Navbar() {
           <Button
             type="button"
             variant="outline"
-            className="flex w-60 items-center justify-between"
-            size="md"
+            size="sm"
             onClick={() => setIsSearchOpen(true)}
+            className="w-64 justify-between px-3"
           >
-            <span>Search</span>
-            <kbd className="bg-muted rounded px-2 py-1 text-xs font-semibold">⌘ + K</kbd>
+            <div className="text-muted-foreground text-xs">Search</div>
+            <kbd className="bg-muted rounded text-xs font-semibold">⌘ + K</kbd>
           </Button>
-          {currentAddress ? (
-            <Link href={`/u/${currentAddress}`}>
-              <Button variant="outline" size="md">
-                Activity
-              </Button>
-            </Link>
-          ) : (
-            <Button variant="outline" size="md" disabled>
+          <Link href={`/u/${currentAddress}`}>
+            <Button variant="outline" size="sm">
               Activity
             </Button>
-          )}
-          <Button variant="outline" size="md">
+          </Link>
+          <Button variant="outline" size="sm">
             Connect Wallet
           </Button>
         </div>
@@ -74,7 +67,6 @@ export default function Navbar() {
             {isMobileNavbarOpen ? <XIcon /> : <ListIcon />}
           </Button>
         </div>
-        <CornerMarker position="bottom" />
       </Container>
       <span className="border-muted-foreground/50 absolute right-0 bottom-0 left-0 h-0.5 border-b border-dashed" />
       <AnimatePresence mode="wait">{isMobileNavbarOpen && <NavbarMobile />}</AnimatePresence>

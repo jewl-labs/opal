@@ -1,14 +1,10 @@
 'use client';
-
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
 import { XIcon } from '@phosphor-icons/react';
 
-import { useWallet } from '@/providers/wallet-context';
-
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
+import { cn } from '@/lib/utils';
 
 interface SearchDialogProps {
   isOpen: boolean;
@@ -18,85 +14,70 @@ interface SearchDialogProps {
 function isValidSearchAddress(value: string) {
   if (!value) return false;
   if (/\s/.test(value)) return false;
-
   const isEthAddress = /^0x[a-fA-F0-9]{40}$/.test(value);
   const isEnsName = /^(?!-)[a-z0-9-]{1,63}(?:\.[a-z0-9-]{2,63})+$/i.test(value);
   const isBase58Address = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(value);
-
   return isEthAddress || isEnsName || isBase58Address;
 }
 
+const ADDRESS_FORMATS = [
+  { label: 'ETH', hint: '0x…' },
+  { label: 'ENS', hint: '*.eth' },
+  { label: 'SOL', hint: 'base58' },
+];
+
 export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
   const [walletAddress, setWalletAddress] = useState('');
-  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
+  const [attempted, setAttempted] = useState(false);
   const router = useRouter();
-  const { setCurrentAddress } = useWallet();
-  const previousActiveElement = useRef<HTMLElement | null>(null);
-  const normalizedAddress = walletAddress.trim();
-  const isInputValid = isValidSearchAddress(normalizedAddress);
-  const showError = hasAttemptedSubmit && normalizedAddress.length > 0 && !isInputValid;
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const lastFocusedRef = useRef<HTMLElement | null>(null);
+
+  const normalized = walletAddress.trim();
+  const isInputValid = isValidSearchAddress(normalized);
+  const showError = attempted && normalized.length > 0 && !isInputValid;
 
   useEffect(() => {
     if (!isOpen) return;
-
-    // Store the element that had focus before opening dialog
-    previousActiveElement.current = document.activeElement as HTMLElement;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-        return;
-      }
-
-      // Focus trap: keep Tab/Shift+Tab within dialog
+    lastFocusedRef.current = document.activeElement as HTMLElement | null;
+    inputRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
       if (e.key === 'Tab') {
-        const dialog = document.querySelector('[role="dialog"]');
-        if (dialog) {
-          const focusableElements = dialog.querySelectorAll(
-            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-          );
-          const focusableArray = Array.from(focusableElements) as HTMLElement[];
-          const firstElement = focusableArray[0];
-          const lastElement = focusableArray[focusableArray.length - 1];
-          const activeElement = document.activeElement;
-
-          if (e.shiftKey) {
-            if (activeElement === firstElement) {
-              e.preventDefault();
-              lastElement?.focus();
-            }
-          } else {
-            if (activeElement === lastElement) {
-              e.preventDefault();
-              firstElement?.focus();
-            }
-          }
+        const dialog = dialogRef.current;
+        if (!dialog) return;
+        const focusables = dialog.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusables.length === 0) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
         }
       }
     };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      // Restore focus when dialog closes
-      if (previousActiveElement.current) {
-        previousActiveElement.current.focus();
-      }
-    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
   }, [isOpen, onClose]);
+
+  useEffect(() => {
+    if (isOpen) return;
+    lastFocusedRef.current?.focus?.();
+  }, [isOpen]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setHasAttemptedSubmit(true);
-
-    if (!isInputValid) {
-      return;
-    }
-
-    setCurrentAddress(normalizedAddress);
-    router.push(`/u/${encodeURIComponent(normalizedAddress)}`);
+    setAttempted(true);
+    if (!isInputValid) return;
+    router.push(`/u/${encodeURIComponent(normalized)}`);
     setWalletAddress('');
-    setHasAttemptedSubmit(false);
+    setAttempted(false);
     onClose();
   };
 
@@ -104,79 +85,117 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
 
   return (
     <div
-      className="bg-background/70 fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[2px]"
       onClick={onClose}
     >
       <div
-        className="bg-background/95 border-border/70 relative w-full max-w-xl overflow-hidden rounded-xl border shadow-2xl shadow-black/20 backdrop-blur-sm"
+        className={cn(
+          'relative mx-4 w-full max-w-110',
+          'bg-background border-border border',
+          'shadow-2xl shadow-black/40',
+          'animate-in fade-in-0 zoom-in-95 duration-150'
+        )}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="search-dialog-title"
+        ref={dialogRef}
       >
-        <div className="via-primary/70 pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent to-transparent" />
-        <Button
-          aria-label="Close"
-          variant="ghost"
-          onClick={onClose}
-          size="icon"
-          className="absolute top-3 right-3 rounded-full"
-        >
-          <XIcon weight="bold" />
-        </Button>
-
-        <div className="border-border/50 bg-muted/20 border-b px-5 py-4 sm:px-6">
-          <p
-            id="search-dialog-title"
-            className="text-foreground text-xs font-medium tracking-[0.22em] uppercase"
+        {/* Top bar */}
+        <div className="border-border flex items-center justify-between border-b px-4 py-3">
+          <div className="flex items-center gap-2.5">
+            <span className="bg-muted-foreground/30 size-1.5 rounded-full" />
+            <span
+              id="search-dialog-title"
+              className="text-muted-foreground font-mono text-[11px] font-medium tracking-[0.12em] uppercase"
+            >
+              search profiles
+            </span>
+          </div>
+          <button
+            aria-label="Close"
+            onClick={onClose}
+            className="text-muted-foreground/50 hover:text-foreground transition-colors"
           >
-            Search profile
-          </p>
-          <p className="text-muted-foreground mt-2 text-sm leading-6 tracking-tighter text-balance">
-            Paste a valid Ethereum address, ENS name, or base58 wallet address to jump to a user
-            profile.
-          </p>
+            <XIcon className="size-4" />
+          </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4 px-5 py-5 sm:px-6">
-          <label htmlFor="search-input" className="text-sm font-medium">
-            Wallet address
-          </label>
-          <div className="bg-background border-border/70 rounded-md border p-1 shadow-sm">
-            <Input
-              id="search-input"
-              autoFocus
-              type="text"
-              placeholder="0x..., vitalik.eth, or a base58 address"
-              value={walletAddress}
-              onChange={(e) => setWalletAddress(e.target.value)}
-              onBlur={() => setHasAttemptedSubmit(true)}
-              aria-invalid={showError}
-              aria-describedby={showError ? 'search-dialog-error' : 'search-dialog-help'}
-              className="border-0 bg-transparent shadow-none focus-visible:ring-0"
-            />
-          </div>
+        {/* Body */}
+        <div className="px-4 py-5">
+          <form onSubmit={handleSubmit}>
+            {/* Input */}
+            <div
+              className={cn(
+                'flex items-center gap-2 border px-3 py-2.5 transition-colors',
+                showError
+                  ? 'border-destructive/60 bg-destructive/5'
+                  : 'border-border bg-muted/30 focus-within:border-foreground/30 focus-within:bg-transparent'
+              )}
+            >
+              <span className="text-muted-foreground/50 shrink-0 font-mono text-[11px] font-medium select-none">
+                /u/
+              </span>
+              <input
+                ref={inputRef}
+                id="search-input"
+                type="text"
+                placeholder="0x… · name.eth · base58"
+                value={walletAddress}
+                onChange={(e) => setWalletAddress(e.target.value)}
+                aria-invalid={showError}
+                aria-describedby={showError ? 'search-dialog-error' : undefined}
+                className={cn(
+                  'placeholder:text-muted-foreground/30 w-full bg-transparent font-mono text-sm outline-none',
+                  showError ? 'text-destructive' : 'text-foreground'
+                )}
+              />
+            </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            {showError ? (
-              <p id="search-dialog-error" className="text-destructive text-sm font-medium">
-                Enter a valid wallet address or ENS name.
-              </p>
-            ) : (
-              <p id="search-dialog-help" className="text-muted-foreground text-sm">
-                Enter an Ethereum address, ENS name, or base58 wallet address.
-              </p>
-            )}
-          </div>
-          <Button
-            type="submit"
-            variant="default"
-            disabled={!isInputValid}
-            className="h-10 sm:min-w-28"
-          >
-            Search
-          </Button>
-        </form>
+            {/* Accepted formats row */}
+            <div className="mt-2.5 flex items-center gap-1.5">
+              {ADDRESS_FORMATS.map((fmt) => (
+                <span
+                  key={fmt.label}
+                  className="border-border/60 inline-flex items-center gap-1 border px-1.5 py-0.5"
+                >
+                  <span className="text-muted-foreground/60 font-mono text-[9px] font-semibold tracking-wider uppercase">
+                    {fmt.label}
+                  </span>
+                  <span className="text-muted-foreground/35 font-mono text-[9px]">{fmt.hint}</span>
+                </span>
+              ))}
+              {showError && (
+                <p
+                  id="search-dialog-error"
+                  className="text-destructive ml-auto font-mono text-[10px]"
+                >
+                  invalid address
+                </p>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="mt-5 flex items-center justify-between">
+              <span className="text-muted-foreground/30 font-mono text-[10px] select-none">
+                ↵ to search
+              </span>
+              <button
+                type="submit"
+                disabled={!isInputValid}
+                className={cn(
+                  'font-mono text-[11px] tracking-widest uppercase transition-all',
+                  'border px-4 py-1.5',
+                  isInputValid
+                    ? 'border-foreground/20 bg-foreground text-background hover:bg-foreground/90'
+                    : 'border-border/40 text-muted-foreground/30 cursor-not-allowed'
+                )}
+              >
+                Search
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

@@ -48,7 +48,7 @@ export default function StatementSection({ open, value, setValue, warning, maxCh
                     key="sh"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="text-muted-foreground/55 text-xs md:text-xs"
+                    className="text-muted-foreground/85 text-xs md:text-xs"
                   >
                     Write a specific, falsifiable claim
                   </m.span>
@@ -56,7 +56,7 @@ export default function StatementSection({ open, value, setValue, warning, maxCh
               </AnimatePresence>
               <span
                 className={`text-xs tabular-nums md:text-xs ${
-                  value.length > maxChars * 0.9 ? 'text-amber-400' : 'text-muted-foreground/50'
+                  value.length > maxChars * 0.9 ? 'text-amber-400' : 'text-muted-foreground/85'
                 }`}
               >
                 {value.length} / {maxChars}

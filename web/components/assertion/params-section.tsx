@@ -1,4 +1,4 @@
-import { Clock } from '@phosphor-icons/react';
+import { ClockIcon } from '@phosphor-icons/react';
 import { AnimatePresence, motion as m } from 'motion/react';
 
 interface WindowOption {
@@ -13,6 +13,22 @@ interface Props {
   setWindow: (w: WindowOption) => void;
   windows: WindowOption[];
   formatExpiry: (s: number) => string;
+}
+
+function formatRelativeExpiry(expiryText: string) {
+  const target = new Date(expiryText).getTime();
+  if (Number.isNaN(target)) return expiryText;
+
+  const diff = Math.max(0, target - Date.now());
+  const totalHours = Math.floor(diff / 3_600_000);
+  const days = Math.floor(totalHours / 24);
+  const hours = totalHours % 24;
+
+  if (days > 0) {
+    return hours > 0 ? `in ${days}d ${hours}h` : `in ${days}d`;
+  }
+
+  return hours > 0 ? `in ${hours}h` : 'soon';
 }
 
 export default function ParamsSection({
@@ -42,6 +58,7 @@ export default function ParamsSection({
             <div className="via-primary/40 absolute top-0 right-6 left-6 h-px bg-linear-to-r from-transparent to-transparent" />
 
             <div className="grid h-full grid-cols-1 gap-0 px-6 py-8 md:grid-cols-2">
+              {/* Col 1 — Dispute Window */}
               <div className="flex flex-col justify-center gap-6 pr-0 md:pr-10">
                 <div className="flex items-center gap-3">
                   <span className="text-muted-foreground/40 font-mono text-[10px] tracking-[0.2em] uppercase">
@@ -53,7 +70,7 @@ export default function ParamsSection({
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  {windows.map((w, _i) => {
+                  {windows.map((w) => {
                     const active = window_ && window_.value === w.value;
                     return (
                       <m.button
@@ -92,8 +109,10 @@ export default function ParamsSection({
                 </p>
               </div>
 
+              {/* Vertical divider */}
               <div className="via-muted-foreground/15 absolute top-8 bottom-8 left-1/2 hidden w-px bg-linear-to-b from-transparent to-transparent md:block" />
 
+              {/* Col 2 — Bond & Timing */}
               <div className="border-muted-foreground/15 flex flex-col justify-center gap-7 border-t border-dashed pt-7 md:border-t-0 md:pt-0 md:pl-10">
                 <div className="space-y-2">
                   <div className="flex items-center gap-3">
@@ -135,7 +154,7 @@ export default function ParamsSection({
                   </div>
 
                   <div className="flex items-start gap-2.5 pl-0.5">
-                    <Clock size={13} className="text-muted-foreground/35 mt-0.75 shrink-0" />
+                    <ClockIcon size={13} className="text-muted-foreground/35 mt-0.75 shrink-0" />
                     <div className="text-muted-foreground/50 space-y-0.5 font-mono text-sm leading-6">
                       <div>
                         Window{' '}
@@ -146,6 +165,9 @@ export default function ParamsSection({
                         <span className="text-foreground/75 font-medium">
                           {formatExpiry(window_?.value ?? windows[0]?.value)}
                         </span>
+                      </div>
+                      <div className="text-muted-foreground/35 text-[11px]">
+                        {formatRelativeExpiry(formatExpiry(window_?.value ?? windows[0]?.value))}
                       </div>
                     </div>
                   </div>
