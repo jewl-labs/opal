@@ -88,6 +88,7 @@ pub fn handler(ctx: Context<DisputeAssertion>) -> Result<()> {
         assertion.assertion_bond_amount_pusd,
         protocol_config.llm_dispute_bond_ratio_bps,
     )?;
+    let council_feeds = protocol_config.council_feeds;
     drop(assertion);
     drop(protocol_config);
     require!(bond_amount > 0, OpalError::InsufficientBondAmount);
@@ -118,9 +119,9 @@ pub fn handler(ctx: Context<DisputeAssertion>) -> Result<()> {
     let mut llm_round = ctx.accounts.llm_resolution_round.load_init()?;
     llm_round.assertion = ctx.accounts.assertion.key();
     llm_round.dispute = ctx.accounts.llm_dispute.key();
+    llm_round.council_feeds = council_feeds;
     llm_round.switchboard_program = Pubkey::default();
     llm_round.switchboard_queue = Pubkey::default();
-    llm_round.switchboard_feed = Pubkey::default();
     llm_round.switchboard_feed_hash = [0; 32];
     llm_round.switchboard_quote = Pubkey::default();
     llm_round.switchboard_quote_slot = 0;
