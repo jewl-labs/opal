@@ -1,29 +1,27 @@
-import { describe, it, expect, beforeAll } from "bun:test";
-import { Connection, Keypair, PublicKey, SystemProgram } from "@solana/web3.js";
-import * as anchor from "@coral-xyz/anchor";
-import { Program, AnchorProvider, Wallet, BN } from "@coral-xyz/anchor";
+import { describe, it, expect, beforeAll } from 'bun:test';
+import { Connection, Keypair, PublicKey, SystemProgram } from '@solana/web3.js';
+import * as anchor from '@coral-xyz/anchor';
+import { Program, AnchorProvider, Wallet, BN } from '@coral-xyz/anchor';
 import {
   createMint,
   getOrCreateAssociatedTokenAccount,
   getAccount,
   mintTo,
-} from "@solana/spl-token";
+} from '@solana/spl-token';
 
-import idl from "../target/idl/opal.json";
-import type { Opal } from "../target/types/opal";
+import idl from '../target/idl/opal.json';
+import type { Opal } from '../target/types/opal';
 
-const TOKEN_PROGRAM_ID = new PublicKey(
-  "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
-);
+const TOKEN_PROGRAM_ID = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
 
 const SEEDS = {
-  PROTOCOL_CONFIG: Buffer.from("protocol_config"),
-  ASSERTION: Buffer.from("assertion"),
-  BOND_VAULT: Buffer.from("bond_vault"),
-  LLM_DISPUTE: Buffer.from("llm_dispute"),
-  VOTE_DISPUTE: Buffer.from("vote_dispute"),
-  LLM_ROUND: Buffer.from("llm_round"),
-  VOTE_ROUND: Buffer.from("vote_round"),
+  PROTOCOL_CONFIG: Buffer.from('protocol_config'),
+  ASSERTION: Buffer.from('assertion'),
+  BOND_VAULT: Buffer.from('bond_vault'),
+  LLM_DISPUTE: Buffer.from('llm_dispute'),
+  VOTE_DISPUTE: Buffer.from('vote_dispute'),
+  LLM_ROUND: Buffer.from('llm_round'),
+  VOTE_ROUND: Buffer.from('vote_round'),
 };
 
 const STATE = {
@@ -45,38 +43,35 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function fund(connection: Connection, pk: PublicKey, lamports: number) {
   const sig = await connection.requestAirdrop(pk, lamports);
-  await connection.confirmTransaction(sig, "confirmed");
+  await connection.confirmTransaction(sig, 'confirmed');
 }
 
 async function balanceOf(connection: Connection, ata: PublicKey) {
-  const acc = await getAccount(connection, ata, "confirmed");
+  const acc = await getAccount(connection, ata, 'confirmed');
   return Number(acc.amount);
 }
 
 function derivePDAs(id: PublicKey, programId: PublicKey) {
-  const [assertion] = PublicKey.findProgramAddressSync(
-    [SEEDS.ASSERTION, id.toBuffer()],
-    programId,
-  );
+  const [assertion] = PublicKey.findProgramAddressSync([SEEDS.ASSERTION, id.toBuffer()], programId);
   const [bondVault] = PublicKey.findProgramAddressSync(
     [SEEDS.BOND_VAULT, id.toBuffer()],
-    programId,
+    programId
   );
   const [llmDispute] = PublicKey.findProgramAddressSync(
     [SEEDS.LLM_DISPUTE, assertion.toBuffer()],
-    programId,
+    programId
   );
   const [llmRound] = PublicKey.findProgramAddressSync(
     [SEEDS.LLM_ROUND, assertion.toBuffer()],
-    programId,
+    programId
   );
   const [voteDispute] = PublicKey.findProgramAddressSync(
     [SEEDS.VOTE_DISPUTE, assertion.toBuffer()],
-    programId,
+    programId
   );
   const [voteRound] = PublicKey.findProgramAddressSync(
     [SEEDS.VOTE_ROUND, assertion.toBuffer()],
-    programId,
+    programId
   );
   return { assertion, bondVault, llmDispute, llmRound, voteDispute, voteRound };
 }
@@ -100,60 +95,21 @@ async function buildTokenEnv(connection: Connection): Promise<TokenEnv> {
   const llmDisputer = Keypair.generate();
   const voteDisputer = Keypair.generate();
 
-  for (const kp of [
-    mintAuthority,
-    treasury,
-    asserter,
-    llmDisputer,
-    voteDisputer,
-  ]) {
+  for (const kp of [mintAuthority, treasury, asserter, llmDisputer, voteDisputer]) {
     await fund(connection, kp.publicKey, 10_000_000_000);
   }
 
-  const mint = await createMint(
-    connection,
-    mintAuthority,
-    mintAuthority.publicKey,
-    null,
-    6,
-  );
+  const mint = await createMint(connection, mintAuthority, mintAuthority.publicKey, null, 6);
 
   const atas = await Promise.all([
-    getOrCreateAssociatedTokenAccount(
-      connection,
-      mintAuthority,
-      mint,
-      treasury.publicKey,
-    ),
-    getOrCreateAssociatedTokenAccount(
-      connection,
-      mintAuthority,
-      mint,
-      asserter.publicKey,
-    ),
-    getOrCreateAssociatedTokenAccount(
-      connection,
-      mintAuthority,
-      mint,
-      llmDisputer.publicKey,
-    ),
-    getOrCreateAssociatedTokenAccount(
-      connection,
-      mintAuthority,
-      mint,
-      voteDisputer.publicKey,
-    ),
+    getOrCreateAssociatedTokenAccount(connection, mintAuthority, mint, treasury.publicKey),
+    getOrCreateAssociatedTokenAccount(connection, mintAuthority, mint, asserter.publicKey),
+    getOrCreateAssociatedTokenAccount(connection, mintAuthority, mint, llmDisputer.publicKey),
+    getOrCreateAssociatedTokenAccount(connection, mintAuthority, mint, voteDisputer.publicKey),
   ]);
 
   for (const acc of atas) {
-    await mintTo(
-      connection,
-      mintAuthority,
-      mint,
-      acc.address,
-      mintAuthority,
-      1_000_000_000_000,
-    );
+    await mintTo(connection, mintAuthority, mint, acc.address, mintAuthority, 1_000_000_000_000);
   }
 
   return {
@@ -178,19 +134,16 @@ type ProtocolEnv = {
 async function setupProtocol(
   program: Program<Opal>,
   token: TokenEnv,
-  authority: Keypair,
+  authority: Keypair
 ): Promise<ProtocolEnv> {
-  const [configPda] = PublicKey.findProgramAddressSync(
-    [SEEDS.PROTOCOL_CONFIG],
-    program.programId,
-  );
+  const [configPda] = PublicKey.findProgramAddressSync([SEEDS.PROTOCOL_CONFIG], program.programId);
 
   const treasuryAta = (
     await getOrCreateAssociatedTokenAccount(
       program.provider.connection,
       token.mintAuthority,
       token.mint,
-      token.treasury.publicKey,
+      token.treasury.publicKey
     )
   ).address;
 
@@ -218,7 +171,7 @@ async function setupProtocol(
       systemProgram: SystemProgram.programId,
     })
     .signers([authority])
-    .rpc({ commitment: "confirmed" });
+    .rpc({ commitment: 'confirmed' });
 
   return { configPda, authority, treasuryAta };
 }
@@ -226,7 +179,7 @@ async function setupProtocol(
 class Assertion {
   constructor(
     public id: PublicKey,
-    public pdas: ReturnType<typeof derivePDAs>,
+    public pdas: ReturnType<typeof derivePDAs>
   ) {}
 }
 
@@ -236,7 +189,7 @@ class TestContext {
     public provider: AnchorProvider,
     public connection: Connection,
     public token: TokenEnv,
-    public proto: ProtocolEnv,
+    public proto: ProtocolEnv
   ) {}
 
   newAssertion(): Assertion {
@@ -244,12 +197,7 @@ class TestContext {
     return new Assertion(id, derivePDAs(id, this.program.programId));
   }
 
-  async createAssertion(
-    a: Assertion,
-    statement: string,
-    bond: number,
-    auxiliaryHash = "hash",
-  ) {
+  async createAssertion(a: Assertion, statement: string, bond: number, auxiliaryHash = 'hash') {
     return this.program.methods
       .createAssertion({
         assertionId: a.id,
@@ -268,7 +216,7 @@ class TestContext {
         systemProgram: SystemProgram.programId,
       })
       .signers([this.token.asserter])
-      .rpc({ commitment: "confirmed" });
+      .rpc({ commitment: 'confirmed' });
   }
 
   async disputeAssertion(a: Assertion) {
@@ -287,7 +235,7 @@ class TestContext {
         systemProgram: SystemProgram.programId,
       })
       .signers([this.token.llmDisputer])
-      .rpc({ commitment: "confirmed" });
+      .rpc({ commitment: 'confirmed' });
   }
 
   async submitMockLlmResolution(a: Assertion, outcomeCode: number) {
@@ -300,7 +248,7 @@ class TestContext {
         llmResolutionRound: a.pdas.llmRound,
       })
       .signers([this.proto.authority])
-      .rpc({ commitment: "confirmed" });
+      .rpc({ commitment: 'confirmed' });
   }
 
   async finalizeLlmResolution(a: Assertion) {
@@ -319,7 +267,7 @@ class TestContext {
         treasuryPusd: this.proto.treasuryAta,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
-      .rpc({ commitment: "confirmed" });
+      .rpc({ commitment: 'confirmed' });
   }
 
   async challengeLlmResolution(a: Assertion) {
@@ -339,7 +287,7 @@ class TestContext {
         systemProgram: SystemProgram.programId,
       })
       .signers([this.token.voteDisputer])
-      .rpc({ commitment: "confirmed" });
+      .rpc({ commitment: 'confirmed' });
   }
 
   async openVote(a: Assertion) {
@@ -352,7 +300,7 @@ class TestContext {
         voteResolutionRound: a.pdas.voteRound,
       })
       .signers([this.proto.authority])
-      .rpc({ commitment: "confirmed" });
+      .rpc({ commitment: 'confirmed' });
   }
 
   async finalizeVoteResolutionPlaceholder(a: Assertion, outcomeCode: number) {
@@ -374,7 +322,7 @@ class TestContext {
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .signers([this.proto.authority])
-      .rpc({ commitment: "confirmed" });
+      .rpc({ commitment: 'confirmed' });
   }
 
   async finalizeUndisputed(a: Assertion) {
@@ -390,7 +338,7 @@ class TestContext {
         treasuryPusd: this.proto.treasuryAta,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
-      .rpc({ commitment: "confirmed" });
+      .rpc({ commitment: 'confirmed' });
   }
 
   fetchAssertion(a: Assertion) {
@@ -410,7 +358,7 @@ class TestContext {
   }
 }
 
-describe("opal", () => {
+describe('opal', () => {
   let provider: AnchorProvider;
   let connection: Connection;
   let program: Program<Opal>;
@@ -426,20 +374,20 @@ describe("opal", () => {
     token = await buildTokenEnv(connection);
   });
 
-  it("rejects invalid protocol config", async () => {
+  it('rejects invalid protocol config', async () => {
     const authority = Keypair.generate();
     await fund(connection, authority.publicKey, 10_000_000_000);
 
     const [configPda] = PublicKey.findProgramAddressSync(
       [SEEDS.PROTOCOL_CONFIG],
-      program.programId,
+      program.programId
     );
     const treasuryAta = (
       await getOrCreateAssociatedTokenAccount(
         connection,
         token.mintAuthority,
         token.mint,
-        token.treasury.publicKey,
+        token.treasury.publicKey
       )
     ).address;
 
@@ -468,22 +416,22 @@ describe("opal", () => {
           systemProgram: SystemProgram.programId,
         })
         .signers([authority])
-        .rpc({ commitment: "confirmed" }),
+        .rpc({ commitment: 'confirmed' })
     ).rejects.toThrow();
   });
 
-  it("initializes protocol", async () => {
+  it('initializes protocol', async () => {
     proto = await setupProtocol(program, token, provider.wallet.payer);
     ctx = new TestContext(program, provider, connection, token, proto);
   });
 
-  it("undisputed path: creates, waits, finalizes with correct payouts", async () => {
+  it('undisputed path: creates, waits, finalizes with correct payouts', async () => {
     const a = ctx.newAssertion();
     const bond = 200;
     const asserterStart = await balanceOf(connection, token.asserterAta);
     const treasuryStart = await balanceOf(connection, proto.treasuryAta);
 
-    await ctx.createAssertion(a, "Bitcoin > $100k by 2026", bond, "hash123");
+    await ctx.createAssertion(a, 'Bitcoin > $100k by 2026', bond, 'hash123');
 
     const acc = await ctx.fetchAssertion(a);
     expect(acc.state).toBe(STATE.ASSERTED);
@@ -500,19 +448,15 @@ describe("opal", () => {
     expect(resolved.finalizedAt.toNumber()).toBeGreaterThan(0);
 
     // fee = 200 * 250 / 10000 = 5
-    expect(await balanceOf(connection, token.asserterAta)).toBe(
-      asserterStart - bond + (bond - 5),
-    );
-    expect(await balanceOf(connection, proto.treasuryAta)).toBe(
-      treasuryStart + 5,
-    );
+    expect(await balanceOf(connection, token.asserterAta)).toBe(asserterStart - bond + (bond - 5));
+    expect(await balanceOf(connection, proto.treasuryAta)).toBe(treasuryStart + 5);
   });
 
-  it("llm resolution path: disputes, resolves via llm, pays winner", async () => {
+  it('llm resolution path: disputes, resolves via llm, pays winner', async () => {
     const a = ctx.newAssertion();
     const bond = 200;
 
-    await ctx.createAssertion(a, "ETH flips BTC", bond, "abc");
+    await ctx.createAssertion(a, 'ETH flips BTC', bond, 'abc');
 
     const disputerStart = await balanceOf(connection, token.llmDisputerAta);
 
@@ -543,15 +487,13 @@ describe("opal", () => {
     expect(dispute.settlementResolution).toBe(OUTCOME.FALSE);
 
     // disputer was correct (outcome != TRUE). Net gain = assertion bond - fee = 195.
-    expect(await balanceOf(connection, token.llmDisputerAta)).toBe(
-      disputerStart + 195,
-    );
+    expect(await balanceOf(connection, token.llmDisputerAta)).toBe(disputerStart + 195);
   });
 
-  it("full escalation path: escalates to vote and resolves", async () => {
+  it('full escalation path: escalates to vote and resolves', async () => {
     const a = ctx.newAssertion();
 
-    await ctx.createAssertion(a, "Solana TPS > 10000", 500, "perf");
+    await ctx.createAssertion(a, 'Solana TPS > 10000', 500, 'perf');
     await ctx.disputeAssertion(a);
     await ctx.submitMockLlmResolution(a, 0);
     await ctx.challengeLlmResolution(a);
@@ -583,40 +525,36 @@ describe("opal", () => {
     expect(vr.finalOutcome).toBe(OUTCOME.FALSE);
   });
 
-  it("error: premature finalizeUndisputed", async () => {
+  it('error: premature finalizeUndisputed', async () => {
     const a = ctx.newAssertion();
-    await ctx.createAssertion(a, "Test", 200);
+    await ctx.createAssertion(a, 'Test', 200);
 
     expect(ctx.finalizeUndisputed(a)).rejects.toThrow();
   });
 
-  it("error: insufficient bond", async () => {
+  it('error: insufficient bond', async () => {
     const a = ctx.newAssertion();
-    expect(
-      ctx.createAssertion(a, "Fail", 50),
-    ).rejects.toThrow();
+    expect(ctx.createAssertion(a, 'Fail', 50)).rejects.toThrow();
   });
 
-  it("error: disputing after liveness deadline", async () => {
+  it('error: disputing after liveness deadline', async () => {
     const a = ctx.newAssertion();
-    await ctx.createAssertion(a, "Late dispute", 200);
+    await ctx.createAssertion(a, 'Late dispute', 200);
     await sleep(4000);
 
     expect(ctx.disputeAssertion(a)).rejects.toThrow();
   });
 
-  it("error: submitMockLlmResolution when state is Asserted", async () => {
+  it('error: submitMockLlmResolution when state is Asserted', async () => {
     const a = ctx.newAssertion();
-    await ctx.createAssertion(a, "No dispute", 200);
+    await ctx.createAssertion(a, 'No dispute', 200);
 
-    expect(
-      ctx.submitMockLlmResolution(a, 0),
-    ).rejects.toThrow();
+    expect(ctx.submitMockLlmResolution(a, 0)).rejects.toThrow();
   });
 
-  it("error: challengeLlmResolution after challenge deadline", async () => {
+  it('error: challengeLlmResolution after challenge deadline', async () => {
     const a = ctx.newAssertion();
-    await ctx.createAssertion(a, "Missed challenge", 200);
+    await ctx.createAssertion(a, 'Missed challenge', 200);
     await ctx.disputeAssertion(a);
     await ctx.submitMockLlmResolution(a, 0);
     await sleep(4000);
@@ -624,24 +562,24 @@ describe("opal", () => {
     expect(ctx.challengeLlmResolution(a)).rejects.toThrow();
   });
 
-  it("error: disputing an already-disputed assertion", async () => {
+  it('error: disputing an already-disputed assertion', async () => {
     const a = ctx.newAssertion();
-    await ctx.createAssertion(a, "Double dispute", 200);
+    await ctx.createAssertion(a, 'Double dispute', 200);
     await ctx.disputeAssertion(a);
 
     expect(ctx.disputeAssertion(a)).rejects.toThrow();
   });
 
-  it("error: mismatched llmDispute account", async () => {
+  it('error: mismatched llmDispute account', async () => {
     const a1 = ctx.newAssertion();
     const a2 = ctx.newAssertion();
 
     // create and dispute assertion1
-    await ctx.createAssertion(a1, "A1", 200, "a1");
+    await ctx.createAssertion(a1, 'A1', 200, 'a1');
     await ctx.disputeAssertion(a1);
 
     // create assertion2 (undisputed) so we can try to pass its dispute for assertion1
-    await ctx.createAssertion(a2, "A2", 200, "a2");
+    await ctx.createAssertion(a2, 'A2', 200, 'a2');
 
     // finalizeLlmResolution with assertion1 but llmDispute from assertion2
     // should fail because the dispute doesn't link back to assertion1
@@ -661,7 +599,7 @@ describe("opal", () => {
           treasuryPusd: proto.treasuryAta,
           tokenProgram: TOKEN_PROGRAM_ID,
         })
-        .rpc({ commitment: "confirmed" }),
+        .rpc({ commitment: 'confirmed' })
     ).rejects.toThrow();
   });
 });
