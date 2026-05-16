@@ -8,18 +8,22 @@ pub mod utils;
 
 pub use instructions::*;
 
-pub use instructions::challenge_llm_resolution::ChallengeLlmResolution;
+pub use instructions::challenge_llm_resolution::{
+    ChallengeLlmResolution, ChallengeLlmResolutionArgs,
+};
 pub use instructions::create_assertion::{CreateAssertion, CreateAssertionArgs};
-pub use instructions::dispute_assertion::DisputeAssertion;
-pub use instructions::finalize_llm_resolution::FinalizeLlmResolution;
-pub use instructions::finalize_undisputed::FinalizeUndisputed;
+pub use instructions::dispute_assertion::{DisputeAssertion, DisputeAssertionArgs};
+pub use instructions::finalize_llm_resolution::{
+    FinalizeLlmResolution, FinalizeLlmResolutionArgs,
+};
+pub use instructions::finalize_undisputed::{FinalizeUndisputed, FinalizeUndisputedArgs};
 pub use instructions::finalize_vote_resolution_placeholder::{
     FinalizeVoteResolutionPlaceholder, FinalizeVoteResolutionPlaceholderArgs,
 };
 pub use instructions::initialize_protocol_config::{
     InitializeProtocolConfig, InitializeProtocolConfigArgs,
 };
-pub use instructions::open_vote::OpenVote;
+pub use instructions::open_vote::{OpenVote, OpenVoteArgs};
 pub use instructions::submit_mock_llm_resolution::{
     SubmitMockLlmResolution, SubmitMockLlmResolutionArgs,
 };
@@ -45,12 +49,18 @@ pub mod opal {
         instructions::create_assertion::handler(ctx, args)
     }
 
-    pub fn finalize_undisputed(ctx: Context<FinalizeUndisputed>) -> Result<()> {
-        instructions::finalize_undisputed::handler(ctx)
+    pub fn finalize_undisputed(
+        ctx: Context<FinalizeUndisputed>,
+        args: FinalizeUndisputedArgs,
+    ) -> Result<()> {
+        instructions::finalize_undisputed::handler(ctx, args)
     }
 
-    pub fn dispute_assertion(ctx: Context<DisputeAssertion>) -> Result<()> {
-        instructions::dispute_assertion::handler(ctx)
+    pub fn dispute_assertion(
+        ctx: Context<DisputeAssertion>,
+        args: DisputeAssertionArgs,
+    ) -> Result<()> {
+        instructions::dispute_assertion::handler(ctx, args)
     }
 
     pub fn submit_mock_llm_resolution(
@@ -60,16 +70,22 @@ pub mod opal {
         instructions::submit_mock_llm_resolution::handler(ctx, args)
     }
 
-    pub fn finalize_llm_resolution(ctx: Context<FinalizeLlmResolution>) -> Result<()> {
-        instructions::finalize_llm_resolution::handler(ctx)
+    pub fn finalize_llm_resolution(
+        ctx: Context<FinalizeLlmResolution>,
+        args: FinalizeLlmResolutionArgs,
+    ) -> Result<()> {
+        instructions::finalize_llm_resolution::handler(ctx, args)
     }
 
-    pub fn challenge_llm_resolution(ctx: Context<ChallengeLlmResolution>) -> Result<()> {
-        instructions::challenge_llm_resolution::handler(ctx)
+    pub fn challenge_llm_resolution(
+        ctx: Context<ChallengeLlmResolution>,
+        args: ChallengeLlmResolutionArgs,
+    ) -> Result<()> {
+        instructions::challenge_llm_resolution::handler(ctx, args)
     }
 
-    pub fn open_vote(ctx: Context<OpenVote>) -> Result<()> {
-        instructions::open_vote::handler(ctx)
+    pub fn open_vote(ctx: Context<OpenVote>, args: OpenVoteArgs) -> Result<()> {
+        instructions::open_vote::handler(ctx, args)
     }
 
     pub fn finalize_vote_resolution_placeholder(

@@ -9,7 +9,13 @@ use crate::{
 };
 use anchor_lang::prelude::*;
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct OpenVoteArgs {
+    pub assertion_id: Pubkey,
+}
+
 #[derive(Accounts)]
+#[instruction(args: OpenVoteArgs)]
 pub struct OpenVote<'info> {
     pub authority: Signer<'info>,
 
@@ -21,7 +27,7 @@ pub struct OpenVote<'info> {
 
     #[account(
         mut,
-        seeds = [ASSERTION_SEED, assertion.load()?.id.as_ref()],
+        seeds = [ASSERTION_SEED, args.assertion_id.as_ref()],
         bump = assertion.load()?.bump,
     )]
     pub assertion: AccountLoader<'info, AssertionAccount>,
@@ -34,7 +40,7 @@ pub struct OpenVote<'info> {
     pub vote_resolution_round: AccountLoader<'info, VoteResolutionRound>,
 }
 
-pub fn handler(ctx: Context<OpenVote>) -> Result<()> {
+pub fn handler(ctx: Context<OpenVote>, _args: OpenVoteArgs) -> Result<()> {
     // !TBD: auth policy for open_vote is undecided. Currently permissionless for liveness.
     let assertion = ctx.accounts.assertion.load()?;
     let vote_round = ctx.accounts.vote_resolution_round.load()?;

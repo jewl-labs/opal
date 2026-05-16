@@ -10,7 +10,13 @@ use crate::{
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct DisputeAssertionArgs {
+    pub assertion_id: Pubkey,
+}
+
 #[derive(Accounts)]
+#[instruction(args: DisputeAssertionArgs)]
 pub struct DisputeAssertion<'info> {
     #[account(mut)]
     pub disputer: Signer<'info>,
@@ -25,7 +31,7 @@ pub struct DisputeAssertion<'info> {
 
     #[account(
         mut,
-        seeds = [ASSERTION_SEED, assertion.load()?.id.as_ref()],
+        seeds = [ASSERTION_SEED, args.assertion_id.as_ref()],
         bump = assertion.load()?.bump,
     )]
     pub assertion: AccountLoader<'info, AssertionAccount>,
@@ -50,7 +56,7 @@ pub struct DisputeAssertion<'info> {
 
     #[account(
         mut,
-        seeds = [BOND_VAULT_SEED, assertion.load()?.id.as_ref()],
+        seeds = [BOND_VAULT_SEED, args.assertion_id.as_ref()],
         bump,
         token::mint = pusd_mint,
         token::authority = assertion,
@@ -68,7 +74,7 @@ pub struct DisputeAssertion<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(ctx: Context<DisputeAssertion>) -> Result<()> {
+pub fn handler(ctx: Context<DisputeAssertion>, _args: DisputeAssertionArgs) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
 
     let assertion = ctx.accounts.assertion.load()?;

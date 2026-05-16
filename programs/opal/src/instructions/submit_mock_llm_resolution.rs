@@ -11,10 +11,12 @@ use anchor_lang::prelude::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct SubmitMockLlmResolutionArgs {
+    pub assertion_id: Pubkey,
     pub outcome_code: u8,
 }
 
 #[derive(Accounts)]
+#[instruction(args: SubmitMockLlmResolutionArgs)]
 pub struct SubmitMockLlmResolution<'info> {
     pub authority: Signer<'info>,
 
@@ -26,7 +28,7 @@ pub struct SubmitMockLlmResolution<'info> {
 
     #[account(
         mut,
-        seeds = [ASSERTION_SEED, assertion.load()?.id.as_ref()],
+        seeds = [ASSERTION_SEED, args.assertion_id.as_ref()],
         bump = assertion.load()?.bump,
     )]
     pub assertion: AccountLoader<'info, AssertionAccount>,

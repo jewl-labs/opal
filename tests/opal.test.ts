@@ -221,7 +221,7 @@ class TestContext {
 
   async disputeAssertion(a: Assertion) {
     return this.program.methods
-      .disputeAssertion()
+      .disputeAssertion({ assertionId: a.id })
       .accounts({
         disputer: this.token.llmDisputer.publicKey,
         protocolConfig: this.proto.configPda,
@@ -240,7 +240,7 @@ class TestContext {
 
   async submitMockLlmResolution(a: Assertion, outcomeCode: number) {
     return this.program.methods
-      .submitMockLlmResolution({ outcomeCode })
+      .submitMockLlmResolution({ assertionId: a.id, outcomeCode })
       .accounts({
         authority: this.proto.authority.publicKey,
         protocolConfig: this.proto.configPda,
@@ -253,7 +253,7 @@ class TestContext {
 
   async finalizeLlmResolution(a: Assertion) {
     return this.program.methods
-      .finalizeLlmResolution()
+      .finalizeLlmResolution({ assertionId: a.id })
       .accounts({
         finalizer: this.provider.wallet.publicKey,
         protocolConfig: this.proto.configPda,
@@ -272,7 +272,7 @@ class TestContext {
 
   async challengeLlmResolution(a: Assertion) {
     return this.program.methods
-      .challengeLlmResolution()
+      .challengeLlmResolution({ assertionId: a.id })
       .accounts({
         disputer: this.token.voteDisputer.publicKey,
         protocolConfig: this.proto.configPda,
@@ -292,7 +292,7 @@ class TestContext {
 
   async openVote(a: Assertion) {
     return this.program.methods
-      .openVote()
+      .openVote({ assertionId: a.id })
       .accounts({
         authority: this.proto.authority.publicKey,
         protocolConfig: this.proto.configPda,
@@ -305,7 +305,7 @@ class TestContext {
 
   async finalizeVoteResolutionPlaceholder(a: Assertion, outcomeCode: number) {
     return this.program.methods
-      .finalizeVoteResolutionPlaceholder({ outcomeCode })
+      .finalizeVoteResolutionPlaceholder({ assertionId: a.id, outcomeCode })
       .accounts({
         authority: this.proto.authority.publicKey,
         protocolConfig: this.proto.configPda,
@@ -327,7 +327,7 @@ class TestContext {
 
   async finalizeUndisputed(a: Assertion) {
     return this.program.methods
-      .finalizeUndisputed()
+      .finalizeUndisputed({ assertionId: a.id })
       .accounts({
         finalizer: this.provider.wallet.publicKey,
         protocolConfig: this.proto.configPda,
@@ -585,7 +585,7 @@ describe('opal', () => {
     // should fail because the dispute doesn't link back to assertion1
     expect(
       program.methods
-        .finalizeLlmResolution()
+        .finalizeLlmResolution({ assertionId: a1.id })
         .accounts({
           finalizer: provider.wallet.publicKey,
           protocolConfig: proto.configPda,

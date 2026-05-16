@@ -10,7 +10,13 @@ use crate::{
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct FinalizeLlmResolutionArgs {
+    pub assertion_id: Pubkey,
+}
+
 #[derive(Accounts)]
+#[instruction(args: FinalizeLlmResolutionArgs)]
 pub struct FinalizeLlmResolution<'info> {
     pub finalizer: Signer<'info>,
 
@@ -24,7 +30,7 @@ pub struct FinalizeLlmResolution<'info> {
 
     #[account(
         mut,
-        seeds = [ASSERTION_SEED, assertion.load()?.id.as_ref()],
+        seeds = [ASSERTION_SEED, args.assertion_id.as_ref()],
         bump = assertion.load()?.bump,
     )]
     pub assertion: AccountLoader<'info, AssertionAccount>,
@@ -45,7 +51,7 @@ pub struct FinalizeLlmResolution<'info> {
 
     #[account(
         mut,
-        seeds = [BOND_VAULT_SEED, assertion.load()?.id.as_ref()],
+        seeds = [BOND_VAULT_SEED, args.assertion_id.as_ref()],
         bump,
         token::mint = pusd_mint,
         token::authority = assertion,
@@ -73,7 +79,7 @@ pub struct FinalizeLlmResolution<'info> {
     pub token_program: Program<'info, Token>,
 }
 
-pub fn handler(ctx: Context<FinalizeLlmResolution>) -> Result<()> {
+pub fn handler(ctx: Context<FinalizeLlmResolution>, _args: FinalizeLlmResolutionArgs) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
 
     let assertion = ctx.accounts.assertion.load()?;

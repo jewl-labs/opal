@@ -15,6 +15,7 @@ use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct FinalizeVoteResolutionPlaceholderArgs {
+    pub assertion_id: Pubkey,
     pub outcome_code: u8,
 }
 
@@ -25,6 +26,7 @@ enum StageWinner {
 }
 
 #[derive(Accounts)]
+#[instruction(args: FinalizeVoteResolutionPlaceholderArgs)]
 pub struct FinalizeVoteResolutionPlaceholder<'info> {
     pub authority: Signer<'info>,
 
@@ -40,7 +42,7 @@ pub struct FinalizeVoteResolutionPlaceholder<'info> {
 
     #[account(
         mut,
-        seeds = [ASSERTION_SEED, assertion.load()?.id.as_ref()],
+        seeds = [ASSERTION_SEED, args.assertion_id.as_ref()],
         bump = assertion.load()?.bump,
     )]
     pub assertion: AccountLoader<'info, AssertionAccount>,
@@ -68,7 +70,7 @@ pub struct FinalizeVoteResolutionPlaceholder<'info> {
 
     #[account(
         mut,
-        seeds = [BOND_VAULT_SEED, assertion.load()?.id.as_ref()],
+        seeds = [BOND_VAULT_SEED, args.assertion_id.as_ref()],
         bump,
         token::mint = pusd_mint,
         token::authority = assertion,
