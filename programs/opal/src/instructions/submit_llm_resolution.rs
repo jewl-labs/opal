@@ -9,6 +9,7 @@ use crate::{
     utils::checked_add_i64,
 };
 use anchor_lang::prelude::*;
+use switchboard_on_demand::prelude::rust_decimal::prelude::ToPrimitive;
 use switchboard_on_demand::PullFeedAccountData;
 
 #[derive(Accounts)]
@@ -55,12 +56,10 @@ fn read_verdict(
     let feed = PullFeedAccountData::parse(data)
         .map_err(|_| error!(OpalError::FeedParseFailed))?;
     let value = feed
-        .get_value(clock.slot, MAX_FEED_STALE_SLOTS as u64, MIN_FEED_SAMPLES, true)
+        .get_value(clock.slot, MAX_FEED_STALE_SLOTS as u64, MIN_FEED_SAMPLES, false)
         .map_err(|_| error!(OpalError::FeedStaleOrUnverified))?;
-    let verdict: u8 = value
-        .to_string()
-        .parse::<u8>()
-        .map_err(|_| error!(OpalError::InvalidVerdictEncoding))?;
+    require!(value.is_integer(), OpalError::InvalidVerdictEncoding);
+    let verdict = value.to_u8().ok_or(OpalError::InvalidVerdictEncoding)?;
     require!(verdict <= OUTCOME_UNRESOLVABLE, OpalError::InvalidVerdictEncoding);
     Ok(verdict)
 }
