@@ -1,4 +1,5 @@
 use anchor_lang::prelude::*;
+use crate::constants::COUNCIL_SIZE;
 
 #[repr(C, packed)]
 #[account(zero_copy(unsafe))]
@@ -19,5 +20,6 @@ pub struct ProtocolConfig {
     pub llm_challenge_window_seconds: i64,
     pub vote_setup_window_seconds: i64,
     pub voting_window_seconds: i64,
+    pub council_feeds: [Pubkey; COUNCIL_SIZE],
     pub bump: u8,
 }

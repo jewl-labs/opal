@@ -1,14 +1,14 @@
 use anchor_lang::prelude::*;
+use crate::constants::COUNCIL_SIZE;
 
-// !TBD: Switchboard fields below are placeholder scaffolding for future oracle integration.
 #[repr(C, packed)]
 #[account(zero_copy(unsafe))]
 pub struct LlmResolutionRound {
     pub assertion: Pubkey,
     pub dispute: Pubkey,
+    pub council_feeds: [Pubkey; COUNCIL_SIZE],
     pub switchboard_program: Pubkey,
     pub switchboard_queue: Pubkey,
-    pub switchboard_feed: Pubkey,
     pub switchboard_feed_hash: [u8; 32],
     pub switchboard_quote: Pubkey,
     pub switchboard_quote_slot: u64,

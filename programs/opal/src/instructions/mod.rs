@@ -6,6 +6,10 @@ pub mod finalize_undisputed;
 pub mod finalize_vote_resolution_placeholder;
 pub mod initialize_protocol_config;
 pub mod open_vote;
+pub mod set_council_feeds;
+pub mod submit_llm_resolution;
+
+#[cfg(feature = "mock-llm")]
 pub mod submit_mock_llm_resolution;
 
 #[allow(ambiguous_glob_reexports)]
@@ -24,5 +28,11 @@ pub use finalize_vote_resolution_placeholder::*;
 pub use initialize_protocol_config::*;
 #[allow(ambiguous_glob_reexports)]
 pub use open_vote::*;
+#[allow(ambiguous_glob_reexports)]
+pub use set_council_feeds::*;
+#[allow(ambiguous_glob_reexports)]
+pub use submit_llm_resolution::*;
+
+#[cfg(feature = "mock-llm")]
 #[allow(ambiguous_glob_reexports)]
 pub use submit_mock_llm_resolution::*;
