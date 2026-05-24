@@ -8,6 +8,9 @@ skip-lint = false
 [programs.localnet]
 opal = { address = "8NCcxyAzKiAHxJ9DMnADtxShYutS9w81wHcXqgCavTBy", features = ["mock-llm"] }
 
+[programs.devnet]
+opal = { address = "8NCcxyAzKiAHxJ9DMnADtxShYutS9w81wHcXqgCavTBy", features = ["mock-llm"] }
+
 [registry]
 url = "https://api.apr.dev"
 

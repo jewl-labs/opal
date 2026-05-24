@@ -1,5 +1,5 @@
 use crate::{
-    constants::{BPS_DENOMINATOR, PROTOCOL_CONFIG_SEED},
+    constants::{BPS_DENOMINATOR, COUNCIL_SIZE, PROTOCOL_CONFIG_SEED},
     errors::OpalError,
     state::ProtocolConfig,
 };
@@ -113,6 +113,7 @@ pub fn handler(
     config.llm_challenge_window_seconds = args.llm_challenge_window_seconds;
     config.vote_setup_window_seconds = args.vote_setup_window_seconds;
     config.voting_window_seconds = args.voting_window_seconds;
+    config.council_feeds = [Pubkey::default(); COUNCIL_SIZE];
     config.bump = ctx.bumps.protocol_config;
 
     Ok(())

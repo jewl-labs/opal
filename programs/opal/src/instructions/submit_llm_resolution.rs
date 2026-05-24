@@ -1,7 +1,7 @@
 use crate::{
     constants::{
         ASSERTION_SEED, ASSERTION_STATE_ASSERTED_LLM, ASSERTION_STATE_PENDING_LLM,
-        COUNCIL_SIZE, LLM_ROUND_SEED, MAX_FEED_STALE_SLOTS, MIN_FEED_SAMPLES,
+        LLM_ROUND_SEED, MAX_FEED_STALE_SLOTS, MIN_FEED_SAMPLES,
         OUTCOME_UNRESOLVABLE, PROTOCOL_CONFIG_SEED,
     },
     errors::OpalError,
@@ -37,12 +37,8 @@ pub struct SubmitLlmResolution<'info> {
     )]
     pub llm_resolution_round: AccountLoader<'info, LlmResolutionRound>,
 
-    /// CHECK: pubkey verified against llm_resolution_round.council_feeds[0]
+    /// CHECK: feed_0 pubkey verified against llm_resolution_round.council_feeds[0]
     pub feed_0: UncheckedAccount<'info>,
-    /// CHECK: pubkey verified against llm_resolution_round.council_feeds[1]
-    pub feed_1: UncheckedAccount<'info>,
-    /// CHECK: pubkey verified against llm_resolution_round.council_feeds[2]
-    pub feed_2: UncheckedAccount<'info>,
 }
 
 fn read_verdict(
@@ -50,7 +46,6 @@ fn read_verdict(
     expected_key: &Pubkey,
     clock: &Clock,
 ) -> Result<u8> {
-    // Identity check before any data borrow — rejects substituted feed accounts early.
     require!(feed_info.key() == *expected_key, OpalError::WrongFeed);
     let data = feed_info.try_borrow_data()?;
     let feed = PullFeedAccountData::parse(data)
@@ -78,20 +73,7 @@ pub fn handler(ctx: Context<SubmitLlmResolution>) -> Result<()> {
     let challenge_window = ctx.accounts.protocol_config.load()?.llm_challenge_window_seconds;
     let clock = Clock::get()?;
 
-    let votes: [u8; COUNCIL_SIZE] = [
-        read_verdict(ctx.accounts.feed_0.as_ref(), &council_feeds[0], &clock)?,
-        read_verdict(ctx.accounts.feed_1.as_ref(), &council_feeds[1], &clock)?,
-        read_verdict(ctx.accounts.feed_2.as_ref(), &council_feeds[2], &clock)?,
-    ];
-
-    let mut counts = [0u8; OUTCOME_UNRESOLVABLE as usize + 1];
-    for v in votes.iter() {
-        counts[*v as usize] += 1;
-    }
-    // 1-1-1 tie falls back to Unresolvable.
-    let verdict = (0u8..=(OUTCOME_UNRESOLVABLE))
-        .find(|&o| counts[o as usize] > (COUNCIL_SIZE as u8 / 2))
-        .unwrap_or(OUTCOME_UNRESOLVABLE);
+    let verdict = read_verdict(ctx.accounts.feed_0.as_ref(), &council_feeds[0], &clock)?;
 
     let now = clock.unix_timestamp;
     let challenge_deadline = checked_add_i64(now, challenge_window)?;

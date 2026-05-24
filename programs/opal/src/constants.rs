@@ -11,7 +11,7 @@ pub const VOTE_ROUND_SEED: &[u8] = b"vote_round";
 pub const MAX_STATEMENT_LEN: usize = 280;
 pub const MAX_AUXILIARY_HASH_LEN: usize = 128;
 
-pub const COUNCIL_SIZE: usize = 3;
+pub const COUNCIL_SIZE: usize = 1;
 pub const MAX_FEED_STALE_SLOTS: u32 = 250; // ~100 s at 400 ms/slot
 pub const MIN_FEED_SAMPLES: u32 = 3;
 

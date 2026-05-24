@@ -9,7 +9,7 @@ crate-type = ["cdylib", "lib"]
 name = "opal"
 
 [features]
-default = []
+default = ["mock-llm"]
 cpi = ["no-entrypoint"]
 no-entrypoint = []
 no-idl = []
