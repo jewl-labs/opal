@@ -1,5 +1,6 @@
 {
   "name": "opal",
+  "type": "module",
   "scripts": {
     "format:fix": "prettier * tests/* --write --ignore-unknown",
     "format": "prettier * tests/* --check --ignore-unknown",
