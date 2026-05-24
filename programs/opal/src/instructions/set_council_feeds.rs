@@ -32,12 +32,16 @@ pub fn handler(ctx: Context<SetCouncilFeeds>, args: SetCouncilFeedsArgs) -> Resu
         args.feeds.iter().all(|f| *f != Pubkey::default()),
         OpalError::ConfigInvariantViolation
     );
-    require!(
-        args.feeds[0] != args.feeds[1]
-            && args.feeds[0] != args.feeds[2]
-            && args.feeds[1] != args.feeds[2],
-        OpalError::ConfigInvariantViolation
-    );
+    if COUNCIL_SIZE > 1 {
+        for i in 0..COUNCIL_SIZE {
+            for j in (i + 1)..COUNCIL_SIZE {
+                require!(
+                    args.feeds[i] != args.feeds[j],
+                    OpalError::ConfigInvariantViolation
+                );
+            }
+        }
+    }
     config.council_feeds = args.feeds;
     Ok(())
 }
