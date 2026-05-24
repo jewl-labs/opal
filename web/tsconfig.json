@@ -21,7 +21,8 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@opal/idl": ["../target/idl/opal.json"]
     }
   },
   "include": [
@@ -29,9 +30,11 @@
     "app/**/*",
     "components/**/*",
     "lib/**/*",
+    "scripts/**/*",
     "providers/**/*",
     "types/**/*",
     "data/**/*",
+    "../target/types/opal.ts",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],

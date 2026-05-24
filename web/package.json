@@ -11,6 +11,7 @@
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
     "typecheck": "tsc --noEmit",
+    "check-env": "bun run scripts/check-env.ts",
     "prepare": "simple-git-hooks install"
   },
   "lint-staged": {
@@ -24,7 +25,15 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
+    "@coral-xyz/anchor": "0.32.1",
     "@phosphor-icons/react": "^2.1.10",
+    "@privy-io/react-auth": "^3.27.1",
+    "@solana-program/memo": "^0.11.0",
+    "@solana-program/system": "^0.12.0",
+    "@solana-program/token": "^0.13.0",
+    "@solana/kit": "^6.9.0",
+    "@solana/spl-token": "0.4.14",
+    "@solana/web3.js": "1.98.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "ditherwave": "^0.1.0",

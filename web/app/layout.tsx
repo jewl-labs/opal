@@ -3,8 +3,7 @@ import type { ReactNode } from 'react';
 
 import Container from '@/components/common/container';
 import Navbar from '@/components/common/navbar';
-import { ThemeProvider } from '@/providers/theme-provider';
-import { WalletProvider } from '@/providers/wallet-context';
+import { Providers } from '@/providers/providers';
 
 import { Disket } from './font';
 import './globals.css';
@@ -23,19 +22,12 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${Disket.className} h-full antialiased`} suppressHydrationWarning>
       <body className="relative overflow-x-clip">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <WalletProvider>
-            <Container className="border-muted-foreground/50 border-x border-dashed">
-              <Navbar />
-            </Container>
-            {children}
-          </WalletProvider>
-        </ThemeProvider>
+        <Providers>
+          <Container className="border-muted-foreground/50 border-x border-dashed">
+            <Navbar />
+          </Container>
+          {children}
+        </Providers>
       </body>
     </html>
   );

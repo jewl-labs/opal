@@ -1,39 +1,78 @@
 'use client';
 
-import { type ReactNode, createContext, useContext, useState } from 'react';
+import {
+  type ReactNode,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+} from 'react';
 
-import { MOCK_WALLET_ADDRESS } from '@/data/wallet';
+import { useLogin, usePrivy } from '@privy-io/react-auth';
+import {
+  type ConnectedStandardSolanaWallet,
+  useCreateWallet,
+  useWallets,
+} from '@privy-io/react-auth/solana';
 
 interface WalletContextType {
-  currentAddress: string;
-  setCurrentAddress: (address: string) => void;
+  ready: boolean;
+  authenticated: boolean;
+  currentAddress: string | null;
+  embeddedWallet: ConnectedStandardSolanaWallet | null;
+  login: () => void;
+  logout: () => Promise<void>;
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
-function isValidAddress(address: string): boolean {
-  if (!address || typeof address !== 'string') return false;
-  const trimmed = address.trim();
-  return trimmed.length >= 32 && trimmed.length <= 50;
+function findPrivyWallet(wallets: ConnectedStandardSolanaWallet[]) {
+  return wallets.find((wallet) => wallet.standardWallet.name === 'Privy') ?? null;
 }
 
 export function WalletProvider({ children }: { children: ReactNode }) {
-  const [currentAddress, setCurrentAddress] = useState(MOCK_WALLET_ADDRESS);
+  const { ready: privyReady, authenticated, logout } = usePrivy();
+  const { ready: solanaWalletsReady, wallets } = useWallets();
+  const { createWallet } = useCreateWallet();
 
-  const setValidatedAddress = (address: string) => {
-    const trimmed = address.trim();
-    if (isValidAddress(trimmed)) {
-      setCurrentAddress(trimmed);
-    } else {
-      setCurrentAddress(MOCK_WALLET_ADDRESS);
+  const embeddedWallet = useMemo(() => findPrivyWallet(wallets), [wallets]);
+  const currentAddress = embeddedWallet?.address ?? null;
+  const ready = privyReady && solanaWalletsReady;
+
+  const ensureEmbeddedWallet = useCallback(async () => {
+    if (!authenticated || embeddedWallet) return;
+    try {
+      await createWallet();
+    } catch {
+      // Wallet may already exist or user dismissed creation UI.
     }
-  };
+  }, [authenticated, createWallet, embeddedWallet]);
 
-  return (
-    <WalletContext.Provider value={{ currentAddress, setCurrentAddress: setValidatedAddress }}>
-      {children}
-    </WalletContext.Provider>
+  const { login } = useLogin({
+    onComplete: () => {
+      void ensureEmbeddedWallet();
+    },
+  });
+
+  useEffect(() => {
+    if (!ready || !authenticated) return;
+    void ensureEmbeddedWallet();
+  }, [authenticated, ensureEmbeddedWallet, ready]);
+
+  const value = useMemo(
+    () => ({
+      ready,
+      authenticated,
+      currentAddress,
+      embeddedWallet,
+      login,
+      logout,
+    }),
+    [authenticated, currentAddress, embeddedWallet, login, logout, ready]
   );
+
+  return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
 }
 
 export function useWallet() {

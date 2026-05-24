@@ -48,10 +48,12 @@ export default function Assertion() {
       }
 
       if (filter === 'myAssertions') {
+        if (!currentAddress) return false;
         return assertion.asserter === currentAddress;
       }
 
       if (filter === 'watching') {
+        if (!currentAddress) return false;
         return (
           assertion.asserter === currentAddress ||
           assertion.llmDispute?.disputer === currentAddress ||

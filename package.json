@@ -3,7 +3,6 @@
   "scripts": {
     "format:fix": "prettier * tests/* --write --ignore-unknown",
     "format": "prettier * tests/* --check --ignore-unknown",
-    "gen:client": "codama run js",
     "test": "anchor test",
     "init-feeds": "bun run scripts/init-council-feeds.ts",
     "relayer": "bun run scripts/relayer.ts",
@@ -13,15 +12,11 @@
     "@coral-xyz/anchor": "^0.32.1",
     "@solana/web3.js": "^1.98.4",
     "@solana/spl-token": "^0.4.14",
-    "@solana/kit": "^6.3.1",
     "@switchboard-xyz/on-demand": "^3.10.1",
     "@switchboard-xyz/common": "^5.8.1"
   },
   "devDependencies": {
-    "@codama/nodes-from-anchor": "^1.3.9",
-    "@codama/renderers-js": "^2.0.3",
     "@types/bun": "^1.3.10",
-    "codama": "^1.5.1",
     "prettier": "^3.8.1"
   }
 }
