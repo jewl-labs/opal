@@ -1,6 +1,6 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Connection, Keypair, PublicKey } from "@solana/web3.js";
-import { Opal } from "../target/types/opal";
+import type { Opal } from "../target/types/opal";
 import * as fs from "fs";
 
 const CONFIG = {
@@ -21,11 +21,8 @@ async function main() {
   const provider = new anchor.AnchorProvider(connection, new anchor.Wallet(wallet), {});
 
   const programId = new PublicKey(CONFIG.programId);
-  const program = new anchor.Program<Opal>(
-    require("../target/idl/opal.json"),
-    programId,
-    provider
-  );
+  const idl = JSON.parse(fs.readFileSync(new URL("../target/idl/opal.json", import.meta.url).pathname, "utf-8"));
+  const program = new anchor.Program<Opal>(idl, provider);
 
   const claim = "Narendra Modi won the 2024 US Presidential elections";
   const assertionId = Keypair.generate().publicKey;
@@ -63,4 +60,4 @@ async function main() {
   }
 }
 
-main();
+main().catch(err => { console.error(err); process.exit(1); });

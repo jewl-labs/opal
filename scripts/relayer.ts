@@ -58,6 +58,7 @@ async function submitVerdict(
   program: anchor.Program<Opal>,
   wallet: Keypair,
   programId: PublicKey,
+  feedKey: PublicKey,
   updateIx: any,
   assertionId: string
 ): Promise<string> {
@@ -71,30 +72,19 @@ async function submitVerdict(
     programId
   );
 
-  const [protocolConfig] = PublicKey.findProgramAddressSync(
-    [Buffer.from("protocol_config")],
-    programId
-  );
-
   const [llmResolutionRound] = PublicKey.findProgramAddressSync(
     [Buffer.from("llm_round"), assertion.toBuffer()],
     programId
   );
 
-  const roundAccount = await program.account.llmResolutionRound.fetch(
-    llmResolutionRound
-  );
-  const feedKey = roundAccount.councilFeeds[0];
-
   const submitIx = await program.methods
     .submitLlmResolution()
     .accounts({
       payer: wallet.publicKey,
-      protocolConfig,
       assertion,
       llmResolutionRound,
       feed0: feedKey,
-    })
+    } as any)
     .instruction();
 
   const latestBlockhash = await connection.getLatestBlockhash("confirmed");
@@ -150,20 +140,17 @@ async function main() {
   const provider = new anchor.AnchorProvider(connection, new anchor.Wallet(wallet), {});
 
   const programId = new PublicKey(CONFIG.programId);
-  const program = new anchor.Program<Opal>(
-    require("../target/idl/opal.json"),
-    programId,
-    provider
-  );
+  const idl = JSON.parse(fs.readFileSync(new URL("../target/idl/opal.json", import.meta.url).pathname, "utf-8"));
+  const program = new anchor.Program<Opal>(idl, provider);
 
   const queueKey = new PublicKey(CONFIG.queueKey);
-  const queue = new Queue({
-    program: {
+  const queue = new Queue(
+    {
       provider,
       programId: new PublicKey("A43DyUGA7s8eXPxqEjJY6EBu1KKbNgfxF8h17VAHn13w"),
     },
-    publicKey: queueKey,
-  });
+    queueKey
+  );
 
   console.log("=".repeat(60));
   console.log("Opal LLM Resolution Relayer");
@@ -190,6 +177,7 @@ async function main() {
       llmResolutionRound
     );
     const feedKey = roundAccount.councilFeeds[0];
+    if (!feedKey) throw new Error("No council feed configured on this resolution round");
 
     console.log("Feed:", feedKey.toBase58());
 
@@ -204,6 +192,7 @@ async function main() {
       program,
       wallet,
       programId,
+      feedKey,
       updateIx,
       CONFIG.assertionId
     );

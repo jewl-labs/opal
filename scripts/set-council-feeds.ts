@@ -79,4 +79,4 @@ async function main() {
   }
 }
 
-main();
+main().catch(err => { console.error("CLI failure:", err); process.exit(1); });

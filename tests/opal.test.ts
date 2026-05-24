@@ -93,10 +93,10 @@ async function buildTokenEnv(connection: Connection, payer: Keypair): Promise<To
   const llmDisputer   = Keypair.generate();
   const voteDisputer  = Keypair.generate();
 
-  await sleep(200);
   for (const kp of [treasury, asserter, llmDisputer, voteDisputer]) {
-    await connection.requestAirdrop(kp.publicKey, 5 * anchor.web3.LAMPORTS_PER_SOL);
-    await sleep(100);
+    const sig = await connection.requestAirdrop(kp.publicKey, 5 * anchor.web3.LAMPORTS_PER_SOL);
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+    await connection.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, 'confirmed');
   }
 
   const mint = await createMint(connection, payer, mintAuthority.publicKey, null, 6);
@@ -156,7 +156,7 @@ class Ctx {
   setCouncilFeeds(feeds: PublicKey[]) {
     return this.program.methods
       .setCouncilFeeds({ feeds })
-      .accounts({ authority: this.proto.authority.publicKey, protocolConfig: this.proto.configPda })
+      .accounts({ authority: this.proto.authority.publicKey, protocolConfig: this.proto.configPda } as any)
       .signers([this.proto.authority])
       .rpc({ commitment: 'confirmed' });
   }
@@ -173,7 +173,7 @@ class Ctx {
         asserterPusd: this.token.asserterAta,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
-      })
+      } as any)
       .signers([this.token.asserter])
       .rpc({ commitment: 'confirmed' });
   }
@@ -192,7 +192,7 @@ class Ctx {
         disputerPusd: this.token.llmDisputerAta,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
-      })
+      } as any)
       .signers([this.token.llmDisputer])
       .rpc({ commitment: 'confirmed' });
   }
@@ -205,7 +205,7 @@ class Ctx {
         protocolConfig: this.proto.configPda,
         assertion: p.assertion,
         llmResolutionRound: p.llmRound,
-      })
+      } as any)
       .signers([this.proto.authority])
       .rpc({ commitment: 'confirmed' });
   }
@@ -225,7 +225,7 @@ class Ctx {
         llmDisputerPusd: this.token.llmDisputerAta,
         treasuryPusd: this.proto.treasuryAta,
         tokenProgram: TOKEN_PROGRAM_ID,
-      })
+      } as any)
       .rpc({ commitment: 'confirmed' });
   }
 
@@ -244,7 +244,7 @@ class Ctx {
         disputerPusd: this.token.voteDisputerAta,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
-      })
+      } as any)
       .signers([this.token.voteDisputer])
       .rpc({ commitment: 'confirmed' });
   }
@@ -257,7 +257,7 @@ class Ctx {
         protocolConfig: this.proto.configPda,
         assertion: p.assertion,
         voteResolutionRound: p.voteRound,
-      })
+      } as any)
       .signers([this.proto.authority])
       .rpc({ commitment: 'confirmed' });
   }
@@ -279,7 +279,7 @@ class Ctx {
         voteDisputerPusd: this.token.voteDisputerAta,
         treasuryPusd: this.proto.treasuryAta,
         tokenProgram: TOKEN_PROGRAM_ID,
-      })
+      } as any)
       .signers([this.proto.authority])
       .rpc({ commitment: 'confirmed' });
   }
@@ -296,7 +296,7 @@ class Ctx {
         asserterPusd: this.token.asserterAta,
         treasuryPusd: this.proto.treasuryAta,
         tokenProgram: TOKEN_PROGRAM_ID,
-      })
+      } as any)
       .rpc({ commitment: 'confirmed' });
   }
 }
@@ -334,7 +334,7 @@ async function setupProtocol(program: Program<Opal>, token: TokenEnv, authority:
       pusdMint:       token.mint,
       treasuryPusd:   treasuryAta,
       systemProgram:  SystemProgram.programId,
-    })
+    } as any)
     .signers([authority])
     .rpc({ commitment: 'confirmed' });
 
@@ -395,7 +395,7 @@ describe('opal', () => {
           pusdMint:       ctx.token.mint,
           treasuryPusd:   treasuryAta,
           systemProgram:  SystemProgram.programId,
-        })
+        } as any)
         .signers([ctx.proto.authority])
         .rpc({ commitment: 'confirmed' })
     ).rejects.toThrow();
@@ -607,9 +607,17 @@ describe('opal', () => {
     const id1 = ctx.newId(); const p1 = ctx.pdas(id1);
     const id2 = ctx.newId(); const p2 = ctx.pdas(id2);
 
+    // Set up both assertions and dispute both so both have llmDispute PDAs
     await ctx.createAssertion(p1, id1, 'Assertion 1', 200);
     await ctx.disputeAssertion(p1, id1);
     await ctx.createAssertion(p2, id2, 'Assertion 2', 200);
+    await ctx.disputeAssertion(p2, id2);
+
+    // Drive assertion1 to ASSERTED_LLM state so finalizeLlmResolution is callable
+    await ctx.submitMockLlmResolution(p1, id1, OUTCOME.FALSE);
+
+    // Advance past the LLM challenge window
+    await sleep(4000);
 
     // pass assertion2's llmDispute PDA for assertion1's finalize → should reject
     await expect(
@@ -620,14 +628,14 @@ describe('opal', () => {
           protocolConfig:     ctx.proto.configPda,
           pusdMint:           ctx.token.mint,
           assertion:          p1.assertion,
-          llmDispute:         p2.llmDispute,   // wrong
+          llmDispute:         p2.llmDispute,   // wrong — belongs to assertion2
           llmResolutionRound: p1.llmRound,
           bondVault:          p1.bondVault,
           asserterPusd:       ctx.token.asserterAta,
           llmDisputerPusd:    ctx.token.llmDisputerAta,
           treasuryPusd:       ctx.proto.treasuryAta,
           tokenProgram:       TOKEN_PROGRAM_ID,
-        })
+        } as any)
         .rpc({ commitment: 'confirmed' })
     ).rejects.toThrow();
   });
