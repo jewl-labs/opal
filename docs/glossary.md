@@ -67,10 +67,10 @@ The second disputer. This participant challenges the proposed LLM resolution and
 An OPAL holder who locks OPAL to participate in the final private voting escalation. Not yet implemented.
 
 **LLM Resolver**
-The v1 resolution service for first disputes. Currently a mock instruction gated to protocol authority (`submit_mock_llm_resolution`). Future versions will use Switchboard On-Demand/Oracle Quotes to call a configured LLM path and return a numeric outcome code.
+The on-chain path that posts the first-dispute outcome. Production uses `submit_llm_resolution`: three Switchboard pull feeds (the **council**) each publish an integer verdict; the program majority-votes. Local tests use `submit_mock_llm_resolution` (authority-gated, `mock-llm` feature).
 
 **LLM Council**
-A future hardening path where multiple models or model operators produce independent outputs before aggregation.
+The three Switchboard feeds configured in `ProtocolConfig.council_feeds` (via `set_council_feeds`) and copied into `LlmResolutionRound` at dispute time. A future hardening path may add more models or off-chain aggregation before feeds update.
 
 **Integrator**
 Any protocol or application that consumes Opal outcomes. Integrators can infer the current resolution stage from `AssertionAccount.state` and the linked round accounts, but final settlement should require `state == Resolved`.
@@ -96,7 +96,7 @@ The account that tracks LLM resolution for the first dispute. Switchboard fields
 The account that tracks private voting for the second dispute. MagicBlock fields are reserved placeholders. Zero-copy.
 
 **ProtocolConfig** - `seeds: [b"protocol_config"]`
-Singleton PDA containing tunable protocol parameters: bond minimums and ratios, fee shares, window lengths, and authority. Zero-copy.
+Singleton PDA containing tunable protocol parameters: bond minimums and ratios, fee shares, window lengths, `council_feeds`, and authority. Zero-copy.
 
 **Treasury**
 The protocol-controlled SPL token account for stablecoin fees and treasury allocations.
@@ -166,7 +166,7 @@ The required weighted-vote threshold for a decisive voting outcome. If no outcom
 | Final answer     | `outcome: u8`               | Set only in `Resolved` (255 = unset)                                         |
 | First dispute    | `LlmDisputeAccount`         | Challenges default optimistic `True`                                         |
 | Second dispute   | `VoteDisputeAccount`        | Challenges LLM resolution                                                    |
-| First resolution | `LlmResolutionRound`        | Mock resolver (Switchboard in future)                                        |
+| First resolution | `LlmResolutionRound`        | Switchboard council (`submit_llm_resolution`; mock in local tests)           |
 | Final escalation | `VoteResolutionRound`       | Placeholder (MagicBlock in future)                                           |
 | Collateral asset | Stablecoin                  | Bonds, slashing, rewards, treasury. Field names say `pusd`.                  |
 | Voting asset     | OPAL                        | Voting weight and governance (not yet integrated)                            |

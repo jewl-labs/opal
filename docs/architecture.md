@@ -16,8 +16,8 @@ This document describes the target architecture for the prediction-market wedge.
 - Auxiliary data lives offchain as plain text; only `auxiliary_hash` is stored onchain (max 128 bytes).
 - Stablecoin is the collateral asset for bonds, slashing, rewards, and fees. Field names currently say `pusd` but the protocol supports any USD-pegged token.
 - OPAL is the voting and governance asset (not yet integrated).
-- V1 LLM resolution uses a mock instruction gated to protocol authority. Real Switchboard integration is reserved for future work.
-- The hardened future resolver may use Nosana-powered inference and/or an LLM Council, but v1 implementation should not require that.
+- V1 LLM resolution uses a **three-feed Switchboard council** (`submit_llm_resolution`): majority vote across feeds configured via `set_council_feeds`. Local integration tests build with `mock-llm` and use `submit_mock_llm_resolution` instead.
+- Nosana-powered inference or a richer multi-model council may harden this path later; the on-chain council shape is already fixed at three feeds.
 - Final escalation uses MagicBlock private voting with OPAL-weighted TWAV (placeholder — no real voting yet).
 
 ## Onchain Account Model
@@ -118,11 +118,11 @@ The account tracking LLM resolution for the first dispute. Switchboard fields ar
 pub struct LlmResolutionRound {
     pub assertion: Pubkey,
     pub dispute: Pubkey,
-    pub switchboard_program: Pubkey,    // placeholder
-    pub switchboard_queue: Pubkey,      // placeholder
-    pub switchboard_feed: Pubkey,       // placeholder
+    pub council_feeds: [Pubkey; 3],     // copied from ProtocolConfig at dispute time
+    pub switchboard_program: Pubkey,    // reserved / future metadata
+    pub switchboard_queue: Pubkey,      // reserved
     pub switchboard_feed_hash: [u8; 32],
-    pub switchboard_quote: Pubkey,      // placeholder
+    pub switchboard_quote: Pubkey,      // reserved
     pub switchboard_quote_slot: u64,
     pub max_staleness_slots: u64,
     pub prompt_hash: [u8; 32],
@@ -137,7 +137,7 @@ pub struct LlmResolutionRound {
 }
 ```
 
-The Switchboard feed should produce a numeric outcome code. The program maps codes to outcomes: `0 = True`, `1 = False`, `2 = TooEarly`, `3 = Unresolvable`.
+Each council feed must return an integer Switchboard value in `0..=3`. The program maps codes to outcomes: `0 = True`, `1 = False`, `2 = TooEarly`, `3 = Unresolvable`. `submit_llm_resolution` majority-votes the three readings (ties → `Unresolvable`).
 
 ### `VoteResolutionRound`
 
@@ -190,9 +190,12 @@ pub struct ProtocolConfig {
     pub llm_challenge_window_seconds: i64,
     pub vote_setup_window_seconds: i64,
     pub voting_window_seconds: i64,
+    pub council_feeds: [Pubkey; 3],   // default = unset; set via set_council_feeds
     pub bump: u8,
 }
 ```
+
+Authority calls `set_council_feeds` once (or when rotating feeds) before disputes are allowed.
 
 ### `Treasury`
 
@@ -205,39 +208,48 @@ An SPL token account owned by the protocol authority. Configured in `ProtocolCon
    - Locks the asserter's stablecoin bond.
    - Sets `state = ASSERTED`, `outcome = OUTCOME_NONE`, and `liveness_deadline`.
 
-2. `dispute_assertion`
+2. `set_council_feeds`
+   - Gated to `protocol_config.authority`.
+   - Sets three distinct non-default Switchboard feed pubkeys on `ProtocolConfig`.
+   - Required before `dispute_assertion`.
+
+3. `dispute_assertion`
    - Allowed while the assertion is `ASSERTED` and before `liveness_deadline`.
+   - Requires all `protocol_config.council_feeds` to be configured.
    - Locks the first disputer's stablecoin bond.
    - Creates `LlmDisputeAccount`.
-   - Creates `LlmResolutionRound`.
+   - Creates `LlmResolutionRound` (copies council feed pubkeys).
    - Sets `state = PENDING_LLM`, `dispute_count = 1`, and round/dispute pointers on `AssertionAccount`.
 
-3. `submit_mock_llm_resolution` _(placeholder)_
-   - Gated to `protocol_config.authority`.
-   - Maps an outcome code to a resolution outcome.
-   - Stores the result on `LlmResolutionRound`.
+4. `submit_llm_resolution`
+   - Permissionless once feeds have posted values.
+   - Reads `feed_0`, `feed_1`, `feed_2` against `LlmResolutionRound.council_feeds`; majority-votes outcome.
    - Sets `AssertionAccount.state = ASSERTED_LLM` and opens the LLM challenge deadline.
-   - In production, this will be replaced by a Switchboard oracle callback.
 
-4. `finalize_llm_resolution`
+5. `submit_mock_llm_resolution` _(local tests only, `mock-llm` feature)_
+   - Gated to `protocol_config.authority`.
+   - Maps an outcome code argument without reading feeds.
+   - Same state transition as `submit_llm_resolution`.
+
+6. `finalize_llm_resolution`
    - Allowed after the LLM challenge window if no vote dispute exists.
    - Sets `state = RESOLVED` and `outcome = LlmResolutionRound.outcome`.
    - Sets `LlmDisputeAccount.settlement_resolution`, computes correctness, and settles bonds.
 
-5. `challenge_llm_resolution`
+7. `challenge_llm_resolution`
    - Allowed while the assertion is `ASSERTED_LLM` and before the LLM challenge deadline.
    - Locks the second disputer's stablecoin bond.
    - Creates `VoteDisputeAccount` with `challenged_llm_resolution = LlmResolutionRound.outcome`.
    - Creates `VoteResolutionRound`.
    - Sets `state = PENDING_VOTE`, `dispute_count = 2`, and round/dispute pointers on `AssertionAccount`.
 
-6. `open_vote` _(placeholder)_
+8. `open_vote` _(placeholder)_
    - TBD: auth policy is undecided. Currently permissionless for liveness.
    - Sets voting deadlines on `VoteResolutionRound`.
    - Moves the assertion from `PENDING_VOTE` to `VOTING`.
    - Sets `delegated = BOOL_TRUE` as a no-op placeholder for MagicBlock ER delegation.
 
-7. `finalize_vote_resolution_placeholder` _(placeholder)_
+9. `finalize_vote_resolution_placeholder` _(placeholder)_
    - Allowed after the voting window expires.
    - Takes a mock outcome code as argument.
    - Sets `VoteResolutionRound.final_outcome`.
@@ -245,10 +257,11 @@ An SPL token account owned by the protocol authority. Configured in `ProtocolCon
    - Sets settlement fields on both dispute accounts and settles bonds.
    - In production, this will be replaced by real vote tallying and MagicBlock commit/undelegate.
 
-8. `finalize_undisputed`
-   - Allowed after `liveness_deadline` if no dispute exists.
-   - Sets `state = RESOLVED` and `outcome = TRUE`.
-   - Returns the asserter bond minus configured fees.
+10. `finalize_undisputed`
+
+- Allowed after `liveness_deadline` if no dispute exists.
+- Sets `state = RESOLVED` and `outcome = TRUE`.
+- Returns the asserter bond minus configured fees.
 
 ## State Machine
 
@@ -298,17 +311,11 @@ Integrator rules:
 ## External Systems
 
 **Switchboard**
-V1 uses a mock resolver (`submit_mock_llm_resolution`). Real Switchboard On-Demand/Oracle Quotes integration is reserved for future work. The `LlmResolutionRound` struct already reserves Switchboard fields (program, queue, feed, quote, etc.) for this purpose.
+V1 LLM resolution is implemented via `submit_llm_resolution` and a three-feed council on `ProtocolConfig` / `LlmResolutionRound`. Each feed is a Switchboard On-Demand pull feed returning an integer verdict `0..=3`; the program majority-votes and rejects stale or non-integer values. `set_council_feeds` must run before disputes.
 
-Planned Switchboard implementation requirements:
+Local integration tests use the `mock-llm` program feature and `submit_mock_llm_resolution` instead of live feed reads.
 
-- Store the expected feed hash and queue on `LlmResolutionRound`.
-- Use the mainnet or devnet Switchboard program and queue from protocol config.
-- Verify the quote account is canonical for the expected queue/feed hash.
-- Reject stale quotes using `max_staleness_slots`.
-- Reject values outside the allowed outcome code set.
-- If the feed value is scaled, require exact scaled values for the four outcome codes rather than rounding.
-- If variable overrides are used to pass assertion-specific data, store `variable_overrides_hash` and require the offchain transcript hash to match. The safer v1 default is an assertion-specific prompt/feed hash so the feed identity commits to the statement and auxiliary data.
+Additional metadata fields on `LlmResolutionRound` (program, queue, quote, prompt/evidence hashes) are reserved for stricter feed identity and transcript binding in future hardening.
 
 **MagicBlock**
 MagicBlock Private Ephemeral Rollups will provide the private execution environment for OPAL-weighted voting escalation. The `VoteResolutionRound` struct reserves MagicBlock fields (validator, permission account, delegated vote state) for this purpose. Currently no ER delegation is performed — `open_vote` sets `delegated = BOOL_TRUE` as a no-op.

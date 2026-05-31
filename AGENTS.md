@@ -169,11 +169,12 @@ anchor build
 ## Test
 
 ```bash
-# Full integration-test suite on localnet
+# Full integration-test suite on localnet (builds with mock-llm via Anchor.toml)
 # (auto-starts validator, deploys program, runs tests, stops validator)
 anchor test
 
-
+# Or explicitly:
+bun run test:local
 ```
 
 **No Rust unit tests.** `cargo test -p opal` only runs the empty lib test harness.
@@ -228,9 +229,15 @@ All state accounts are **zero-copy** with `#[repr(C, packed)]`.
 - `AssertionAccount` uses a **caller-supplied** `assertion_id`: seeds = `[b"assertion", assertion_id.as_ref()]`. This lets clients pre-compute PDAs off-chain.
 - Dispute and round PDAs derive from the `assertion` account key, not the `assertion_id`.
 
+### LLM resolution (Switchboard council)
+
+- **`set_council_feeds`:** Authority sets three distinct Switchboard pull feed pubkeys on `ProtocolConfig`. Required before `dispute_assertion` (`CouncilFeedsNotConfigured` otherwise).
+- **`dispute_assertion`:** Copies `protocol_config.council_feeds` into `LlmResolutionRound.council_feeds`.
+- **`submit_llm_resolution`:** Permissionless; reads all three feeds, majority-votes outcome codes (`0`–`3`), sets `AssertedLLM`. Uses `switchboard-on-demand` in the program.
+- **`submit_mock_llm_resolution`:** Only with `mock-llm` feature (enabled in `Anchor.toml` for local tests). Authority-gated; skips feed reads.
+
 ### Placeholder integrations
 
-- **Switchboard LLM resolver:** `LlmResolutionRound` reserves Switchboard fields (program, queue, feed, quote, etc.) but they default to `Pubkey::default()` / zeros. `submit_mock_llm_resolution` is a mock instruction gated to `protocol_config.authority` for local testing.
 - **MagicBlock voting:** `VoteResolutionRound` reserves MagicBlock fields (validator, permission account, delegated vote state) but no ER delegation is performed. `open_vote` sets `delegated = BOOL_TRUE` as a no-op placeholder. `open_vote` auth policy is **TBD** — currently permissionless for liveness, but this may change.
 
 ### Economic model (current)

@@ -54,13 +54,14 @@ While `Asserted`, the statement is treated as `True` by default. The liveness wi
 
 When the first dispute is filed:
 
+- `ProtocolConfig.council_feeds` must already be set (`set_council_feeds`)
 - the LLM disputer posts a stablecoin dispute bond
 - `LlmDisputeAccount` is created
-- `LlmResolutionRound` is created
+- `LlmResolutionRound` is created (council feed pubkeys copied from config)
 - `state = PendingLLM`
 - `dispute_count = 1`
 
-The assertion waits for the LLM resolver to post an outcome. In the current implementation, `submit_mock_llm_resolution` (gated to protocol authority) posts the outcome.
+The assertion waits for the LLM resolver to post an outcome. On-chain, `submit_llm_resolution` reads the three council feeds and majority-votes. Integration tests on localnet use `submit_mock_llm_resolution` (authority-gated, `mock-llm` build) instead.
 
 ### 3. AssertedLLM
 

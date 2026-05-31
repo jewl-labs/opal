@@ -41,7 +41,7 @@ TypeScript integration tests use `@coral-xyz/anchor` with artifacts from `anchor
 
 ### Web frontend
 
-Social login + mock assertion UI (no on-chain txs yet):
+Privy social login + embedded Solana wallet (devnet). Assertion UI uses mock data until on-chain txs are wired:
 
 ```bash
 cd web && cp .env.local.example .env.local && bun run check-env && bun run dev
@@ -51,7 +51,7 @@ See [web/README.md](web/README.md) and [Privy setup](web/docs/PRIVY_SETUP.md).
 
 ## Documentation
 
-- [Web frontend](web/README.md) — Privy auth, mock assertion UI
+- [Web frontend](web/README.md) — Privy auth, devnet wallet, mock assertion flows
 - [Privy setup](web/docs/PRIVY_SETUP.md) — dashboard checklist
 - [Architecture](docs/architecture.md) — account model, state machine, instruction flow
 - [Resolution](docs/resolution.md) — how statements move from assertion to final outcome
@@ -72,7 +72,7 @@ Current coverage: happy paths (undisputed, LLM resolution, full escalation), con
 
 This is an active scaffold. Several pieces are placeholder:
 
-- **LLM resolver:** `submit_mock_llm_resolution` is a mock gated to protocol authority. Real Switchboard integration is reserved for future work.
+- **LLM resolver:** Production path is `submit_llm_resolution` (three Switchboard council feeds, majority vote). Integration tests use the `mock-llm` feature and `submit_mock_llm_resolution` (authority-gated). Call `set_council_feeds` before any dispute.
 - **Voting:** `open_vote` is permissionless and sets a `delegated` flag but performs no actual MagicBlock ER delegation. Real private voting is reserved for future work.
 - **Tokenomics:** `voter_reward_share_bps` and `vote_disputer_reward_share_bps` exist in config but are not distributed. The vote disputer currently only gets their bond back (minus fees) if correct.
 - **Field names:** still say `pusd` throughout. A future PR will rename to `usd` to reflect that any USD-pegged stablecoin is supported.

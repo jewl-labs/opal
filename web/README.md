@@ -1,6 +1,8 @@
 # Opal web
 
-Next.js frontend for Opal. **Privy** provides social login and an embedded Solana wallet on devnet. Assertion flows use **mock data** (`data/assertion.ts`) until on-chain integration is added.
+Next.js frontend for Opal. **Privy** provides social login and an embedded Solana wallet on **Solana devnet** (no localnet mode). Assertion browse/make flows still use **mock data** (`data/assertion.ts`) for listings and submit navigation until Anchor client integration lands.
+
+**Note:** `@privy-io/react-auth` is mounted in the root layout, so production builds compile a large wallet/auth dependency tree (expect multi-minute `bun run build` on cold cache).
 
 ## Run locally
 
@@ -27,4 +29,4 @@ See [docs/PRIVY_SETUP.md](docs/PRIVY_SETUP.md). Required `NEXT_PUBLIC_*` vars ar
 | `bun run typecheck` | `tsc --noEmit`   |
 | `bun run check-env` | Validate env     |
 
-Privy integration plan: [`../plan.md`](../plan.md).
+Setup details: [docs/PRIVY_SETUP.md](docs/PRIVY_SETUP.md).

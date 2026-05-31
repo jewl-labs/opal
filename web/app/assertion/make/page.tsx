@@ -81,11 +81,13 @@ export default function MakeAssertion() {
         ? 'Use a declarative statement, not a question'
         : null;
 
+  const statementValid = statement.length >= 10 && !statement.endsWith('?');
   const walletConnected = ready && authenticated && currentAddress;
-  const isValid = statement.length >= 10 && !statement.endsWith('?') && walletConnected;
+  const canSubmit = statementValid && walletConnected;
+  const buttonDisabled = Boolean(walletConnected) && !statementValid;
 
   const handleSubmit = () => {
-    if (!isValid) return;
+    if (!canSubmit) return;
     const mockId = ASSERTIONS[0]?.id ?? 'mock';
     router.push(`/assertion/browse/${mockId}`);
   };
@@ -182,9 +184,9 @@ export default function MakeAssertion() {
 
           <div className="border-muted-foreground/50 mt-auto border-t border-dashed p-5">
             <m.button
-              whileHover={isValid ? { scale: 1.005 } : {}}
-              whileTap={isValid ? { scale: 0.995 } : {}}
-              disabled={!isValid}
+              whileHover={buttonDisabled ? {} : { scale: 1.005 }}
+              whileTap={buttonDisabled ? {} : { scale: 0.995 }}
+              disabled={buttonDisabled}
               onClick={() => {
                 if (!walletConnected) {
                   login();
@@ -193,9 +195,9 @@ export default function MakeAssertion() {
                 handleSubmit();
               }}
               className={`w-full py-3 text-xs tracking-widest uppercase transition-colors ${
-                isValid
-                  ? 'bg-primary hover:bg-primary/90 cursor-pointer text-black'
-                  : 'bg-muted/30 text-muted-foreground/25 border-muted-foreground/10 cursor-not-allowed border border-dashed'
+                buttonDisabled
+                  ? 'bg-muted/30 text-muted-foreground/25 border-muted-foreground/10 cursor-not-allowed border border-dashed'
+                  : 'bg-primary hover:bg-primary/90 cursor-pointer text-black'
               }`}
             >
               {buttonLabel}

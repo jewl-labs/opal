@@ -3,10 +3,7 @@
   "scripts": {
     "format:fix": "prettier * tests/* --write --ignore-unknown",
     "format": "prettier * tests/* --check --ignore-unknown",
-    "test:local": "anchor build -- --features mock-llm && anchor test --skip-build",
-    "init-feeds": "bun run scripts/init-council-feeds.ts",
-    "relayer": "bun run scripts/relayer.ts",
-    "relayer:once": "bun run scripts/relayer.ts --once"
+    "test:local": "anchor build -- --features mock-llm && anchor test --skip-build"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.32.1",
