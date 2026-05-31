@@ -2,11 +2,7 @@ import type { NextConfig } from 'next';
 
 import path from 'path';
 
-const requiredPublicEnv = [
-  'NEXT_PUBLIC_PRIVY_APP_ID',
-  'NEXT_PUBLIC_SOLANA_RPC_URL',
-  'NEXT_PUBLIC_OPAL_PROGRAM_ID',
-] as const;
+const requiredPublicEnv = ['NEXT_PUBLIC_PRIVY_APP_ID', 'NEXT_PUBLIC_SOLANA_RPC_URL'] as const;
 
 for (const key of requiredPublicEnv) {
   if (!process.env[key]) {

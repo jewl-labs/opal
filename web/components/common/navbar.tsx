@@ -6,21 +6,15 @@ import { useCallback, useEffect, useState } from 'react';
 import { ListIcon, XIcon } from '@phosphor-icons/react';
 import { AnimatePresence } from 'motion/react';
 
-import { useWallet } from '@/providers/wallet-context';
-
 import Container from '../common/container';
 import { Button } from '../ui/button';
 import NavbarMobile from './mobile-navbar';
+import { NavbarAuth } from './navbar-auth';
 import { SearchDialog } from './search-dialog';
-
-function truncateAddress(address: string): string {
-  return `${address.slice(0, 4)}…${address.slice(-4)}`;
-}
 
 export default function Navbar() {
   const [isMobileNavbarOpen, setIsMobileNavbarOpen] = useState<boolean>(false);
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
-  const { ready, authenticated, currentAddress, login, logout } = useWallet();
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -35,10 +29,6 @@ export default function Navbar() {
   }, []);
 
   const handleCloseSearch = useCallback(() => setIsSearchOpen(false), []);
-
-  const handleLogout = useCallback(() => {
-    void logout();
-  }, [logout]);
 
   return (
     <div className="bg-background fixed inset-x-0 top-0 z-30 overflow-x-clip">
@@ -57,37 +47,14 @@ export default function Navbar() {
             <div className="text-muted-foreground text-xs">Search</div>
             <kbd className="bg-muted rounded text-xs font-semibold">⌘ + K</kbd>
           </Button>
-          {authenticated && currentAddress && (
-            <Link href={`/u/${currentAddress}`}>
-              <Button variant="outline" size="sm">
-                Activity
-              </Button>
-            </Link>
-          )}
-          {!ready ? (
-            <Button variant="outline" size="sm" disabled>
-              Loading…
-            </Button>
-          ) : authenticated && currentAddress ? (
-            <>
-              <span className="text-muted-foreground font-mono text-xs">
-                {truncateAddress(currentAddress)}
-              </span>
-              <Button variant="outline" size="sm" onClick={handleLogout}>
-                Logout
-              </Button>
-            </>
-          ) : (
-            <Button variant="outline" size="sm" onClick={login}>
-              Sign in
-            </Button>
-          )}
+          <NavbarAuth layout="desktop" />
         </div>
         <div className="flex md:hidden">
           <Button
             onClick={() => setIsMobileNavbarOpen(!isMobileNavbarOpen)}
             size="icon-lg"
             variant="outline"
+            type="button"
           >
             {isMobileNavbarOpen ? <XIcon /> : <ListIcon />}
           </Button>

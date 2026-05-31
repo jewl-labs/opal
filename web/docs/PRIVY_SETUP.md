@@ -2,11 +2,13 @@
 
 Opal web always talks to **Solana devnet**, including when you run `next dev` on localhost. There is no localnet mode in the frontend.
 
+**Also read:** [web/README.md](../README.md) (env, dev server).
+
 ## Dashboard vs SDK `loginMethods`
 
-| Layer | What it does |
-|-------|----------------|
-| **Privy Dashboard** | Enables OAuth apps / credentials per provider (Google, GitHub, etc.). Disables wallet SIWE/SIWS if you turn off wallet login there. |
+| Layer                              | What it does                                                                                                                                                             |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Privy Dashboard**                | Enables OAuth apps / credentials per provider (Google, GitHub, etc.). Disables wallet SIWE/SIWS if you turn off wallet login there.                                      |
 | **`PrivyProvider` `loginMethods`** | Controls what the **login modal** shows when you call `login()`. **Required** — Privy SDK needs at least one method; should **match** what you enabled in the dashboard. |
 
 Dashboard alone is not enough: the SDK will not infer your login UI from dashboard settings. We set explicitly:
@@ -29,18 +31,6 @@ cd web
 cp .env.local.example .env.local
 bun run check-env
 ```
-
-## Devnet program
-
-Deployed at **`8NCcxyAzKiAHxJ9DMnADtxShYutS9w81wHcXqgCavTBy`**.
-
-Set in `.env.local`:
-
-```
-NEXT_PUBLIC_OPAL_PROGRAM_ID=8NCcxyAzKiAHxJ9DMnADtxShYutS9w81wHcXqgCavTBy
-```
-
-Phase 2 reads `ProtocolConfig` from devnet RPC for the stablecoin mint (no mint address in env required).
 
 ## Dashboard checklist
 

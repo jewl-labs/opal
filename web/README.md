@@ -1,36 +1,30 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Opal web
 
-## Getting Started
+Next.js frontend for Opal. **Privy** provides social login and an embedded Solana wallet on devnet. Assertion flows use **mock data** (`data/assertion.ts`) until on-chain integration is added.
 
-First, run the development server:
+## Run locally
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cd web
+cp .env.local.example .env.local   # Privy + devnet RPC
+bun install
+bun run check-env
+bun run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+See [docs/PRIVY_SETUP.md](docs/PRIVY_SETUP.md). Required `NEXT_PUBLIC_*` vars are validated by `bun run check-env`.
 
-## Learn More
+## Scripts
 
-To learn more about Next.js, take a look at the following resources:
+| Command             | Purpose          |
+| ------------------- | ---------------- |
+| `bun run dev`       | Dev server       |
+| `bun run build`     | Production build |
+| `bun run typecheck` | `tsc --noEmit`   |
+| `bun run check-env` | Validate env     |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Privy integration plan: [`../plan.md`](../plan.md).

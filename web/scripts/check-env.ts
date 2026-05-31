@@ -18,7 +18,6 @@ if (!env.privyClientId) {
 console.log('  NEXT_PUBLIC_SOLANA_CLUSTER: devnet (enforced)');
 console.log('  NEXT_PUBLIC_SOLANA_RPC_URL:', env.solanaRpcUrl);
 console.log('  NEXT_PUBLIC_SOLANA_RPC_WSS:', env.solanaRpcWss);
-console.log('  NEXT_PUBLIC_OPAL_PROGRAM_ID:', env.opalProgramId);
 console.log('  Privy Solana chain id:', env.privySolanaChain);
 
 if (process.env.PRIVY_APP_SECRET) {

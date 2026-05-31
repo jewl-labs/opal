@@ -14,11 +14,7 @@ export function computeAssertionStats(assertions: AssertionAccount[]) {
   const totalValidWeight = assertions.reduce((acc, a) => {
     const w = a.voteResolutionRound?.totalValidWeight;
     if (w === undefined || w === null) return acc;
-    try {
-      return acc + Number(w as any);
-    } catch (e) {
-      return acc;
-    }
+    return acc + Number(w);
   }, 0);
 
   return {
@@ -36,5 +32,3 @@ export function topControversialAssertion(assertions: AssertionAccount[]) {
     assertions.slice().sort((a, b) => (b.disputeCount || 0) - (a.disputeCount || 0))[0] || null
   );
 }
-
-export default { computeAssertionStats, topControversialAssertion };

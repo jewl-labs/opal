@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import { motion as m } from 'motion/react';
@@ -10,7 +11,8 @@ import SectionHeader from '@/components/assertion/section-header';
 import StatementSection from '@/components/assertion/statement-section';
 import SummarySection from '@/components/assertion/summary-section';
 import Container from '@/components/common/container';
-import { ASSERTION_BOND_PUSD } from '@/data/assertion';
+import { ASSERTIONS, ASSERTION_BOND_PUSD } from '@/data/assertion';
+import { useWallet } from '@/providers/wallet-context';
 
 const MAX_CHARS = 280;
 
@@ -37,14 +39,15 @@ function hashPreview(str: string) {
 const SECTION_ORDER: Section[] = ['statement', 'params', 'evidence', 'summary'];
 
 export default function MakeAssertion() {
+  const router = useRouter();
+  const { ready, authenticated, currentAddress, login } = useWallet();
+
   const [open, setOpen] = useState<Section>('statement');
   const [statement, setStatement] = useState('');
   const bond = ASSERTION_BOND_PUSD;
   const [createdAt] = useState(() => Date.now());
   const [window_, setWindow] = useState<(typeof WINDOWS)[number]>(WINDOWS[2]!);
   const [auxiliaryData, setAuxiliaryData] = useState('');
-  // !TBD: Wire up real wallet connection when adapter is integrated
-  const [walletConnected] = useState(false);
 
   const toggle = (s: Section) => setOpen((prev) => (prev === s ? 'statement' : s));
 
@@ -78,13 +81,20 @@ export default function MakeAssertion() {
         ? 'Use a declarative statement, not a question'
         : null;
 
+  const walletConnected = ready && authenticated && currentAddress;
   const isValid = statement.length >= 10 && !statement.endsWith('?') && walletConnected;
 
+  const handleSubmit = () => {
+    if (!isValid) return;
+    const mockId = ASSERTIONS[0]?.id ?? 'mock';
+    router.push(`/assertion/browse/${mockId}`);
+  };
+
   const buttonLabel = !walletConnected
-    ? 'Connect Wallet to Assert'
-    : !isValid
+    ? 'Sign in to Assert'
+    : !statement.length || statement.length < 10 || statement.endsWith('?')
       ? 'Stake to Confirm'
-      : `Stake ${ASSERTION_BOND_PUSD} PUSD and Assert`;
+      : `Stake ${bond} PUSD and Assert`;
 
   return (
     <Container className="border-muted-foreground/50 relative flex h-screen flex-col overflow-hidden border-x border-dashed px-4 pt-18 pb-4">
@@ -117,7 +127,7 @@ export default function MakeAssertion() {
             showShortcut={open === 'params'}
             shortcutHint="Ctrl+Enter"
             onClick={() => toggle('params')}
-            peek={`${ASSERTION_BOND_PUSD} PUSD · ${window_.label}`}
+            peek={`${bond} PUSD · ${window_.label}`}
           />
           <ParamsSection
             open={open === 'params'}
@@ -175,6 +185,13 @@ export default function MakeAssertion() {
               whileHover={isValid ? { scale: 1.005 } : {}}
               whileTap={isValid ? { scale: 0.995 } : {}}
               disabled={!isValid}
+              onClick={() => {
+                if (!walletConnected) {
+                  login();
+                  return;
+                }
+                handleSubmit();
+              }}
               className={`w-full py-3 text-xs tracking-widest uppercase transition-colors ${
                 isValid
                   ? 'bg-primary hover:bg-primary/90 cursor-pointer text-black'

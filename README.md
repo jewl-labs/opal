@@ -37,10 +37,22 @@ anchor test
 
 **Requirements:** Solana CLI v3.1.12 , Anchor 0.32.1, Bun, Rust 1.89.0
 
-TypeScript uses `@coral-xyz/anchor` with `@solana/web3.js` and the IDL/types from `anchor build` (`target/idl/opal.json`, `target/types/opal.ts`).
+TypeScript integration tests use `@coral-xyz/anchor` with artifacts from `anchor build` (`target/idl/opal.json`, `target/types/opal.ts`).
+
+### Web frontend
+
+Social login + mock assertion UI (no on-chain txs yet):
+
+```bash
+cd web && cp .env.local.example .env.local && bun run check-env && bun run dev
+```
+
+See [web/README.md](web/README.md) and [Privy setup](web/docs/PRIVY_SETUP.md).
 
 ## Documentation
 
+- [Web frontend](web/README.md) — Privy auth, mock assertion UI
+- [Privy setup](web/docs/PRIVY_SETUP.md) — dashboard checklist
 - [Architecture](docs/architecture.md) — account model, state machine, instruction flow
 - [Resolution](docs/resolution.md) — how statements move from assertion to final outcome
 - [Tokenomics](docs/tokenomics.md) — bonds, slashing, rewards, fees

@@ -2,8 +2,8 @@
 
 import type { ReactNode } from 'react';
 
-import { ThemeProvider } from '@/providers/theme-provider';
 import { OpalPrivyProvider } from '@/providers/privy-provider';
+import { ThemeProvider } from '@/providers/theme-provider';
 import { WalletProvider } from '@/providers/wallet-context';
 
 export function Providers({ children }: { children: ReactNode }) {

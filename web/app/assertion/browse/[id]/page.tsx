@@ -17,8 +17,8 @@ import type { ResolutionOutcome } from '@/types';
 
 export default function StatementPage() {
   const { id } = useParams();
-
-  const assertion = ASSERTIONS.find((s) => s.id === id);
+  const idStr = Array.isArray(id) ? id[0] : id;
+  const assertion = ASSERTIONS.find((s) => s.id === idStr);
 
   if (!assertion) {
     notFound();
@@ -31,8 +31,6 @@ export default function StatementPage() {
   const [showEvidenceModal, setShowEvidenceModal] = useState(false);
   const [showDisputeModal, setShowDisputeModal] = useState(false);
   const [disputeReason, setDisputeReason] = useState('');
-  const [userVote, setUserVote] = useState<ResolutionOutcome | null>(null);
-
   useEffect(() => {
     const interval = setInterval(() => {
       setRemainingTime(getTimeRemaining(assertion.livenessDeadline));
@@ -119,12 +117,7 @@ export default function StatementPage() {
           {assertion.llmResolutionRound && <LLMSection round={assertion.llmResolutionRound} />}
 
           {assertion.voteResolutionRound && (
-            <VotingSection
-              round={assertion.voteResolutionRound}
-              state={assertion.state}
-              userVote={userVote}
-              onVote={setUserVote}
-            />
+            <VotingSection round={assertion.voteResolutionRound} state={assertion.state} />
           )}
         </div>
 
@@ -433,6 +426,8 @@ function EvidenceSection({
       <div className="flex flex-col gap-4">
         <Meta label="Evidence Hash" value={auxiliaryHash} />
 
+        {auxiliaryUrl ? <Meta label="Evidence URL" value={auxiliaryUrl} /> : null}
+
         <div className="flex gap-3">
           <Button
             onClick={onViewEvidence}
@@ -477,24 +472,9 @@ function LLMSection({ round }: { round: any }) {
   );
 }
 
-function VotingSection({
-  round,
-  state,
-  userVote,
-  onVote,
-}: {
-  round: any;
-  state: string;
-  userVote: ResolutionOutcome | null;
-  onVote: (outcome: ResolutionOutcome) => void;
-}) {
+function VotingSection({ round, state }: { round: any; state: string }) {
   const isVotingActive = state === 'Voting';
   const outcomes: ResolutionOutcome[] = ['True', 'False', 'TooEarly', 'Unresolvable'];
-
-  const handleVote = (outcome: ResolutionOutcome) => {
-    onVote(outcome);
-    console.log('Vote submitted:', { outcome });
-  };
 
   return (
     <Section title="Voting">
@@ -524,14 +504,19 @@ function VotingSection({
       {isVotingActive && (
         <div className="flex flex-col gap-4 py-4">
           <p className="text-muted-foreground text-xs tracking-wide uppercase">Cast Your Vote</p>
+          <p className="text-muted-foreground/80 text-xs leading-relaxed">
+            Vote casting requires MagicBlock ephemeral rollup integration and is not available on
+            devnet yet.
+          </p>
 
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             {outcomes.map((outcome) => (
               <Button
                 key={outcome}
-                onClick={() => handleVote(outcome)}
-                variant={userVote === outcome ? 'default' : 'outline'}
-                className="rounded-none text-sm uppercase transition-colors"
+                disabled
+                title="MagicBlock voting not wired yet"
+                variant="outline"
+                className="rounded-none text-sm uppercase opacity-50"
               >
                 {outcome === 'TooEarly'
                   ? 'Too Early'

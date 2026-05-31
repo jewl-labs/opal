@@ -107,11 +107,6 @@ export default function EarningsPage() {
     return matchFilter && matchSearch;
   });
 
-  const totalAmount = earnings.reduce((acc, e) => {
-    const amount = parseFloat(e.amount.replace('+', '').replace(' PUSD', '').replace(' OPAL', ''));
-    return acc + (isNaN(amount) ? 0 : amount);
-  }, 0);
-
   return (
     <div className="flex flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8">
       {/* consistent slim status bar */}
