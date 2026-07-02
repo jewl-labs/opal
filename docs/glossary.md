@@ -15,7 +15,7 @@ Every feature is tagged so you never have to guess what's real:
 ## Core concepts
 
 **Opal**
-A Solana-native optimistic oracle for natural-language statements, resolved relative to each assertion's Resolution Spec. Default-`True`; disputes escalate through a single LLM resolution and, if challenged, a staked private vote.
+A Solana-native optimistic oracle for natural-language statements, resolved relative to each assertion's Resolution Spec. Default-`True`; disputes escalate through an LLM resolution round and, if challenged, a staked private vote.
 
 **Assertion** — `AssertionAccount` `[Built]`
 The on-chain object created when an asserter posts a statement, a USDC bond, and a Resolution Spec.
@@ -50,7 +50,7 @@ The terminal result on the assertion; `OUTCOME_NONE` (255) until `state == Resol
 - `True` (0) `[Built]` — verified under the spec.
 - `False` (1) `[Built]` — contradicted under the spec.
 - `Unresolvable` (3) `[MVP-target]` — cannot be decided under the spec (ambiguous, conflicting, premature, or below the vote's supermajority). Settles **no-fault** (see Economics).
-- `TooEarly` (2) — **merged into `Unresolvable`** for the MVP; the code value persists but is not produced. _Avoid_ treating it as a distinct outcome.
+- `TooEarly` (2) — the code value persists and `validate_outcome_code` still accepts it; no path is intended to emit it (the council could, on a feed majority). **Merging it into `Unresolvable` is `[MVP-target]`.** _Avoid_ treating it as a distinct outcome.
 - `None` (255) — sentinel for unset.
 
 ## Participants
@@ -60,14 +60,14 @@ The terminal result on the assertion; `OUTCOME_NONE` (255) until `state == Resol
 **LLM Disputer** `[Built]` — the first disputer; challenges the default `True` and triggers LLM resolution.
 **Vote Disputer** `[Built]` — the second disputer; challenges the LLM verdict and triggers the staked vote.
 **Voter** `[MVP-target]` — anyone who stakes USDC into a specific vote round; weight is linear in stake; wrong-side stake is slashed, right-side stake earns rewards.
-**LLM Resolver** `[MVP-target]` — a trusted, authority-gated off-chain service that calls one LLM and posts the verdict, binding prompt/response/evidence hashes on-chain. See [ADR-0002](adr/0002-trusted-llm-resolver.md).
-_Avoid_: "council" (the 3-feed Switchboard design was dropped).
+**LLM Resolver** `[MVP-target]` — a trusted, authority-gated off-chain service that calls one LLM and posts the verdict. (On-chain LLM provenance hashing is deferred to `[Vision]`.) See [ADR-0002](adr/0002-trusted-llm-resolver.md).
+_Avoid_: "council" for the resolver — the 3-feed Switchboard council is the current `[Built]` non-mock path, being removed per ADR-0002, not the resolver design.
 **Integrator** — any app consuming Opal outcomes; must read the Resolution Spec to judge whether an outcome is meaningful for its use case, and should require `state == Resolved` before irreversible settlement.
 
 ## Economics
 
-**USDC** `[MVP-target]` — the single protocol asset, used for all bonds, voting stake, rewards, slashing, and treasury fees. The mint is a config field (`usdc_mint`) so localnet/devnet can use a test mint. See [ADR-0004](adr/0004-single-asset-usdc.md).
-_Avoid_: "pusd" (legacy field prefix, being renamed); "any USD-pegged stablecoin" (we commit to USDC); "OPAL" (dropped from the MVP).
+**USDC** `[MVP-target]` — the single protocol asset, used for all bonds, voting stake, rewards, slashing, and treasury fees. The mint is a config field (currently `pusd_mint` on-chain; renaming to `usdc_mint` per ADR-0004) so localnet/devnet can use a test mint. See [ADR-0004](adr/0004-single-asset-usdc.md).
+_Avoid_: calling the asset "pusd" (it is USDC — `pusd` is only the legacy on-chain field prefix, renaming per ADR-0004); "any USD-pegged stablecoin" (we commit to USDC); "OPAL" (dropped from the MVP).
 
 **Assertion Bond / Dispute Bond** `[Built]` — USDC collateral posted by the asserter / a disputer. A dispute bond is `assertion_bond × ratio_bps / 10_000`.
 
@@ -92,7 +92,7 @@ _Avoid_: the legacy `!= True ⇒ disputer correct` rule, which slashed on indete
 Recorded so the direction is clear and nobody mistakes these for current behaviour:
 
 - **OPAL token** — governance, future reputation/staking, voter incentives. Dropped from the MVP (USDC + the authority key replace it).
-- **Trust-minimized LLM** — Switchboard On-Demand feed(s) or TEE-attested inference, replacing the trusted resolver. (A 3-feed Switchboard "council" was prototyped and dropped.)
+- **Trust-minimized / permissionless LLM** — Switchboard On-Demand feed(s) or TEE-attested inference, replacing the trusted resolver. (The 3-feed Switchboard "council" is the current non-mock resolution path `[Built]`, being removed per ADR-0002.)
 - **Proof-of-personhood** — to enable sub-linear/quadratic weighting without Sybil collapse.
 - **Stake-duration reputation** — long-term staking that accrues voter weight/reputation.
 - **Timed resolution** — assertions carry a resolves-at date and can't finalize before the truth exists.

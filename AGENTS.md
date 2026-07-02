@@ -6,7 +6,7 @@ Opal is a Solana (Anchor) optimistic oracle for natural-language statements. **T
 - **Architecture & flow:** [docs/architecture.md](docs/architecture.md), [docs/resolution.md](docs/resolution.md), [docs/tokenomics.md](docs/tokenomics.md)
 - **Why things are the way they are:** [docs/adr/](docs/adr/)
 
-> The current direction differs from older code in places: a single LLM call (not a council), MagicBlock private voting, a single USDC asset, and no-fault `Unresolvable`. When code and docs disagree about _intent_, the ADRs and the status badges are authoritative.
+> The current direction differs from older code in places: a single trusted LLM call `[MVP-target]` (the 3-feed Switchboard council is still the current `[Built]` non-mock path, being removed per [ADR-0002](docs/adr/0002-trusted-llm-resolver.md)), MagicBlock private voting, a single USDC asset, and no-fault `Unresolvable`. When code and docs disagree about _intent_, the ADRs and the status badges are authoritative.
 
 ## Commands
 
@@ -14,9 +14,11 @@ Opal is a Solana (Anchor) optimistic oracle for natural-language statements. **T
 bun install              # deps
 anchor build             # build program + regenerate target/idl + target/types
 anchor test              # full TS integration suite on localnet (builds with mock-llm)
-bun run test:local       # same, explicit
+bun run test:local       # explicit: rebuild w/ --features mock-llm, then anchor test --skip-build
 bun run format           # prettier check  (format:fix to write)
 ```
+
+> `anchor test` currently runs on **localnet with `mock-llm`**; pointing it at real devnet integration is deferred per [ADR-0006](docs/adr/0006-codebase-organization.md).
 
 The web frontend lives in `web/` — see [web/AGENTS.md](web/AGENTS.md).
 
