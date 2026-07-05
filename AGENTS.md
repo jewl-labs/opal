@@ -6,7 +6,7 @@ Opal is a Solana (Anchor) optimistic oracle for natural-language statements. **T
 - **Architecture & flow:** [docs/architecture.md](docs/architecture.md), [docs/resolution.md](docs/resolution.md), [docs/tokenomics.md](docs/tokenomics.md)
 - **Why things are the way they are:** [docs/adr/](docs/adr/)
 
-> The current direction differs from older code in places: a single trusted LLM call `[MVP-target]` (the 3-feed Switchboard council is still the current `[Built]` non-mock path, being removed per [ADR-0002](docs/adr/0002-trusted-llm-resolver.md)), MagicBlock private voting, a single USDC asset, and no-fault `Unresolvable`. When code and docs disagree about _intent_, the ADRs and the status badges are authoritative.
+> The current direction differs from older code in places: a single trusted LLM call `[MVP-target]` (the 3-feed Switchboard council was removed per [ADR-0002](docs/adr/0002-trusted-llm-resolver.md); the mock is the only resolution driver until the trusted resolver lands), MagicBlock private voting, a single USDC asset, and no-fault `Unresolvable`. When code and docs disagree about _intent_, the ADRs and the status badges are authoritative.
 
 ## Commands
 

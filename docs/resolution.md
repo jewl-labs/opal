@@ -30,7 +30,7 @@ The evidence, applied through the spec, contradicts the statement.
 **`Unresolvable` (3)** `[MVP-target]`
 The statement cannot be decided under the spec: source priority is unclear, evidence conflicts or is unavailable, the statement is ambiguous, the spec is too weak, the truth does not exist yet, or the vote failed to reach `supermajority_bps`. Settles **no-fault** (see [Settlement Logic](#settlement-logic)).
 
-**`TooEarly` (2)** — the code constant persists and `validate_outcome_code` still accepts it (0–3), but no path is intended to emit it (the council could, on a feed majority). **Merging it into `Unresolvable` is `[MVP-target]`**: "the real-world truth does not exist yet" is just one way to be `Unresolvable`, and the target is that it settles identically. See [ADR-0005](adr/0005-no-fault-unresolvable.md).
+**`TooEarly` (2)** — the code constant persists and `validate_outcome_code` still accepts it (0–3), but no path is intended to emit it. **Merging it into `Unresolvable` is `[MVP-target]`**: "the real-world truth does not exist yet" is just one way to be `Unresolvable`, and the target is that it settles identically. See [ADR-0005](adr/0005-no-fault-unresolvable.md).
 
 **`None` (255)** `[Built]` — sentinel for unset; the value of `outcome` until `state == Resolved`.
 
@@ -47,7 +47,7 @@ The statement cannot be decided under the spec: source priority is unclear, evid
 
 ## Lifecycle
 
-The six-state machine and its plumbing — account structs, transitions, and the optimistic + dispute flow — are `[Built]`. The trusted resolver and the private vote that ride on top are `[MVP-target]`; the current non-mock resolution path is a Switchboard council being removed per [ADR-0002](adr/0002-trusted-llm-resolver.md), and on localnet a mock LLM path stands in (see below).
+The six-state machine and its plumbing — account structs, transitions, and the optimistic + dispute flow — are `[Built]`. The trusted resolver and the private vote that ride on top are `[MVP-target]`; the former non-mock resolution path (a Switchboard council) was removed per [ADR-0002](adr/0002-trusted-llm-resolver.md), and on localnet a mock LLM path stands in (see below).
 
 ### 1. Asserted `[Built]`
 
@@ -71,13 +71,9 @@ When the first dispute is filed (`dispute_assertion`):
 - `state = PendingLLM`
 - `dispute_count = 1`
 
-Today the non-mock resolution instruction `submit_llm_resolution` runs a **3-feed Switchboard council** `[Built]`: it reads `council_feeds` from the round, parses three Switchboard pull-feeds, and posts the majority verdict (a 1-1-1 tie falls back to `Unresolvable`). This path is compiled but has only ever been exercised via the mock on localnet, and it is slated for removal per [ADR-0002](adr/0002-trusted-llm-resolver.md).
+The MVP target `[MVP-target]` is a single, authority-gated off-chain **trusted resolver** that makes one LLM call and posts the verdict via a resolution instruction. How that resolver integrates with the program — its instruction shape and auth — is not yet settled. The LLM layer does not need to be trustless because the staked vote backstops it (a wrong verdict is challengeable). Binding LLM provenance (prompt/response/evidence hashes) on-chain for auditability is **not part of the MVP**; it is deferred to a `[Vision]` trust-minimized/permissionless resolver.
 
-The MVP target `[MVP-target]` is to replace the council with a single, authority-gated off-chain **trusted resolver** that makes one LLM call and posts the verdict via a resolution instruction. How that resolver integrates with the current program — replacing `submit_llm_resolution` versus a new instruction — is not yet settled. The LLM layer does not need to be trustless because the staked vote backstops it (a wrong verdict is challengeable). Binding LLM provenance (prompt/response/evidence hashes) on-chain for auditability is **not part of the MVP**; it is deferred to a `[Vision]` trust-minimized/permissionless resolver (see the note below).
-
-On localnet, integration tests use `submit_mock_llm_resolution` instead (authority-gated, `mock-llm` build feature). `[Built]`
-
-> On `LlmResolutionRound`, `council_feeds` **is** read by the current council path (`submit_llm_resolution`) and is required by `dispute_assertion` (which errors `CouncilFeedsNotConfigured` otherwise). The remaining Switchboard fields (`switchboard_program`, `switchboard_queue`, `switchboard_feed_hash`, `switchboard_quote`, `switchboard_quote_slot`, `max_staleness_slots`) and the four `*_hash` fields (`prompt_hash`, `variable_overrides_hash`, `response_hash`, `evidence_hash`) are currently unused — written to zero at dispute time and never read — and may be removed. The council path itself is slated for removal per [ADR-0002](adr/0002-trusted-llm-resolver.md); see [Vision](#vision-post-mvp).
+On localnet, integration tests use `submit_mock_llm_resolution` (authority-gated, `mock-llm` build feature). `[Built]` It is currently the only instruction that posts an LLM verdict: the former non-mock path — a 3-feed Switchboard council (`submit_llm_resolution` / `set_council_feeds` / the `council_feeds`, `switchboard_*`, and `*_hash` fields) — was removed per [ADR-0002](adr/0002-trusted-llm-resolver.md); it was compiled but never operationally stood up.
 
 ### 3. AssertedLLM `[Built]`
 
@@ -185,7 +181,7 @@ The slashed pot (losing bonds + losing stake) is divided by the configured `*_sh
 
 Recorded so the direction is clear and nobody mistakes these for current behavior:
 
-- **Trust-minimized / permissionless LLM** — Switchboard On-Demand feed(s), TEE-attested, or otherwise permissionless inference replacing the trusted resolver; on-chain LLM provenance hashing, if any, would land here. The 3-feed Switchboard "council" (`council_feeds` / `set_council_feeds`, read by `submit_llm_resolution`) is the current non-mock resolution path `[Built]`, being removed per [ADR-0002](adr/0002-trusted-llm-resolver.md); its unused `switchboard_*` fields on `LlmResolutionRound` may be removed with it.
+- **Trust-minimized / permissionless LLM** — Switchboard On-Demand feed(s), TEE-attested, or otherwise permissionless inference replacing the trusted resolver; on-chain LLM provenance hashing, if any, would land here. (The 3-feed Switchboard "council" and its `switchboard_*` fields were removed per [ADR-0002](adr/0002-trusted-llm-resolver.md).)
 - **OPAL token** — governance and future voter incentives; dropped from the MVP, where governance is the `authority` keypair and stake is USDC. See [ADR-0004](adr/0004-single-asset-usdc.md).
 - **Timed resolution** — assertions carry a resolves-at date and cannot finalize before the truth exists; a more principled alternative to `Unresolvable`-by-prematurity. See [ADR-0005](adr/0005-no-fault-unresolvable.md).
 - **Proof-of-personhood / quadratic weighting** and **stake-duration reputation** — Sybil-resistant sub-linear voting and long-term voter reputation.

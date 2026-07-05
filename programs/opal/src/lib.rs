@@ -24,8 +24,6 @@ pub use instructions::initialize_protocol_config::{
     InitializeProtocolConfig, InitializeProtocolConfigArgs,
 };
 pub use instructions::open_vote::{OpenVote, OpenVoteArgs};
-pub use instructions::set_council_feeds::{SetCouncilFeeds, SetCouncilFeedsArgs};
-pub use instructions::submit_llm_resolution::SubmitLlmResolution;
 
 #[cfg(feature = "mock-llm")]
 pub use instructions::submit_mock_llm_resolution::{
@@ -65,17 +63,6 @@ pub mod opal {
         args: DisputeAssertionArgs,
     ) -> Result<()> {
         instructions::dispute_assertion::handler(ctx, args)
-    }
-
-    pub fn set_council_feeds(
-        ctx: Context<SetCouncilFeeds>,
-        args: SetCouncilFeedsArgs,
-    ) -> Result<()> {
-        instructions::set_council_feeds::handler(ctx, args)
-    }
-
-    pub fn submit_llm_resolution(ctx: Context<SubmitLlmResolution>) -> Result<()> {
-        instructions::submit_llm_resolution::handler(ctx)
     }
 
     #[cfg(feature = "mock-llm")]

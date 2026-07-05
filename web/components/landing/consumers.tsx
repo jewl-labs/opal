@@ -27,7 +27,7 @@ export default function Consumer() {
             },
             {
               title: 'Future operators',
-              text: 'Switchboard, Nosana, and MagicBlock integrations are reserved in accounts, but v1 does not require them to be live.',
+              text: 'The MagicBlock integration is reserved in accounts, but v1 does not require it to be live.',
             },
           ].map((item) => (
             <article

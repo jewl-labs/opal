@@ -465,8 +465,6 @@ function LLMSection({ round }: { round: any }) {
               : 'NONE'
           }
         />
-
-        <Meta label="Prompt Hash" value={`${round.promptHash.slice(0, 12)}...`} />
       </div>
     </Section>
   );

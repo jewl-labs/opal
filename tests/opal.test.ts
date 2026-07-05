@@ -173,21 +173,6 @@ async function setupProtocol(
     .signers([authority])
     .rpc({ commitment: 'confirmed' });
 
-  const mockCouncilFeeds: [PublicKey, PublicKey, PublicKey] = [
-    Keypair.generate().publicKey,
-    Keypair.generate().publicKey,
-    Keypair.generate().publicKey,
-  ];
-
-  await program.methods
-    .setCouncilFeeds({ feeds: mockCouncilFeeds })
-    .accounts({
-      authority: authority.publicKey,
-      protocolConfig: configPda,
-    })
-    .signers([authority])
-    .rpc({ commitment: 'confirmed' });
-
   return { configPda, authority, treasuryAta };
 }
 

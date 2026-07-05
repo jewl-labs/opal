@@ -42,8 +42,8 @@ pub struct SubmitMockLlmResolution<'info> {
 }
 
 // !TBD: PLACEHOLDER — This is a mock instruction for local testing.
-// In production, LLM resolution will be delivered by a Switchboard oracle callback
-// that updates the LlmResolutionRound outcome fields on-chain.
+// In production, the verdict will be posted by the trusted off-chain LLM
+// resolver (see docs/adr/0002-trusted-llm-resolver.md); not yet built.
 pub fn handler(
     ctx: Context<SubmitMockLlmResolution>,
     args: SubmitMockLlmResolutionArgs,

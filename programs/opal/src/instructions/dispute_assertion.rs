@@ -94,14 +94,9 @@ pub fn handler(ctx: Context<DisputeAssertion>, _args: DisputeAssertionArgs) -> R
         assertion.assertion_bond_amount_pusd,
         protocol_config.llm_dispute_bond_ratio_bps,
     )?;
-    let council_feeds = protocol_config.council_feeds;
     drop(assertion);
     drop(protocol_config);
     require!(bond_amount > 0, OpalError::InsufficientBondAmount);
-    require!(
-        council_feeds.iter().all(|f| *f != Pubkey::default()),
-        OpalError::CouncilFeedsNotConfigured
-    );
 
     token::transfer(
         CpiContext::new(
@@ -129,17 +124,6 @@ pub fn handler(ctx: Context<DisputeAssertion>, _args: DisputeAssertionArgs) -> R
     let mut llm_round = ctx.accounts.llm_resolution_round.load_init()?;
     llm_round.assertion = ctx.accounts.assertion.key();
     llm_round.dispute = ctx.accounts.llm_dispute.key();
-    llm_round.council_feeds = council_feeds;
-    llm_round.switchboard_program = Pubkey::default();
-    llm_round.switchboard_queue = Pubkey::default();
-    llm_round.switchboard_feed_hash = [0; 32];
-    llm_round.switchboard_quote = Pubkey::default();
-    llm_round.switchboard_quote_slot = 0;
-    llm_round.max_staleness_slots = 0;
-    llm_round.prompt_hash = [0; 32];
-    llm_round.variable_overrides_hash = [0; 32];
-    llm_round.response_hash = [0; 32];
-    llm_round.evidence_hash = [0; 32];
     llm_round.outcome = OUTCOME_NONE;
     llm_round.requested_at = now;
     llm_round.resolved_at = TIMESTAMP_NONE;
