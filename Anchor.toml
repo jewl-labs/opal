@@ -8,9 +8,6 @@ skip-lint = false
 [programs.localnet]
 opal = { address = "8NCcxyAzKiAHxJ9DMnADtxShYutS9w81wHcXqgCavTBy", features = ["mock-llm"] }
 
-[registry]
-url = "https://api.apr.dev"
-
 [provider]
 cluster = "localnet"
 wallet = "~/.config/solana/id.json"

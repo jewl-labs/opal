@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from 'bun:test';
 import { Connection, Keypair, PublicKey, SystemProgram } from '@solana/web3.js';
-import * as anchor from '@coral-xyz/anchor';
-import { Program, AnchorProvider, Wallet, BN } from '@coral-xyz/anchor';
+import * as anchor from '@anchor-lang/core';
+import { Program, AnchorProvider, Wallet, BN } from '@anchor-lang/core';
 import {
   createMint,
   getOrCreateAssociatedTokenAccount,
