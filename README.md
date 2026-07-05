@@ -15,7 +15,7 @@ Target use case: prediction-market resolution. Statements like "Kanye West's Del
 1. **Assert** — someone posts a statement, a USDC bond, and a Resolution Spec (the rubric; stored off-chain on Arweave, its hash on-chain)
 2. **Wait** — liveness window where anyone can dispute
 3. **Undisputed** — if no dispute, resolves `True`
-4. **Disputed** — the first dispute triggers on-chain LLM resolution. The built path is a 3-feed Switchboard council that majority-votes the verdict `[Built]` (compiled but never run in production — tests exercise the `mock-llm` stand-in); per [ADR-0002](docs/adr/0002-trusted-llm-resolver.md) it is being replaced by a single trusted off-chain resolver `[MVP-target]`
+4. **Disputed** — the first dispute triggers on-chain LLM resolution: a single trusted off-chain resolver posts the verdict `[MVP-target]` (tests drive this step with the `mock-llm` stand-in; the former 3-feed Switchboard council was removed per [ADR-0002](docs/adr/0002-trusted-llm-resolver.md))
 5. **Challenged** — if the LLM verdict is challenged, escalate to a per-dispute staked vote, kept private during the voting window via a MagicBlock ephemeral rollup ([ADR-0003](docs/adr/0003-private-staked-voting.md))
 6. **Resolved** — the final outcome is posted on-chain
 
@@ -100,7 +100,7 @@ The optimistic core is built: the account model, the six-state machine (`Asserte
 
 These pieces are v1 targets, not yet shipped:
 
-- **Trusted LLM resolver** — the authority-gated path where a real LLM verdict is posted on-chain is the production target; today the only non-mock resolver is the 3-feed Switchboard council (being removed per ADR-0002), and tests exercise the `mock-llm` path. On-chain LLM provenance (prompt/response/evidence hashing) is deferred to a `[Vision]` trust-minimized resolver.
+- **Trusted LLM resolver** — the authority-gated path where a real LLM verdict is posted on-chain is the production target; the former 3-feed Switchboard council was removed per ADR-0002, so today the `mock-llm` path is the only resolution driver. On-chain LLM provenance (prompt/response/evidence hashing) is deferred to a `[Vision]` trust-minimized resolver.
 - **Private staked voting** — opening a vote sets up the round, but real MagicBlock private voting (delegation, ER settlement) is the MVP target.
 - **Resolution Spec on Arweave** — the on-chain `auxiliary_hash` field exists; off-chain Arweave storage and integrity-checking is planned.
 - **No-fault settlement & reward split** — `Unresolvable` no-fault settlement and the share-based settlement split (`llm_disputer_reward_share_bps`, `vote_disputer_reward_share_bps`, `voter_reward_share_bps`, `treasury_share_bps`) are planned; only `protocol_fee_bps` is applied today.

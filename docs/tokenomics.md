@@ -76,7 +76,7 @@ If the settled outcome is `Unresolvable` (ambiguous, conflicting, premature, or 
 - no one is slashed and no fee is taken,
 - the assertion is **voided** — re-assert later if it becomes determinable.
 
-Merging `TooEarly` into `Unresolvable` is `[MVP-target]`; the `OUTCOME_TOO_EARLY` (2) constant persists and `validate_outcome_code` still accepts it, but no path is intended to emit it (the council could, on a feed majority). See [ADR-0005](adr/0005-no-fault-unresolvable.md).
+Merging `TooEarly` into `Unresolvable` is `[MVP-target]`; the `OUTCOME_TOO_EARLY` (2) constant persists and `validate_outcome_code` still accepts it, but no path is intended to emit it. See [ADR-0005](adr/0005-no-fault-unresolvable.md).
 
 ### First Dispute Settles Correct (`False`) `[Built]`
 

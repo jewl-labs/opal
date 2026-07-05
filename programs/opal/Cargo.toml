@@ -24,7 +24,6 @@ mock-llm = []
 anchor-lang = { version = "0.32.1", features = [] }
 anchor-spl = { version = "0.32.1", features = ["token"] }
 ephemeral-rollups-sdk = { version = "0.8.0", features = ["anchor", "access-control"] }
-switchboard-on-demand = { version = "0.12", features = ["anchor"] }
 
 [lints.rust]
 unexpected_cfgs = { level = "allow", check-cfg = ['cfg(target_os, values("solana"))'] }

@@ -50,7 +50,7 @@ The terminal result on the assertion; `OUTCOME_NONE` (255) until `state == Resol
 - `True` (0) `[Built]` — verified under the spec.
 - `False` (1) `[Built]` — contradicted under the spec.
 - `Unresolvable` (3) `[MVP-target]` — cannot be decided under the spec (ambiguous, conflicting, premature, or below the vote's supermajority). Settles **no-fault** (see Economics).
-- `TooEarly` (2) — the code value persists and `validate_outcome_code` still accepts it; no path is intended to emit it (the council could, on a feed majority). **Merging it into `Unresolvable` is `[MVP-target]`.** _Avoid_ treating it as a distinct outcome.
+- `TooEarly` (2) — the code value persists and `validate_outcome_code` still accepts it; no path is intended to emit it. **Merging it into `Unresolvable` is `[MVP-target]`.** _Avoid_ treating it as a distinct outcome.
 - `None` (255) — sentinel for unset.
 
 ## Participants
@@ -61,7 +61,7 @@ The terminal result on the assertion; `OUTCOME_NONE` (255) until `state == Resol
 **Vote Disputer** `[Built]` — the second disputer; challenges the LLM verdict and triggers the staked vote.
 **Voter** `[MVP-target]` — anyone who stakes USDC into a specific vote round; weight is linear in stake; wrong-side stake is slashed, right-side stake earns rewards.
 **LLM Resolver** `[MVP-target]` — a trusted, authority-gated off-chain service that calls one LLM and posts the verdict. (On-chain LLM provenance hashing is deferred to `[Vision]`.) See [ADR-0002](adr/0002-trusted-llm-resolver.md).
-_Avoid_: "council" for the resolver — the 3-feed Switchboard council is the current `[Built]` non-mock path, being removed per ADR-0002, not the resolver design.
+_Avoid_: "council" for the resolver — the 3-feed Switchboard council was removed per ADR-0002 and was never the resolver design.
 **Integrator** — any app consuming Opal outcomes; must read the Resolution Spec to judge whether an outcome is meaningful for its use case, and should require `state == Resolved` before irreversible settlement.
 
 ## Economics
@@ -92,7 +92,7 @@ _Avoid_: the legacy `!= True ⇒ disputer correct` rule, which slashed on indete
 Recorded so the direction is clear and nobody mistakes these for current behaviour:
 
 - **OPAL token** — governance, future reputation/staking, voter incentives. Dropped from the MVP (USDC + the authority key replace it).
-- **Trust-minimized / permissionless LLM** — Switchboard On-Demand feed(s) or TEE-attested inference, replacing the trusted resolver. (The 3-feed Switchboard "council" is the current non-mock resolution path `[Built]`, being removed per ADR-0002.)
+- **Trust-minimized / permissionless LLM** — Switchboard On-Demand feed(s) or TEE-attested inference, replacing the trusted resolver. (The 3-feed Switchboard "council" was removed per ADR-0002.)
 - **Proof-of-personhood** — to enable sub-linear/quadratic weighting without Sybil collapse.
 - **Stake-duration reputation** — long-term staking that accrues voter weight/reputation.
 - **Timed resolution** — assertions carry a resolves-at date and can't finalize before the truth exists.

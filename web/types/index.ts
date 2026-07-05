@@ -14,7 +14,6 @@ export interface LLMResolutionRound {
   pubkey: string;
   outcomeCode: 0 | 1 | 3; // 0=True 1=False 3=Unresolvable (2 reserved — legacy TooEarly)
   outcome: ResolutionOutcome | null;
-  promptHash: string;
   resolvedAt: string | null;
   challengeDeadline: string | null;
 }
