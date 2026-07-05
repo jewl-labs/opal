@@ -12,5 +12,12 @@ opal = { address = "8NCcxyAzKiAHxJ9DMnADtxShYutS9w81wHcXqgCavTBy", features = ["
 cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
+# Advance slots on a timer so the on-chain Clock moves during the test suite's
+# real-time sleeps (deadline/window checks). Without this, surfpool only advances
+# the clock when a transaction arrives, so timing-dependent tests never cross their
+# deadlines.
+[surfpool]
+block_production_mode = "clock"
+
 [scripts]
 test = "bun test tests/opal.test.ts --timeout 60000"

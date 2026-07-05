@@ -53,9 +53,9 @@ anchor build
 bun run test:local
 ```
 
-**Requirements:** Solana CLI v3.1.12, Anchor 0.32.1, Bun, Rust 1.89.0
+**Requirements:** Solana CLI 3.1+ (tested on 4.0.1), Anchor 1.1.2, surfpool 1.4+, Bun, Rust 1.89.0
 
-TypeScript integration tests use `@coral-xyz/anchor` with artifacts from `anchor build` (`target/idl/opal.json`, `target/types/opal.ts`).
+TypeScript integration tests use `@anchor-lang/core` with artifacts from `anchor build` (`target/idl/opal.json`, `target/types/opal.ts`).
 
 ### Web frontend
 
@@ -79,10 +79,10 @@ See [web/README.md](web/README.md) and [Privy setup](web/docs/PRIVY_SETUP.md).
 
 ## Testing
 
-Tests are TypeScript integration tests run with `@coral-xyz/anchor`; there are no Rust unit tests. Targets split by environment ([ADR-0006](docs/adr/0006-codebase-organization.md)):
+Tests are TypeScript integration tests run with `@anchor-lang/core`; there are no Rust unit tests. Targets split by environment ([ADR-0006](docs/adr/0006-codebase-organization.md)):
 
 ```bash
-# [Built] Logic suite on a localnet validator, built with the mock-llm feature
+# [Built] Logic suite on surfpool (Anchor v1's default local runner), built with the mock-llm feature
 bun run test:local
 
 # [MVP-target] Real integration against devnet, where the trusted resolver
@@ -90,7 +90,7 @@ bun run test:local
 anchor test
 ```
 
-`bun run test:local` is wired today (`anchor build -- --features mock-llm && anchor test --skip-build`). Pointing `anchor test` at devnet — a funded devnet keypair, a deployed program, and `--skip-local-validator` — lands in the test-split follow-up PR per ADR-0006; until then it still spins up a local validator.
+`bun run test:local` is wired today (`anchor build -- --features mock-llm && anchor test --skip-build`). Pointing `anchor test` at devnet — a funded devnet keypair, a deployed program, and `--skip-local-validator` — lands in the test-split follow-up PR per ADR-0006; until then it still spins up a local surfpool network.
 
 Current coverage: happy paths (undisputed, LLM resolution, full escalation), config validation, deadline violations, state guards, account mismatches, token balance assertions.
 
