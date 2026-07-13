@@ -68,7 +68,7 @@ export default function Process() {
           fully resolved.
         </p>
 
-      <CornerMarkers/>
+        <CornerMarkers />
       </section>
       <span className="border-muted-foreground/50 pointer-events-none absolute right-0 left-0 z-20 h-0.5 w-screen border-b border-dashed" />
     </>

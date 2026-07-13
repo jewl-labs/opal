@@ -3,9 +3,9 @@ import Link from 'next/link';
 
 import { motion as m } from 'motion/react';
 
+import CornerMarkers from '../common/corner-markers';
 import { Button } from '../ui/button';
 import HeroBackground from './background';
-import CornerMarkers from '../common/corner-markers';
 import { ParametersRow } from './parameters';
 
 const EASE = [0.22, 1, 0.36, 1] as const;

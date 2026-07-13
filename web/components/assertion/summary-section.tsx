@@ -64,14 +64,18 @@ export default function SummarySection({
                 <div className="text-muted-foreground/75 font-mono text-[11px] tracking-[0.2em] uppercase">
                   Bond
                 </div>
-                <div className="text-primary mt-1 font-mono text-base tabular-nums">{bond} USDC</div>
+                <div className="text-primary mt-1 font-mono text-base tabular-nums">
+                  {bond} USDC
+                </div>
               </div>
 
               <div className="border-border min-w-0 border-l pl-4">
                 <div className="text-muted-foreground/75 font-mono text-[11px] tracking-[0.2em] uppercase">
                   Window
                 </div>
-                <div className="text-foreground mt-1 truncate font-mono text-base">{windowLabel}</div>
+                <div className="text-foreground mt-1 truncate font-mono text-base">
+                  {windowLabel}
+                </div>
               </div>
 
               <div className="border-border min-w-0 border-l pl-4">

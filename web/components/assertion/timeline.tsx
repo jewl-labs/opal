@@ -112,7 +112,9 @@ export default function Timeline({ statement }: { statement: AssertionAccount | 
                   <span
                     className={cn(
                       'z-10 mx-2 size-2 shrink-0 rotate-45',
-                      event.active ? 'bg-primary' : 'border-muted-foreground/50 border bg-transparent'
+                      event.active
+                        ? 'bg-primary'
+                        : 'border-muted-foreground/50 border bg-transparent'
                     )}
                   />
 

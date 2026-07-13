@@ -18,7 +18,12 @@ export default function Footer() {
           <div className="flex flex-col gap-6 md:col-span-6">
             <div className="flex items-center gap-1">
               <span className="relative size-9 -translate-y-0.5 overflow-hidden">
-                <Image src="/img/logo.svg" fill alt="Opal logo" className="scale-175 object-cover" />
+                <Image
+                  src="/img/logo.svg"
+                  fill
+                  alt="Opal logo"
+                  className="scale-175 object-cover"
+                />
               </span>
               <span className="font-heading text-lg uppercase">Opal</span>
             </div>
@@ -80,7 +85,6 @@ export default function Footer() {
               </span>
             </a>
           </div>
-
         </div>
 
         <div className="border-border/70 flex flex-col items-start justify-between gap-3 border-t px-6 py-6 font-mono text-[11px] tracking-widest uppercase sm:flex-row sm:items-center md:px-16">

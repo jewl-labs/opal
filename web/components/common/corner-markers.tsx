@@ -1,12 +1,7 @@
 import { cn } from '@/lib/utils';
 
 // Blueprint-style crosshair at each section corner: a fine "+" with a brighter core.
-const CORNERS = [
-  'top-4 left-4',
-  'top-4 right-4',
-  'bottom-4 left-4',
-  'bottom-4 right-4',
-];
+const CORNERS = ['top-4 left-4', 'top-4 right-4', 'bottom-4 left-4', 'bottom-4 right-4'];
 
 export default function CornerMarkers() {
   return (

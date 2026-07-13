@@ -3,8 +3,8 @@ import Link from 'next/link';
 
 import { motion as m } from 'motion/react';
 
-import { Button } from '../ui/button';
 import CornerMarkers from '../common/corner-markers';
+import { Button } from '../ui/button';
 
 export default function Cta() {
   return (
@@ -28,8 +28,8 @@ export default function Cta() {
           </h2>
 
           <p className="text-muted-foreground max-w-xl text-sm leading-relaxed text-balance">
-            Assertions finalize on their own unless someone pays to disagree. Every
-            escalation makes the answer more expensive to fake.
+            Assertions finalize on their own unless someone pays to disagree. Every escalation makes
+            the answer more expensive to fake.
           </p>
 
           <div className="flex w-full flex-col gap-4 sm:w-auto sm:flex-row sm:items-center">

@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { CheckCircleIcon, ClockIcon, WarningOctagonIcon } from '@phosphor-icons/react';
 import { motion as m } from 'motion/react';
 
+import { useHydrated } from '@/hooks/use-hydrated';
 import {
   getContextualMessage,
   getDisputeLevel,
@@ -14,7 +15,6 @@ import {
   getStageLabel,
 } from '@/lib/assertion-labels';
 import { getTimeRemaining } from '@/lib/helpers';
-import { useHydrated } from '@/hooks/use-hydrated';
 import type { AssertionAccount } from '@/types';
 
 export default function AssertionCard({ data }: { data: AssertionAccount }) {

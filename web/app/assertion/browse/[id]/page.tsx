@@ -6,8 +6,8 @@ import { useEffect, useState } from 'react';
 
 import DisputeAction from '@/components/assertion/dispute-action';
 import Timeline from '@/components/assertion/timeline';
-import Rise from '@/components/common/rise';
 import VotingPanel from '@/components/assertion/voting-panel';
+import Rise from '@/components/common/rise';
 import { Button } from '@/components/ui/button';
 import Modal from '@/components/ui/modal';
 import { getOutcomeLabel, getStageLabel } from '@/lib/assertion-labels';
@@ -153,41 +153,43 @@ export default function StatementPage() {
         {/* my-auto centers the whole block vertically when it's shorter than the
             viewport, and degrades to normal scrolling when it isn't. */}
         <div className="my-auto flex w-full flex-col items-center gap-10">
-        <Rise className="w-full">
-          <AssertionSection
-            assertion={assertion}
-            onEvidenceClick={() => setShowEvidenceModal(true)}
-          />
-        </Rise>
+          <Rise className="w-full">
+            <AssertionSection
+              assertion={assertion}
+              onEvidenceClick={() => setShowEvidenceModal(true)}
+            />
+          </Rise>
 
-        <Rise delay={0.12} className="flex w-full flex-col items-center gap-6">
-          <DisputeAction
-            assertion={assertion}
-            userVote={userVote}
-            onSubmitLlmResolution={(outcome) => submitLlmResolution(idStr, outcome)}
-            onOpenVote={() => openVote(idStr)}
-            onFinalize={() => finalizeAssertion(idStr)}
-          />
+          <Rise delay={0.12} className="flex w-full flex-col items-center gap-6">
+            <DisputeAction
+              assertion={assertion}
+              userVote={userVote}
+              onSubmitLlmResolution={(outcome) => submitLlmResolution(idStr, outcome)}
+              onOpenVote={() => openVote(idStr)}
+              onFinalize={() => finalizeAssertion(idStr)}
+            />
 
-          {(assertion.llmResolutionRound || assertion.voteResolutionRound) && (
-            <div
-              className={cn(
-                'grid w-full gap-6',
-                assertion.llmResolutionRound && assertion.voteResolutionRound && 'lg:grid-cols-2'
-              )}
-            >
-              {assertion.llmResolutionRound && <LLMSection round={assertion.llmResolutionRound} />}
+            {(assertion.llmResolutionRound || assertion.voteResolutionRound) && (
+              <div
+                className={cn(
+                  'grid w-full gap-6',
+                  assertion.llmResolutionRound && assertion.voteResolutionRound && 'lg:grid-cols-2'
+                )}
+              >
+                {assertion.llmResolutionRound && (
+                  <LLMSection round={assertion.llmResolutionRound} />
+                )}
 
-              {assertion.voteResolutionRound && (
-                <VotingPanel
-                  round={assertion.voteResolutionRound}
-                  votingClosed={votingClosed}
-                  userVote={userVote}
-                />
-              )}
-            </div>
-          )}
-        </Rise>
+                {assertion.voteResolutionRound && (
+                  <VotingPanel
+                    round={assertion.voteResolutionRound}
+                    votingClosed={votingClosed}
+                    userVote={userVote}
+                  />
+                )}
+              </div>
+            )}
+          </Rise>
         </div>
       </div>
 

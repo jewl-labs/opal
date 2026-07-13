@@ -73,7 +73,10 @@ export default function VotingPanel({ round, votingClosed, userVote }: VotingPan
               </div>
 
               <div className="bg-muted/40 h-1 w-full">
-                <div className="bg-primary h-full transition-[width] duration-500 ease-out" style={{ width: `${share}%` }} />
+                <div
+                  className="bg-primary h-full transition-[width] duration-500 ease-out"
+                  style={{ width: `${share}%` }}
+                />
               </div>
             </div>
           );

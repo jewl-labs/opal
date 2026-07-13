@@ -1,8 +1,7 @@
 import { MagnifyingGlassIcon } from '@phosphor-icons/react';
 
-import type { QuickFilter, SortField, StageFilter } from '@/types/filters';
-
 import { cn } from '@/lib/utils';
+import type { QuickFilter, SortField, StageFilter } from '@/types/filters';
 
 import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -126,10 +125,7 @@ export default function Header({
                 variant={isActive ? 'default' : 'ghost'}
                 aria-pressed={isActive}
                 onClick={() => onToggleQuickFilter(filter.value)}
-                className={cn(
-                  'px-2.5',
-                  !isActive && 'text-muted-foreground hover:text-foreground'
-                )}
+                className={cn('px-2.5', !isActive && 'text-muted-foreground hover:text-foreground')}
               >
                 {filter.label}
               </Button>
