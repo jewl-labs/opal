@@ -29,7 +29,7 @@ const STEPS = [
     text: 'A bonded dispute during the liveness window moves the assertion to PendingLLM and opens the LLM resolution round.',
   },
   {
-    name: 'submit_llm_resolution',
+    name: 'submit_mock_llm_resolution',
     state: 'AssertedLLM',
     text: 'The LLM verdict is posted and verified on-chain. The assertion becomes AssertedLLM and the challenge window opens.',
   },
@@ -113,7 +113,8 @@ export default function InstructionFlow() {
                     </p>
 
                     <span className="text-muted-foreground/60 font-mono text-[10px] tracking-[0.2em] uppercase">
-                      State after call: <span className="text-foreground/80">{activeStep.state}</span>
+                      State after call:{' '}
+                      <span className="text-foreground/80">{activeStep.state}</span>
                     </span>
                   </m.div>
                 </AnimatePresence>
@@ -197,7 +198,8 @@ export default function InstructionFlow() {
                       </h3>
 
                       <span className="text-muted-foreground/50 font-mono text-[10px] tracking-[0.25em] tabular-nums">
-                        {String(index + 1).padStart(2, '0')} / {String(STEPS.length).padStart(2, '0')}
+                        {String(index + 1).padStart(2, '0')} /{' '}
+                        {String(STEPS.length).padStart(2, '0')}
                       </span>
                     </div>
 

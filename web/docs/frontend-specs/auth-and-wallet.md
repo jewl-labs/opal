@@ -53,14 +53,14 @@ gate auth-dependent UI and avoid Privy hydration mismatches (see `navbar-auth.ts
 
 Required / recognized `NEXT_PUBLIC_*` vars:
 
-| Var | Required | Notes |
-| --- | --- | --- |
-| `NEXT_PUBLIC_PRIVY_APP_ID` | ✅ (throws if missing) | Privy app id |
-| `NEXT_PUBLIC_PRIVY_CLIENT_ID` | optional in code, needed for localhost | per check-env warning |
-| `NEXT_PUBLIC_SOLANA_RPC_URL` | ✅ | devnet https RPC |
-| `NEXT_PUBLIC_SOLANA_RPC_WSS` | ✅ | devnet wss (use provider's real wss, don't guess) |
-| `NEXT_PUBLIC_SOLANA_CLUSTER` | optional, default `devnet` | **any value other than `devnet` throws** — devnet only |
-| `PRIVY_APP_SECRET` | must NOT be public/client-imported | guarded against; only for future server API routes |
+| Var                           | Required                               | Notes                                                  |
+| ----------------------------- | -------------------------------------- | ------------------------------------------------------ |
+| `NEXT_PUBLIC_PRIVY_APP_ID`    | ✅ (throws if missing)                 | Privy app id                                           |
+| `NEXT_PUBLIC_PRIVY_CLIENT_ID` | optional in code, needed for localhost | per check-env warning                                  |
+| `NEXT_PUBLIC_SOLANA_RPC_URL`  | ✅                                     | devnet https RPC                                       |
+| `NEXT_PUBLIC_SOLANA_RPC_WSS`  | ✅                                     | devnet wss (use provider's real wss, don't guess)      |
+| `NEXT_PUBLIC_SOLANA_CLUSTER`  | optional, default `devnet`             | **any value other than `devnet` throws** — devnet only |
+| `PRIVY_APP_SECRET`            | must NOT be public/client-imported     | guarded against; only for future server API routes     |
 
 - `getEnv()` reads/validates these; `privySolanaChain` is the literal `'solana:devnet'`.
 - `next.config.ts` warns at build if the three required public vars are missing; also sets
@@ -72,4 +72,4 @@ Required / recognized `NEXT_PUBLIC_*` vars:
 When transaction submission lands, the embedded Solana wallet from Privy is the signer.
 Fetch it via the Privy Solana hooks (as `wallet-context.tsx` already does for
 `currentAddress`), build transactions against the same devnet RPC, and sign/send through
-the Privy wallet. See [`integration-roadmap.md`](integration-roadmap.md).
+the Privy wallet.

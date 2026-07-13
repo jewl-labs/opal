@@ -33,34 +33,59 @@ export default function Modal({
   const lastFocusedRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    if (!open) {
-      lastFocusedRef.current?.focus?.();
-      return;
-    }
+    if (!open) return;
+
+    const panel = panelRef.current;
     lastFocusedRef.current = document.activeElement as HTMLElement | null;
 
+    // Move focus into the dialog unless something inside already holds it (e.g. an
+    // autoFocus input), so keyboard/screen-reader users start inside the modal rather
+    // than on the now-obscured trigger.
+    if (panel && !panel.contains(document.activeElement)) panel.focus();
+
+    // Lock background scroll while the dialog is open.
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-      if (e.key === 'Tab') {
-        const panel = panelRef.current;
-        if (!panel) return;
-        const focusables = panel.querySelectorAll<HTMLElement>(
+      if (e.key === 'Escape') {
+        onClose();
+        return;
+      }
+      if (e.key !== 'Tab' || !panel) return;
+      const focusables = Array.from(
+        panel.querySelectorAll<HTMLElement>(
           'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
-        );
-        if (focusables.length === 0) return;
-        const first = focusables[0];
-        const last = focusables[focusables.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
+        )
+      );
+      if (focusables.length === 0) {
+        e.preventDefault();
+        return;
+      }
+      const first = focusables[0]!;
+      const last = focusables[focusables.length - 1]!;
+      const active = document.activeElement;
+      const inside = panel.contains(active);
+      // Wrap at both ends, and pull focus back in when it's on the panel itself or has
+      // escaped the panel — otherwise Tab/Shift+Tab reaches the page behind the backdrop.
+      if (e.shiftKey) {
+        if (!inside || active === first || active === panel) {
           e.preventDefault();
-          last?.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
+          last.focus();
+        }
+      } else {
+        if (!inside || active === last || active === panel) {
           e.preventDefault();
-          first?.focus();
+          first.focus();
         }
       }
     };
     document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+      lastFocusedRef.current?.focus?.();
+    };
   }, [open, onClose]);
 
   return (
@@ -87,8 +112,9 @@ export default function Modal({
             role="dialog"
             aria-modal="true"
             aria-label={title}
+            tabIndex={-1}
             className={cn(
-              'bg-background border-border relative w-full max-w-2xl border shadow-2xl shadow-black/70',
+              'bg-background border-border relative w-full max-w-2xl border shadow-2xl shadow-black/70 outline-none',
               className
             )}
           >

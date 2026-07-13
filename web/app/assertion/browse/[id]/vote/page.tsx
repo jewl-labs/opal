@@ -32,7 +32,8 @@ const OUTCOME_OPTIONS: {
   {
     outcome: 'Unresolvable',
     icon: QuestionIcon,
-    description: 'It cannot be decided under its Resolution Spec: ambiguous, conflicting, or premature.',
+    description:
+      'It cannot be decided under its Resolution Spec: ambiguous, conflicting, or premature.',
   },
 ];
 
@@ -100,11 +101,11 @@ export default function VoteScreen() {
 
   const handleConfirm = () => {
     if (!selected) return;
-    if (!walletConnected) {
+    if (!walletConnected || !currentAddress) {
       login();
       return;
     }
-    castVote(idStr, selected, MOCK_VOTE_WEIGHT);
+    castVote(idStr, selected, MOCK_VOTE_WEIGHT, currentAddress);
   };
 
   const confirmLabel = !selected
@@ -316,7 +317,10 @@ function VoteRecorded({
                 </div>
 
                 <div className="bg-muted/40 h-1 w-full">
-                  <div className="bg-primary h-full transition-[width] duration-500 ease-out" style={{ width: `${share}%` }} />
+                  <div
+                    className="bg-primary h-full transition-[width] duration-500 ease-out"
+                    style={{ width: `${share}%` }}
+                  />
                 </div>
               </div>
             );

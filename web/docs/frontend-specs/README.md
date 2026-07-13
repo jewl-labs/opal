@@ -13,28 +13,26 @@ tokenomics, glossary).
 ## The one thing to know first
 
 **The frontend has NO on-chain integration yet.** Everything renders from a hardcoded
-mock array (`data/assertion.ts`, 8 records). The only real external system wired in is
+mock array (`data/assertion.ts`, 10 records). The only real external system wired in is
 **Privy** (social login + auto-created Solana devnet embedded wallet), and that wallet
 is used only for identity/address display — never to read accounts or sign
 transactions. Every "dispute", "vote", "finalize", and "create assertion" action is a
 local-state simulation or a `router.push`. Wiring this to the Anchor program is the
-central open task. See [`status.md`](status.md) and
-[`integration-roadmap.md`](integration-roadmap.md).
+central open task. See [`status.md`](status.md).
 
 ## Files in this folder
 
-| File | What it covers |
-| --- | --- |
-| [`overview.md`](overview.md) | Tech stack, how to run, high-level mental model, directory map |
-| [`routes.md`](routes.md) | Every page/route, what it renders, client/server, data source, status |
-| [`components.md`](components.md) | Full component inventory grouped by folder |
-| [`data-model.md`](data-model.md) | TypeScript types, the mock data shape, mapping to on-chain accounts |
-| [`design-system.md`](design-system.md) | Styling conventions, tokens, UI primitives, aesthetic rules |
-| [`auth-and-wallet.md`](auth-and-wallet.md) | Privy config, wallet context, env vars, hydration handling |
-| [`status.md`](status.md) | What's done, what's stubbed, known bugs/cleanup items |
-| [`integration-roadmap.md`](integration-roadmap.md) | The plan to replace mock data with real Anchor/RPC calls |
-| [`conventions.md`](conventions.md) | Rules an agent must follow when editing this codebase |
-| [`changelog.md`](changelog.md) | Branch map + running log of frontend work streams (landed and planned) |
+| File                                       | What it covers                                                         |
+| ------------------------------------------ | ---------------------------------------------------------------------- |
+| [`overview.md`](overview.md)               | Tech stack, how to run, high-level mental model, directory map         |
+| [`routes.md`](routes.md)                   | Every page/route, what it renders, client/server, data source, status  |
+| [`components.md`](components.md)           | Full component inventory grouped by folder                             |
+| [`data-model.md`](data-model.md)           | TypeScript types, the mock data shape, mapping to on-chain accounts    |
+| [`design-system.md`](design-system.md)     | Styling conventions, tokens, UI primitives, aesthetic rules            |
+| [`auth-and-wallet.md`](auth-and-wallet.md) | Privy config, wallet context, env vars, hydration handling             |
+| [`status.md`](status.md)                   | What's done, what's stubbed, known bugs/cleanup items                  |
+| [`conventions.md`](conventions.md)         | Rules an agent must follow when editing this codebase                  |
+| [`changelog.md`](changelog.md)             | Branch map + running log of frontend work streams (landed and planned) |
 
 ## Quick facts
 

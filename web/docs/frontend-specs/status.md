@@ -6,8 +6,8 @@ lands.
 ## ✅ Done (functional against mock data)
 
 - **Complete mock assertion lifecycle** — every state now has an action screen and the
-  full flow is walkable end-to-end in one session: create → dispute → post LLM council
-  verdict (mock `submit_llm_resolution`) → challenge → open vote → cast vote → finalize.
+  full flow is walkable end-to-end in one session: create → dispute → post the LLM
+  verdict (mock `submit_mock_llm_resolution`) → challenge → open vote → cast vote → finalize.
   Finalize screens exist for all three paths (undisputed / LLM / vote), plus a
   settlement summary on `Resolved`. Actions are deadline-gated via `isDeadlinePast`;
   user-triggered mock windows are short (5 min) so the flow stays demoable.
@@ -50,32 +50,36 @@ lands.
 The single biggest gap: **no on-chain integration exists at all** (no Anchor client, no
 IDL, no program-ID/PDA derivation, no RPC account reads, no transaction submission).
 
-| Feature | Where | What's fake |
-| --- | --- | --- |
-| All listing data | every page | Seeded from `data/assertion.ts` (10 records) via the in-memory store, not chain |
-| Create assertion | `assertion/make` `handleSubmit` | No `create_assertion` tx; adds a mock record to the client store. `mockHash` is a toy hash |
-| File dispute | dispute screen → `fileLlmDispute` (store) | Store update only; mirrors `dispute_assertion`; reason text is discarded |
-| Post LLM verdict | `dispute-action` → `submitLlmResolution` (store) | Store update; user picks the council verdict instead of reading Switchboard feeds; mirrors `submit_llm_resolution` |
-| Challenge LLM | dispute screen → `fileVoteDispute` (store) | Store update only; mirrors `challenge_llm_resolution`; reason text is discarded |
-| Open vote | `dispute-action` → `openVote` (store) | Store update only; mirrors `open_vote`; sets a 5-min mock voting window |
-| Cast vote | vote screen (`/assertion/browse/[id]/vote`) → `castVote` (store) | Store update; `MOCK_VOTE_WEIGHT=5000`; user vote tracked locally via `useUserVote`; disclaimer that MagicBlock TWAV is not wired |
-| Finalize (undisputed/LLM/vote) | `dispute-action` → `finalizeAssertion` (store) | Store update; leading outcome wins (no supermajority rule); settles dispute fields locally |
-| User dashboard stats | `/u/[address]/*` | Derived from the client store (all tabs read `useAssertions()`), typed — but still mock data underneath |
+| Feature                        | Where                                                            | What's fake                                                                                                                                                                                        |
+| ------------------------------ | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| All listing data               | every page                                                       | Seeded from `data/assertion.ts` (10 records) via the in-memory store, not chain                                                                                                                    |
+| Create assertion               | `assertion/make` `handleSubmit`                                  | No `create_assertion` tx; adds a mock record to the client store. `mockHash` is a toy hash                                                                                                         |
+| File dispute                   | dispute screen → `fileLlmDispute` (store)                        | Store update only; mirrors `dispute_assertion`; reason text is discarded                                                                                                                           |
+| Post LLM verdict               | `dispute-action` → `submitLlmResolution` (store)                 | Store update; user picks the verdict instead of a real trusted-LLM call; mirrors `submit_mock_llm_resolution`                                                                                      |
+| Challenge LLM                  | dispute screen → `fileVoteDispute` (store)                       | Store update only; mirrors `challenge_llm_resolution`; reason text is discarded                                                                                                                    |
+| Open vote                      | `dispute-action` → `openVote` (store)                            | Store update only; mirrors `open_vote`; sets a 5-min mock voting window                                                                                                                            |
+| Cast vote                      | vote screen (`/assertion/browse/[id]/vote`) → `castVote` (store) | Store update; `MOCK_VOTE_WEIGHT=5000`; appends a `VoteRecord` to the round's `voters` and tracks the connected wallet's choice via `useUserVote`; disclaimer that MagicBlock TWAV is not wired     |
+| Finalize (undisputed/LLM/vote) | `dispute-action` → `finalizeAssertion` (store)                   | Store update; the vote path resolves via `tallyOutcome` under the supermajority rule (`SUPERMAJORITY_BPS` 6700 — a sub-supermajority tally settles `Unresolvable`); settles dispute fields locally |
+| User dashboard stats           | `/u/[address]/*`                                                 | Derived from the client store (all tabs read `useAssertions()`), typed — but still mock data underneath                                                                                            |
 
 Also note protocol-side placeholders that the UI should not over-promise on: LLM
-resolution is a 3-feed Switchboard council (mocked in tests); voting is a MagicBlock
-placeholder; `vote_disputer_reward_share_bps` / `voter_reward_share_bps` exist but aren't
-distributed. See `../../../README.md` §"Current State" and `../../../docs/`.
+resolution is a single trusted off-chain resolver (`submit_mock_llm_resolution` is the
+only driver in tests; the 3-feed Switchboard council was removed per ADR-0002); voting is
+a MagicBlock placeholder; `vote_disputer_reward_share_bps` / `voter_reward_share_bps`
+exist but aren't distributed. See `../../../README.md` §"Current State" and `../../../docs/`.
 
 ## 🐞 Known bugs / cleanup items
 
-- `common/logo.tsx` — the `Logo` component appears **unused** (navbar uses
-  `/img/logo.svg` via `next/image`).
 - Unused `m` (motion) imports in a couple of landing/common files.
 
 Fixed on `frontend/design-revamp` (see [`changelog.md`](changelog.md)): dashboard
-sub-pages now read the client store with typed derivations (no `as any`);
-`MISALIGNED` vote status is actually produced; `globals.css` duplication removed.
+sub-pages now read the client store with typed derivations (no `as any`); dashboard
+earnings/reputation/disputes are role-scoped to the viewed address (asserter vs disputer);
+the votes tab now reads real per-voter records (`VoteRecord[]` on each round), so its
+status is `ACTIVE` until the assertion resolves then `SETTLED`, with `ALIGNED`/`MISALIGNED`
+as a sub-filter and each voter's actual stake shown (no more constant `100%`);
+`common/logo.tsx` and the unused local font files were removed; `globals.css` duplication
+removed.
 
 ## 🔜 Not started
 
@@ -84,5 +88,3 @@ sub-pages now read the client store with typed derivations (no `as any`);
 - Wiring the Privy embedded wallet as a transaction signer.
 - Real-time updates (account subscriptions) — RPC wss is configured but unused by app code.
 - Aux-data storage/retrieval (the `auxiliaryUrl`/`auxiliaryHash` flow is illustrative).
-
-See [`integration-roadmap.md`](integration-roadmap.md) for the plan.

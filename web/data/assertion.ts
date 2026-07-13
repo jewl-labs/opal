@@ -1,11 +1,16 @@
-import type { AssertionAccount } from '@/types';
+import type { AssertionAccount, ResolutionOutcome } from '@/types';
 
-export const ASSERTION_BOND_PUSD = 10;
+export const ASSERTION_BOND_PUSD = 500;
+
+// Canonical demo persona — asserter, disputer, and voter across the seed set so every
+// dashboard tab has data to show until on-chain reads land. Reachable from the dashboard
+// empty state and via ⌘K search.
+export const DEMO_USER = 'DemoUser7mXvLqRtY4dFcHbJeUoSiAzXn';
 
 export const ASSERTIONS: AssertionAccount[] = [
   {
     id: '8xKpQ3mN7vLwRtY2dFcHbJeUoSiAzXnP',
-    asserter: 'Gh7kWpN2mXvLqRtY4dFcHbJeUoSiAzXn',
+    asserter: DEMO_USER,
     statement: "Kanye West's Delhi concert got postponed",
     auxiliaryHash: 'a3f8c2d1e4b7091f6a5c3d2e1b8f7a09',
     auxiliaryUrl: 'https://arweave.net/abc123',
@@ -36,7 +41,7 @@ export const ASSERTIONS: AssertionAccount[] = [
     disputeCount: 1,
     llmDispute: {
       pubkey: 'LLMd1Kp7mNvQrXtZ2wFcHbJeUoSiAzYn',
-      disputer: 'Dh5iUoL9kVtJpRqW2eFbGdIcKfVmBaXo',
+      disputer: DEMO_USER,
       bondAmountPUSD: ASSERTION_BOND_PUSD,
       createdAt: '2026-04-21T08:00:00Z',
       settlementResolution: null,
@@ -78,7 +83,7 @@ export const ASSERTIONS: AssertionAccount[] = [
     },
     voteDispute: {
       pubkey: 'VTDd4Pq0rQsTvW6zJeLiMjYrXsVmEdBo',
-      disputer: 'Bg2fRmI6hSnKmPoT8bDzEaGcIfTjZxUl',
+      disputer: DEMO_USER,
       challengedLLMResolution: 'Unresolvable',
       bondAmountPUSD: ASSERTION_BOND_PUSD,
       createdAt: '2026-04-19T14:00:00Z',
@@ -105,6 +110,11 @@ export const ASSERTIONS: AssertionAccount[] = [
         False: 33400,
         Unresolvable: 14800,
       },
+      voters: [
+        { voter: DEMO_USER, outcome: 'False', weight: 12000 },
+        { voter: 'Ch3gSnJ7iToLnQoU9cEaFbHdJfUkAyVm', outcome: 'False', weight: 9400 },
+        { voter: 'Uf7dHcY7bLkCeGgL8sUpYrZtBuLkUqNfP', outcome: 'Unresolvable', weight: 8000 },
+      ],
       finalOutcome: 'False',
     },
     createdAt: '2026-04-08T09:00:00Z',
@@ -211,7 +221,7 @@ export const ASSERTIONS: AssertionAccount[] = [
     disputeCount: 1,
     llmDispute: {
       pubkey: 'LLMd5GhHiJkLmN3qAvBwCyOhOjMdVsTf',
-      disputer: 'Ve8eIdZ8cMlDfHhM9tVqZsAuCvMlVrOgQ',
+      disputer: DEMO_USER,
       bondAmountPUSD: ASSERTION_BOND_PUSD,
       createdAt: '2026-03-13T08:00:00Z',
       settlementResolution: 'False',
@@ -281,6 +291,11 @@ export const ASSERTIONS: AssertionAccount[] = [
         False: 4200,
         Unresolvable: 32200,
       },
+      voters: [
+        { voter: DEMO_USER, outcome: 'Unresolvable', weight: 9000 },
+        { voter: 'Tg6cGbX6aKjBdFfK7rToXqYsAtKjTpMeO', outcome: 'Unresolvable', weight: 15000 },
+        { voter: 'Uf7dHcY7bLkCeGgL8sUpYrZtBuLkUqNfP', outcome: 'False', weight: 4200 },
+      ],
       finalOutcome: 'Unresolvable',
     },
     createdAt: '2026-02-18T09:30:00Z',
@@ -288,7 +303,7 @@ export const ASSERTIONS: AssertionAccount[] = [
 
   {
     id: '0iVaB5xY8gWhCdJ3oQnStPfZdRlMiVoP',
-    asserter: 'Fl6nWrP3qAvRtTuB5iMcNjOkQmAsHfEu',
+    asserter: DEMO_USER,
     statement: 'World population exactly 9B by Jan 2027',
     auxiliaryHash: 'u3z8w2x1y4v7091z6u5w3x2v1t8z7u29',
     auxiliaryUrl: 'https://arweave.net/efg123',
@@ -387,4 +402,27 @@ export function filterAssertionsByAddress(
     if (assertion.voteDispute?.disputer === normalized) return true;
     return false;
   });
+}
+
+export interface UserVoteEntry {
+  assertion: AssertionAccount;
+  outcome: ResolutionOutcome; // how this address voted
+  weight: number;
+}
+
+// Every vote the address has cast, read from the per-voter records on each vote round
+// (seed data plus votes cast this session via `castVote`).
+export function votesByAddress(
+  address?: string | string[] | null,
+  source: AssertionAccount[] = ASSERTIONS
+): UserVoteEntry[] {
+  const normalized = Array.isArray(address) ? address[0] : address;
+  if (!normalized) return [];
+
+  const entries: UserVoteEntry[] = [];
+  for (const assertion of source) {
+    const record = assertion.voteResolutionRound?.voters?.find((v) => v.voter === normalized);
+    if (record) entries.push({ assertion, outcome: record.outcome, weight: record.weight });
+  }
+  return entries;
 }

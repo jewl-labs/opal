@@ -206,18 +206,25 @@ export const MOCK_VOTE_WEIGHT = 5000;
 
 // Mock vote casting — real sealed MagicBlock voting is not wired yet. finalOutcome is
 // kept as a provisional read of the tally under the supermajority rule.
-export function castVote(id: string, outcome: ResolutionOutcome, weight: number) {
+export function castVote(id: string, outcome: ResolutionOutcome, weight: number, voter: string) {
   userVotes = { ...userVotes, [id]: outcome };
   updateAssertion(id, (prev) => {
     if (!prev.voteResolutionRound) return prev;
     const aggregateVotes = { ...prev.voteResolutionRound.aggregateVotes };
     aggregateVotes[outcome] += weight;
+    // Record the individual vote so it surfaces on the voter's dashboard. A wallet votes
+    // once per round, so replace any prior record from the same voter.
+    const voters = [
+      ...(prev.voteResolutionRound.voters ?? []).filter((v) => v.voter !== voter),
+      { voter, outcome, weight },
+    ];
 
     return {
       ...prev,
       voteResolutionRound: {
         ...prev.voteResolutionRound,
         aggregateVotes,
+        voters,
         totalValidWeight: prev.voteResolutionRound.totalValidWeight + BigInt(weight),
         finalOutcome: tallyOutcome(aggregateVotes),
       },

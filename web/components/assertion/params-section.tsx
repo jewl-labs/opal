@@ -1,19 +1,11 @@
 import { ClockIcon } from '@phosphor-icons/react';
 import { AnimatePresence, motion as m } from 'motion/react';
 
-import { Button } from '@/components/ui/button';
-
-interface WindowOption {
-  label: string;
-  value: number;
-}
-
 interface Props {
   open: boolean;
   bond: number;
-  window_: WindowOption;
-  setWindow: (w: WindowOption) => void;
-  windows: WindowOption[];
+  windowLabel: string;
+  windowSeconds: number;
   formatExpiry: (s: number) => string;
 }
 
@@ -36,12 +28,11 @@ function formatRelativeExpiry(expiryText: string) {
 export default function ParamsSection({
   open,
   bond,
-  window_,
-  setWindow,
-  windows,
+  windowLabel,
+  windowSeconds,
   formatExpiry,
 }: Props) {
-  const expiry = formatExpiry(window_?.value ?? windows[0]?.value ?? 0);
+  const expiry = formatExpiry(windowSeconds);
 
   return (
     <m.div
@@ -68,33 +59,23 @@ export default function ParamsSection({
                   </span>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
-                  {windows.map((w) => (
-                    <Button
-                      key={w.value}
-                      onClick={() => setWindow(w)}
-                      variant={window_?.value === w.value ? 'default' : 'outline'}
-                    >
-                      {w.label}
-                    </Button>
-                  ))}
+                <div className="flex items-baseline gap-2">
+                  <span className="text-primary font-mono text-4xl tabular-nums">
+                    {windowLabel}
+                  </span>
                 </div>
 
                 <p className="text-muted-foreground/85 text-xs">
-                  Shorter windows resolve faster. Longer windows allow more time to dispute.
+                  Every assertion gets a fixed {windowLabel} liveness window. If no one disputes
+                  before it closes, the assertion finalizes TRUE.
                 </p>
               </div>
 
               <div className="border-muted-foreground/20 flex flex-col justify-center gap-6 border-t pt-6 md:border-t-0 md:border-l md:pt-0 md:pl-8">
                 <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground font-mono text-xs tracking-widest uppercase">
-                      Assertion Bond
-                    </span>
-                    <span className="text-muted-foreground/60 border-border border px-1.5 py-0.5 font-mono text-[10px] tracking-widest uppercase">
-                      Fixed
-                    </span>
-                  </div>
+                  <span className="text-muted-foreground font-mono text-xs tracking-widest uppercase">
+                    Assertion Bond
+                  </span>
 
                   <div className="flex items-baseline gap-2">
                     <span className="text-primary font-mono text-4xl tabular-nums">{bond}</span>

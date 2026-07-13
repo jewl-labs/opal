@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation';
 
 import Rise from '@/components/common/rise';
 import { Button } from '@/components/ui/button';
-import { filterAssertionsByAddress } from '@/data/assertion';
+import { DEMO_USER, filterAssertionsByAddress } from '@/data/assertion';
 import { getOutcomeLabel, getStageLabel } from '@/lib/assertion-labels';
 import { computeAssertionStats, topControversialAssertion } from '@/lib/assertion-stats';
 import { useAssertions } from '@/lib/assertion-store';
@@ -14,20 +14,31 @@ import type { AssertionAccount } from '@/types';
 
 type Stats = ReturnType<typeof computeAssertionStats>;
 
-// Counts settled disputes filed by anyone on this user's assertions (or by the user —
-// filterAssertionsByAddress already scopes to both roles).
-function settledDisputeRecord(assertions: AssertionAccount[]) {
+// Dispute record for the *viewed address only* — disputes this wallet filed that settled
+// with fault. filterAssertionsByAddress also returns assertions where the wallet is the
+// asserter (i.e. disputes filed *against* it); those must not count toward its own record.
+function settledDisputeRecord(assertions: AssertionAccount[], address: string | undefined) {
   let correct = 0;
   let incorrect = 0;
 
   for (const assertion of assertions) {
     // disputeCorrect === null on a settled dispute is a no-fault (Unresolvable)
     // settlement — it counts as neither correct nor incorrect.
-    if (assertion.llmDispute?.settled && assertion.llmDispute.disputeCorrect !== null) {
+    if (
+      assertion.llmDispute &&
+      assertion.llmDispute.disputer === address &&
+      assertion.llmDispute.settled &&
+      assertion.llmDispute.disputeCorrect !== null
+    ) {
       if (assertion.llmDispute.disputeCorrect) correct += 1;
       else incorrect += 1;
     }
-    if (assertion.voteDispute?.settled && assertion.voteDispute.disputeCorrect !== null) {
+    if (
+      assertion.voteDispute &&
+      assertion.voteDispute.disputer === address &&
+      assertion.voteDispute.settled &&
+      assertion.voteDispute.disputeCorrect !== null
+    ) {
       if (assertion.voteDispute.disputeCorrect) correct += 1;
       else incorrect += 1;
     }
@@ -55,15 +66,29 @@ export default function Activity() {
           This address has no assertions, disputes, or votes on record.
         </p>
 
-        <Button
-          size="lg"
-          variant="outline"
-          className="uppercase"
-          nativeButton={false}
-          render={<Link href="/assertion/make" />}
-        >
-          Make an Assertion
-        </Button>
+        <div className="flex flex-col items-center gap-3 sm:flex-row">
+          <Button
+            size="lg"
+            variant="outline"
+            className="uppercase"
+            nativeButton={false}
+            render={<Link href="/assertion/make" />}
+          >
+            Make an Assertion
+          </Button>
+
+          {address !== DEMO_USER && (
+            <Button
+              size="lg"
+              variant="ghost"
+              className="uppercase"
+              nativeButton={false}
+              render={<Link href={`/u/${DEMO_USER}`} />}
+            >
+              View a Sample Account
+            </Button>
+          )}
+        </div>
       </div>
     );
   }
@@ -77,13 +102,13 @@ export default function Activity() {
       )}
 
       <Rise delay={0.08}>
-        <StatsGrid stats={stats} assertions={assertions} />
+        <StatsGrid stats={stats} assertions={assertions} address={address} />
       </Rise>
 
       <Rise delay={0.16} className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <ProtocolActivity assertions={assertions} />
         <ResolutionBreakdown assertions={assertions} />
-        <ReputationPanel assertions={assertions} />
+        <ReputationPanel assertions={assertions} address={address} />
       </Rise>
 
       <Rise delay={0.24}>
@@ -143,8 +168,16 @@ function Hero({ top }: { top: AssertionAccount }) {
   );
 }
 
-function StatsGrid({ stats, assertions }: { stats: Stats; assertions: AssertionAccount[] }) {
-  const record = settledDisputeRecord(assertions);
+function StatsGrid({
+  stats,
+  assertions,
+  address,
+}: {
+  stats: Stats;
+  assertions: AssertionAccount[];
+  address: string | undefined;
+}) {
+  const record = settledDisputeRecord(assertions, address);
   const accuracy = record.total > 0 ? `${Math.round((record.correct / record.total) * 100)}%` : '—';
 
   const data = [
@@ -282,8 +315,14 @@ function ResolutionBreakdown({ assertions }: { assertions: AssertionAccount[] })
   );
 }
 
-function ReputationPanel({ assertions }: { assertions: AssertionAccount[] }) {
-  const record = settledDisputeRecord(assertions);
+function ReputationPanel({
+  assertions,
+  address,
+}: {
+  assertions: AssertionAccount[];
+  address: string | undefined;
+}) {
+  const record = settledDisputeRecord(assertions, address);
   const hasHistory = record.total > 0;
   const reputationScore = hasHistory ? Math.round((record.correct / record.total) * 100) : 0;
   const alignment = hasHistory ? `${reputationScore}%` : '—';

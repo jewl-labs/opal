@@ -23,7 +23,7 @@ guidance with frontend-specific realities.
 ## Code conventions
 
 - **TypeScript is strict** (`noUncheckedIndexedAccess`, `noImplicitReturns`). Avoid `as
-  any` — the existing dashboard casts are debt to pay down, not a pattern to copy.
+any` — the existing dashboard casts are debt to pay down, not a pattern to copy.
 - **Type imports:** ESLint enforces `consistent-type-imports` — use `import type { ... }`.
 - **Unused vars:** prefix intentionally-unused with `_`.
 - **Path alias:** import via `@/*` (e.g. `@/components/ui/button`, `@/lib/utils`,
@@ -62,5 +62,3 @@ Use `ui/` primitives instead of raw `<button>/<input>/<select>`.
 ## Housekeeping
 
 - When you complete or invalidate something in [`status.md`](status.md), update that file.
-- When you make an integration decision (client lib, program id source, etc.), record it
-  in [`integration-roadmap.md`](integration-roadmap.md).
