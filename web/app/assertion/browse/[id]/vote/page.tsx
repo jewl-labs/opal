@@ -107,7 +107,9 @@ export default function VoteScreen() {
 
         <p className="text-muted-foreground text-sm leading-relaxed">
           {resolved
-            ? 'Voting has ended and this round has already been finalized.'
+            ? round
+              ? 'Voting has ended and this round has already been finalized.'
+              : 'This assertion resolved without a voting round.'
             : votingClosed
               ? 'The voting window has ended. The round can now be finalized.'
               : 'Votes can only be cast while the assertion is in its voting window.'}
@@ -314,69 +316,78 @@ function VoteRecorded({
   const totalWeight = Number(round.totalValidWeight);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center px-4 py-24">
-      <m.div
-        initial={{ opacity: 0, y: 14, filter: 'blur(8px)' }}
-        animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-        className="flex w-full max-w-2xl flex-col items-center gap-10 text-center"
-      >
-        <div className="flex flex-col items-center gap-4">
-          <SealCheckIcon size={48} weight="fill" className="text-primary" />
+    // Same reduced-motion opt-out as the live-vote screen — this branch renders outside
+    // that MotionConfig, so it needs its own.
+    <MotionConfig reducedMotion="user">
+      <div className="flex min-h-screen flex-col items-center justify-center px-4 py-24">
+        <m.div
+          initial={{ opacity: 0, y: 14, filter: 'blur(8px)' }}
+          animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          className="flex w-full max-w-2xl flex-col items-center gap-10 text-center"
+        >
+          <div className="flex flex-col items-center gap-4">
+            <SealCheckIcon size={48} weight="fill" className="text-primary" />
 
-          <span className="text-muted-foreground font-mono text-xs tracking-[0.25em] uppercase">
-            Vote Recorded
-          </span>
+            <span className="text-muted-foreground font-mono text-xs tracking-[0.25em] uppercase">
+              Vote Recorded
+            </span>
 
-          <h1 className="text-3xl uppercase md:text-4xl">
-            You Voted <span className="text-primary">{getOutcomeLabel(userVote)}</span>
-          </h1>
+            <h1 className="text-3xl uppercase md:text-4xl">
+              You Voted <span className="text-primary">{getOutcomeLabel(userVote)}</span>
+            </h1>
 
-          <p className="text-muted-foreground max-w-lg text-sm leading-relaxed">{statement}</p>
+            <p className="text-muted-foreground max-w-lg text-sm leading-relaxed">{statement}</p>
 
-          <p className="text-muted-foreground text-xs leading-relaxed">
-            {resolved
-              ? 'Voting has ended and this round has been finalized.'
-              : votingClosed
-                ? 'Voting has closed — the round can now be finalized.'
-                : `Voting closes in ${getTimeRemaining(round.votingDeadline ?? undefined)}.`}
-          </p>
-        </div>
+            <p className="text-muted-foreground text-xs leading-relaxed">
+              {resolved
+                ? 'Voting has ended and this round has been finalized.'
+                : votingClosed
+                  ? 'Voting has closed — the round can now be finalized.'
+                  : `Voting closes in ${getTimeRemaining(round.votingDeadline ?? undefined)}.`}
+            </p>
+          </div>
 
-        <div className="flex w-full flex-col gap-3 text-left">
-          {(['True', 'False', 'Unresolvable'] as ResolutionOutcome[]).map((outcome) => {
-            const votes = Number(round.aggregateVotes[outcome]);
-            const share = totalWeight > 0 ? Math.round((votes / totalWeight) * 100) : 0;
-            const isUserVote = userVote === outcome;
+          <div className="flex w-full flex-col gap-3 text-left">
+            {(['True', 'False', 'Unresolvable'] as ResolutionOutcome[]).map((outcome) => {
+              const votes = Number(round.aggregateVotes[outcome]);
+              const share = totalWeight > 0 ? Math.round((votes / totalWeight) * 100) : 0;
+              const isUserVote = userVote === outcome;
 
-            return (
-              <div key={outcome} className="border-border flex flex-col gap-1.5 border-b pb-2">
-                <div className="flex items-center justify-between font-mono text-sm tracking-wider uppercase">
-                  <span className={cn(isUserVote && 'text-primary')}>
-                    {getOutcomeLabel(outcome)}
-                  </span>
+              return (
+                <div key={outcome} className="border-border flex flex-col gap-1.5 border-b pb-2">
+                  <div className="flex items-center justify-between font-mono text-sm tracking-wider uppercase">
+                    <span className={cn(isUserVote && 'text-primary')}>
+                      {getOutcomeLabel(outcome)}
+                    </span>
 
-                  <span className="tabular-nums">
-                    {votes.toLocaleString()} · {share}%
-                  </span>
+                    <span className="tabular-nums">
+                      {votes.toLocaleString()} · {share}%
+                    </span>
+                  </div>
+
+                  <div className="bg-muted/40 h-1 w-full">
+                    <div
+                      className="bg-primary h-full transition-[width] duration-500 ease-out"
+                      style={{ width: `${share}%` }}
+                    />
+                  </div>
                 </div>
+              );
+            })}
+          </div>
 
-                <div className="bg-muted/40 h-1 w-full">
-                  <div
-                    className="bg-primary h-full transition-[width] duration-500 ease-out"
-                    style={{ width: `${share}%` }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <Button size="lg" variant="outline" nativeButton={false} render={<Link href={backHref} />}>
-          <ArrowLeftIcon />
-          Back to Assertion
-        </Button>
-      </m.div>
-    </div>
+          <Button
+            size="lg"
+            variant="outline"
+            nativeButton={false}
+            render={<Link href={backHref} />}
+          >
+            <ArrowLeftIcon />
+            Back to Assertion
+          </Button>
+        </m.div>
+      </div>
+    </MotionConfig>
   );
 }
