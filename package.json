@@ -3,7 +3,7 @@
   "scripts": {
     "format:fix": "prettier * tests/* --write --ignore-unknown",
     "format": "prettier * tests/* --check --ignore-unknown",
-    "test:local": "anchor build -- --features mock-llm && anchor test --skip-build"
+    "test:local": "anchor test"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.32.1",

@@ -1,7 +1,7 @@
 use crate::{
     constants::{
         ASSERTION_SEED, ASSERTION_STATE_ASSERTED_LLM, ASSERTION_STATE_PENDING_LLM, LLM_ROUND_SEED,
-        PROTOCOL_CONFIG_SEED,
+        OUTCOME_TOO_EARLY, PROTOCOL_CONFIG_SEED,
     },
     errors::OpalError,
     state::{AssertionAccount, LlmResolutionRound, ProtocolConfig},
@@ -10,15 +10,15 @@ use crate::{
 use anchor_lang::prelude::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
-pub struct SubmitMockLlmResolutionArgs {
+pub struct SubmitLlmResolutionArgs {
     pub assertion_id: Pubkey,
     pub outcome_code: u8,
 }
 
 #[derive(Accounts)]
-#[instruction(args: SubmitMockLlmResolutionArgs)]
-pub struct SubmitMockLlmResolution<'info> {
-    pub authority: Signer<'info>,
+#[instruction(args: SubmitLlmResolutionArgs)]
+pub struct SubmitLlmResolution<'info> {
+    pub resolver: Signer<'info>,
 
     #[account(
         seeds = [PROTOCOL_CONFIG_SEED],
@@ -41,27 +41,27 @@ pub struct SubmitMockLlmResolution<'info> {
     pub llm_resolution_round: AccountLoader<'info, LlmResolutionRound>,
 }
 
-// !TBD: PLACEHOLDER — This is a mock instruction for local testing.
-// In production, the verdict will be posted by the trusted off-chain LLM
-// resolver (see docs/adr/0002-trusted-llm-resolver.md); not yet built.
-pub fn handler(
-    ctx: Context<SubmitMockLlmResolution>,
-    args: SubmitMockLlmResolutionArgs,
-) -> Result<()> {
+// Gated on `protocol_config.resolver` rather than `authority` so a leaked hot
+// resolver key can only post a challengeable verdict, not act as governance
+// (see docs/adr/0002-trusted-llm-resolver.md).
+pub fn handler(ctx: Context<SubmitLlmResolution>, args: SubmitLlmResolutionArgs) -> Result<()> {
     let protocol_config = ctx.accounts.protocol_config.load()?;
     require!(
-        ctx.accounts.authority.key() == protocol_config.authority,
+        ctx.accounts.resolver.key() == protocol_config.resolver,
         OpalError::Unauthorized
     );
 
-    let assertion = ctx.accounts.assertion.load()?;
+    let assertion = &mut ctx.accounts.assertion.load_mut()?;
     require!(
         assertion.state == ASSERTION_STATE_PENDING_LLM,
         OpalError::InvalidState
     );
-    drop(assertion);
 
     let outcome = validate_outcome_code(args.outcome_code)?;
+    // TooEarly is merged into Unresolvable per ADR-0005; the resolver emits
+    // only True, False, or Unresolvable.
+    require!(outcome != OUTCOME_TOO_EARLY, OpalError::InvalidOutcomeCode);
+
     let now = Clock::get()?.unix_timestamp;
     let challenge_deadline = checked_add_i64(now, protocol_config.llm_challenge_window_seconds)?;
     drop(protocol_config);
@@ -71,7 +71,6 @@ pub fn handler(
     llm_round.resolved_at = now;
     llm_round.challenge_deadline = challenge_deadline;
 
-    let assertion = &mut ctx.accounts.assertion.load_mut()?;
     assertion.state = ASSERTION_STATE_ASSERTED_LLM;
     assertion.llm_challenge_deadline = challenge_deadline;
 

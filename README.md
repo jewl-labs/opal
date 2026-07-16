@@ -15,7 +15,7 @@ Target use case: prediction-market resolution. Statements like "Kanye West's Del
 1. **Assert** — someone posts a statement, a USDC bond, and a Resolution Spec (the rubric; stored off-chain on Arweave, its hash on-chain)
 2. **Wait** — liveness window where anyone can dispute
 3. **Undisputed** — if no dispute, resolves `True`
-4. **Disputed** — the first dispute triggers on-chain LLM resolution: a single trusted off-chain resolver posts the verdict `[MVP-target]` (tests drive this step with the `mock-llm` stand-in; the former 3-feed Switchboard council was removed per [ADR-0002](docs/adr/0002-trusted-llm-resolver.md))
+4. **Disputed** — the first dispute triggers on-chain LLM resolution: a single trusted off-chain resolver posts the verdict via the resolver-gated `submit_llm_resolution` instruction `[Built]`; the off-chain service that makes the LLM call is `[MVP-target]` (the former 3-feed Switchboard council was removed per [ADR-0002](docs/adr/0002-trusted-llm-resolver.md))
 5. **Challenged** — if the LLM verdict is challenged, escalate to a per-dispute staked vote, kept private during the voting window via a MagicBlock ephemeral rollup ([ADR-0003](docs/adr/0003-private-staked-voting.md))
 6. **Resolved** — the final outcome is posted on-chain
 
@@ -49,7 +49,7 @@ bun install
 # Build the program
 anchor build
 
-# Run the logic suite on localnet (mock-llm)
+# Run the logic suite on localnet
 bun run test:local
 ```
 
@@ -82,25 +82,25 @@ See [web/README.md](web/README.md) and [Privy setup](web/docs/PRIVY_SETUP.md).
 Tests are TypeScript integration tests run with `@coral-xyz/anchor`; there are no Rust unit tests. Targets split by environment ([ADR-0006](docs/adr/0006-codebase-organization.md)):
 
 ```bash
-# [Built] Logic suite on a localnet validator, built with the mock-llm feature
+# [Built] Logic suite on a localnet validator
 bun run test:local
 
-# [MVP-target] Real integration against devnet, where the trusted resolver
-# and MagicBlock ER actually exist (no mock): anchor test --skip-local-validator
+# [MVP-target] Real integration against devnet, where the resolver service
+# and MagicBlock ER actually exist: anchor test --skip-local-validator
 anchor test
 ```
 
-`bun run test:local` is wired today (`anchor build -- --features mock-llm && anchor test --skip-build`). Pointing `anchor test` at devnet — a funded devnet keypair, a deployed program, and `--skip-local-validator` — lands in the test-split follow-up PR per ADR-0006; until then it still spins up a local validator.
+`bun run test:local` is an alias for `anchor test` today. Pointing `anchor test` at devnet — a funded devnet keypair, a deployed program, and `--skip-local-validator` — lands in the test-split follow-up PR per ADR-0006; until then it still spins up a local validator.
 
 Current coverage: happy paths (undisputed, LLM resolution, full escalation), config validation, deadline violations, state guards, account mismatches, token balance assertions.
 
 ## Current State
 
-The optimistic core is built: the account model, the six-state machine (`Asserted` → `PendingLLM` → `AssertedLLM` → `PendingVote` → `Voting` → `Resolved`), and the optimistic-resolution plus dispute plumbing all exist on-chain today. Integration tests drive the LLM round through a `mock-llm` path.
+The optimistic core is built: the account model, the six-state machine (`Asserted` → `PendingLLM` → `AssertedLLM` → `PendingVote` → `Voting` → `Resolved`), and the optimistic-resolution plus dispute plumbing all exist on-chain today. Integration tests drive the LLM round through `submit_llm_resolution` signed with a test resolver keypair.
 
 These pieces are v1 targets, not yet shipped:
 
-- **Trusted LLM resolver** — the authority-gated path where a real LLM verdict is posted on-chain is the production target; the former 3-feed Switchboard council was removed per ADR-0002, so today the `mock-llm` path is the only resolution driver. On-chain LLM provenance (prompt/response/evidence hashing) is deferred to a `[Vision]` trust-minimized resolver.
+- **Trusted LLM resolver** — the on-chain half is built: `submit_llm_resolution` is gated on a dedicated `ProtocolConfig.resolver` key (separate from `authority`, so a leaked hot resolver key can only post a challengeable verdict) and accepts only `True`/`False`/`Unresolvable`. The off-chain service that makes the real LLM call and posts verdicts is the remaining target; the former 3-feed Switchboard council was removed per ADR-0002. On-chain LLM provenance (prompt/response/evidence hashing) is deferred to a `[Vision]` trust-minimized resolver.
 - **Private staked voting** — opening a vote sets up the round, but real MagicBlock private voting (delegation, ER settlement) is the MVP target.
 - **Resolution Spec on Arweave** — the on-chain `auxiliary_hash` field exists; off-chain Arweave storage and integrity-checking is planned.
 - **No-fault settlement & reward split** — `Unresolvable` no-fault settlement and the share-based settlement split (`llm_disputer_reward_share_bps`, `vote_disputer_reward_share_bps`, `voter_reward_share_bps`, `treasury_share_bps`) are planned; only `protocol_fee_bps` is applied today.

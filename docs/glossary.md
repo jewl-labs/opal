@@ -60,7 +60,7 @@ The terminal result on the assertion; `OUTCOME_NONE` (255) until `state == Resol
 **LLM Disputer** `[Built]` — the first disputer; challenges the default `True` and triggers LLM resolution.
 **Vote Disputer** `[Built]` — the second disputer; challenges the LLM verdict and triggers the staked vote.
 **Voter** `[MVP-target]` — anyone who stakes USDC into a specific vote round; weight is linear in stake; wrong-side stake is slashed, right-side stake earns rewards.
-**LLM Resolver** `[MVP-target]` — a trusted, authority-gated off-chain service that calls one LLM and posts the verdict. (On-chain LLM provenance hashing is deferred to `[Vision]`.) See [ADR-0002](adr/0002-trusted-llm-resolver.md).
+**LLM Resolver** `[MVP-target]` — a trusted off-chain service that calls one LLM and posts the verdict via `submit_llm_resolution` `[Built]`, gated on the dedicated `ProtocolConfig.resolver` key. (On-chain LLM provenance hashing is deferred to `[Vision]`.) See [ADR-0002](adr/0002-trusted-llm-resolver.md).
 _Avoid_: "council" for the resolver — the 3-feed Switchboard council was removed per ADR-0002 and was never the resolver design.
 **Integrator** — any app consuming Opal outcomes; must read the Resolution Spec to judge whether an outcome is meaningful for its use case, and should require `state == Resolved` before irreversible settlement.
 

@@ -16,7 +16,7 @@ This document describes the target architecture for the prediction-market wedge.
 - The Resolution Spec lives **off-chain on Arweave**; only `auxiliary_hash` is stored onchain (max 128 bytes) so anyone can fetch the spec and verify integrity. The spec **is the source of truth** — the LLM resolver and voters apply it, they do not adjudicate universal reality. `[MVP-target]` (see [ADR-0001](adr/0001-rubric-relative-truth.md))
 - **USDC** is the single collateral asset for bonds, slashing, rewards, and fees. The mint is a config field (`pusd_mint`, slated to rename to `usdc_mint`) so localnet/devnet can use a test mint, but the protocol commits to USDC. `[MVP-target]` (see [ADR-0004](adr/0004-single-asset-usdc.md))
 - Governance is the `authority` keypair. There is no separate governance token in the MVP. `[MVP-target]`
-- LLM resolution is a **single trusted off-chain resolver** that posts the verdict via an authority-gated instruction `[MVP-target]`; the former 3-feed Switchboard council was removed per [ADR-0002](adr/0002-trusted-llm-resolver.md). A `mock-llm` path (`submit_mock_llm_resolution`) drives the state transition in local tests `[Built]`. Binding LLM provenance hashes onchain is not part of the MVP — it is deferred to `[Vision]`.
+- LLM resolution is a **single trusted off-chain resolver** that posts the verdict via `submit_llm_resolution`, gated on the dedicated `ProtocolConfig.resolver` key `[Built]`; the off-chain resolver service is `[MVP-target]`. The former 3-feed Switchboard council was removed per [ADR-0002](adr/0002-trusted-llm-resolver.md). Binding LLM provenance hashes onchain is not part of the MVP — it is deferred to `[Vision]`.
 - Final escalation is a **private, USDC-staked vote on a MagicBlock ephemeral rollup** with linear weight (1 USDC = 1 vote) and Schelling-point slashing. A single outcome must reach `supermajority_bps`, otherwise the vote resolves `Unresolvable`. `[MVP-target]` (see [ADR-0003](adr/0003-private-staked-voting.md))
 - `Unresolvable` settles **no-fault**: both bonds returned, nobody slashed, assertion voided. `[MVP-target]` (see [ADR-0005](adr/0005-no-fault-unresolvable.md))
 
@@ -139,7 +139,7 @@ pub struct LlmResolutionRound {
 }
 ```
 
-`outcome` is an outcome code: `0 = True`, `1 = False`, `3 = Unresolvable`. The code `2` (`TooEarly`) persists in the constants and `validate_outcome_code` still accepts it, but no path is intended to emit it; merging it into `Unresolvable` is `[MVP-target]` (see [ADR-0005](adr/0005-no-fault-unresolvable.md)). Today the `mock-llm` path sets `outcome` from an argument; the `[MVP-target]` trusted resolver would set it from its single LLM call.
+`outcome` is an outcome code: `0 = True`, `1 = False`, `3 = Unresolvable`. The code `2` (`TooEarly`) persists in the constants and `validate_outcome_code` still accepts it, but `submit_llm_resolution` rejects it; merging it into `Unresolvable` is `[MVP-target]` (see [ADR-0005](adr/0005-no-fault-unresolvable.md)). Today the resolver key sets `outcome` from an argument via `submit_llm_resolution`; the `[MVP-target]` off-chain service sets it from its single LLM call.
 
 ### `VoteResolutionRound` `[Built]` (struct) / `[MVP-target]` (private vote)
 
@@ -181,6 +181,7 @@ pub struct ProtocolConfig {
     pub authority: Pubkey,
     pub pusd_mint: Pubkey,      // USDC mint; slated to rename to usdc_mint
     pub treasury: Pubkey,
+    pub resolver: Pubkey,
     pub assertion_bond_min_pusd: u64,
     pub llm_dispute_bond_ratio_bps: u16,
     pub vote_dispute_bond_ratio_bps: u16,
@@ -199,6 +200,7 @@ pub struct ProtocolConfig {
 ```
 
 - `authority` is governance for the MVP (no separate governance token).
+- `resolver` is the only key allowed to post LLM verdicts (`submit_llm_resolution`). It is deliberately separate from `authority`: the resolver is a hot key held by the off-chain service, and a leak exposes only a challengeable verdict, not governance.
 - `supermajority_bps` is a **config field** (e.g. `6700` in tests), not a hardcoded constant: it is the weighted threshold a single outcome must reach in a vote, otherwise the outcome is `Unresolvable`.
 - The reward-share fields (`llm_disputer_reward_share_bps`, `vote_disputer_reward_share_bps`, `voter_reward_share_bps`, `treasury_share_bps`) divide the slashed pot. Today only `protocol_fee_bps` is applied `[Built]`; the full share-based split is `[MVP-target]`.
 
@@ -222,46 +224,42 @@ The instruction names below are stable for this PR.
    - Creates `LlmResolutionRound`.
    - Sets `state = PENDING_LLM`, `dispute_count = 1`, and round/dispute pointers on `AssertionAccount`.
 
-3. LLM verdict submission `[MVP-target]`
-   - An authority-gated trusted off-chain resolver makes a single LLM call and posts the verdict; the instruction's shape is not yet settled. On-chain provenance hashing is deferred to `[Vision]`.
-   - The former permissionless council instruction (`submit_llm_resolution`) was removed per [ADR-0002](adr/0002-trusted-llm-resolver.md).
+3. `submit_llm_resolution` `[Built]` _(instruction)_ / `[MVP-target]` _(off-chain resolver service)_
+   - Gated to `protocol_config.resolver` — a dedicated key, separate from `authority`, so a leaked hot resolver key can only post a challengeable verdict.
+   - Accepts only `True`, `False`, or `Unresolvable`; `TooEarly` is rejected per [ADR-0005](adr/0005-no-fault-unresolvable.md).
    - Sets `AssertionAccount.state = ASSERTED_LLM` and opens the LLM challenge deadline.
+   - The `[MVP-target]` off-chain trusted resolver makes a single LLM call and posts the verdict through this instruction; on-chain provenance hashing is deferred to `[Vision]`. (The name previously belonged to the removed Switchboard council instruction — [ADR-0002](adr/0002-trusted-llm-resolver.md).)
 
-4. `submit_mock_llm_resolution` `[Built]` _(local tests only, `mock-llm` feature)_
-   - Gated to `protocol_config.authority`.
-   - Sets the outcome from an argument without any external call.
-   - Currently the only instruction that posts an LLM verdict; drives the state transition above.
-
-5. `finalize_llm_resolution` `[Built]`
+4. `finalize_llm_resolution` `[Built]`
    - Allowed after the LLM challenge window if no vote dispute exists.
    - Sets `state = RESOLVED` and `outcome = LlmResolutionRound.outcome`.
    - Sets `LlmDisputeAccount.settlement_resolution` and settles bonds (share-based split / no-fault is `[MVP-target]`).
 
-6. `challenge_llm_resolution` `[Built]`
+5. `challenge_llm_resolution` `[Built]`
    - Allowed while the assertion is `ASSERTED_LLM` and before the LLM challenge deadline.
    - Locks the second disputer's USDC bond.
    - Creates `VoteDisputeAccount` with `challenged_llm_resolution = LlmResolutionRound.outcome`.
    - Creates `VoteResolutionRound`.
    - Sets `state = PENDING_VOTE`, `dispute_count = 2`, and round/dispute pointers on `AssertionAccount`.
 
-7. `open_vote` `[Built]` (state plumbing) / `[MVP-target]` (real ER delegation)
+6. `open_vote` `[Built]` (state plumbing) / `[MVP-target]` (real ER delegation)
    - Sets voting deadlines on `VoteResolutionRound`.
    - Moves the assertion from `PENDING_VOTE` to `VOTING`.
    - Sets `delegated = BOOL_TRUE`. In the MVP this delegates the vote state to the MagicBlock ephemeral rollup; auth policy for opening the vote is still to be finalized (currently permissionless for liveness).
 
-8. `finalize_vote_resolution_placeholder` `[Built]` (state plumbing) / `[MVP-target]` (real tally)
+7. `finalize_vote_resolution_placeholder` `[Built]` (state plumbing) / `[MVP-target]` (real tally)
    - Allowed after the voting window expires.
    - Sets `VoteResolutionRound.final_outcome` (currently from an argument; in the MVP from the private tally, applying `supermajority_bps` → `Unresolvable` and the MagicBlock commit/undelegate).
    - Sets `AssertionAccount.state = RESOLVED` and `AssertionAccount.outcome`.
    - Sets settlement fields on both dispute accounts and settles bonds.
 
-9. `finalize_undisputed` `[Built]`
+8. `finalize_undisputed` `[Built]`
    - Allowed after `liveness_deadline` if no dispute exists.
    - Sets `state = RESOLVED` and `outcome = TRUE`.
    - Returns the asserter bond minus configured fees.
 
-10. `initialize_protocol_config` `[Built]`
-    - Authority-gated bootstrap of the `ProtocolConfig` singleton.
+9. `initialize_protocol_config` `[Built]`
+   - Authority-gated bootstrap of the `ProtocolConfig` singleton.
 
 ## State Machine `[Built]`
 
@@ -277,7 +275,7 @@ Asserted(default=True)
   | first dispute
   v
 PendingLLM
-  | LLM verdict posted (mock today; trusted resolver is [MVP-target])
+  | LLM verdict posted (submit_llm_resolution, resolver-gated)
   v
 AssertedLLM(LlmResolutionRound.outcome)
   | LLM challenge window expires
@@ -317,7 +315,7 @@ Integrator rules:
 ## External Systems
 
 **LLM resolver** `[MVP-target]`
-A single LLM call posted onchain by a trusted, authority-gated off-chain resolver. This layer does **not** need to be trustless because the staked vote is the trust backstop: a wrong or corrupt verdict is challengeable into the private vote. On-chain provenance hashing is deferred to a `[Vision]` trust-minimized resolver. The former non-mock path — a 3-feed Switchboard council — was removed per [ADR-0002](adr/0002-trusted-llm-resolver.md). Local integration tests use the `mock-llm` feature and `submit_mock_llm_resolution` `[Built]` instead of the live resolver.
+A single LLM call posted onchain by a trusted off-chain resolver through the resolver-gated `submit_llm_resolution` instruction `[Built]`. This layer does **not** need to be trustless because the staked vote is the trust backstop: a wrong or corrupt verdict is challengeable into the private vote. On-chain provenance hashing is deferred to a `[Vision]` trust-minimized resolver. The former non-mock path — a 3-feed Switchboard council — was removed per [ADR-0002](adr/0002-trusted-llm-resolver.md). Local integration tests call the instruction directly with a test resolver keypair instead of the live resolver service.
 
 **MagicBlock (private ephemeral rollup)** `[MVP-target]`
 The final escalation runs as a private, USDC-staked vote inside a MagicBlock ephemeral rollup: votes are sealed during the voting window and only the aggregate outcome is committed onchain, which prevents the bandwagon/beauty-contest collapse a public running tally would cause ([ADR-0003](adr/0003-private-staked-voting.md)). The `VoteResolutionRound` struct carries the MagicBlock fields (validator, permission account, delegated vote state) and the `delegated`/`committed` lifecycle flags for this purpose. This is the MVP's critical-path dependency.
