@@ -10,30 +10,49 @@ import ParamsSection from '@/components/assertion/params-section';
 import SectionHeader from '@/components/assertion/section-header';
 import StatementSection from '@/components/assertion/statement-section';
 import SummarySection from '@/components/assertion/summary-section';
-import Container from '@/components/common/container';
-import { ASSERTIONS, ASSERTION_BOND_PUSD } from '@/data/assertion';
+import { ASSERTION_BOND_PUSD } from '@/data/assertion';
+import { addAssertion } from '@/lib/assertion-store';
 import { useWallet } from '@/providers/wallet-context';
 
 const MAX_CHARS = 280;
 
-const WINDOWS = [
-  { label: '24h', value: 86400 },
-  { label: '3 days', value: 259200 },
-  { label: '7 days', value: 604800 },
-  { label: '30 days', value: 2592000 },
-];
+// Bond and dispute window are fixed protocol parameters (mock).
+const DISPUTE_WINDOW = { label: '7 days', seconds: 604800 };
 
 type Section = 'statement' | 'params' | 'evidence' | 'summary';
 
 function formatExpiry(baseTime: number, seconds: number) {
   const d = new Date(baseTime + seconds * 1000);
-  return d.toUTCString().replace('GMT', 'UTC').slice(0, -4);
+  // Keep the ' UTC' marker: the Params/Summary sections reparse this string, and
+  // dropping the zone made `new Date(...)` read it as local time (off by the viewer's
+  // offset). With the marker it parses back to the correct instant everywhere.
+  return d.toUTCString().replace('GMT', 'UTC');
 }
 
 function hashPreview(str: string) {
   let h = 0;
   for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0;
   return Math.abs(h).toString(16).padStart(8, '0') + '...';
+}
+
+// Toy 32-hex-char content hash — stands in for the real SHA-256 auxiliary hash.
+function mockHash(str: string) {
+  let h = 2166136261;
+  let out = '';
+  for (let round = 0; round < 4; round++) {
+    for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619 + round);
+    out += (h >>> 0).toString(16).padStart(8, '0');
+  }
+  return out;
+}
+
+const BASE58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+
+// Mock assertion id — stands in for the caller-supplied `assertion_id` PDA seed.
+function generateMockId() {
+  let id = '';
+  for (let i = 0; i < 32; i++) id += BASE58.charAt(Math.floor(Math.random() * BASE58.length));
+  return id;
 }
 
 const SECTION_ORDER: Section[] = ['statement', 'params', 'evidence', 'summary'];
@@ -45,9 +64,15 @@ export default function MakeAssertion() {
   const [open, setOpen] = useState<Section>('statement');
   const [statement, setStatement] = useState('');
   const bond = ASSERTION_BOND_PUSD;
-  const [createdAt] = useState(() => Date.now());
-  const [window_, setWindow] = useState<(typeof WINDOWS)[number]>(WINDOWS[2]!);
   const [auxiliaryData, setAuxiliaryData] = useState('');
+
+  // Live clock so the expiry preview tracks real time. The stored deadline is computed
+  // from Date.now() at submit, so what the user sees is accurate to within the tick.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
 
   const toggle = (s: Section) => setOpen((prev) => (prev === s ? 'statement' : s));
 
@@ -74,41 +99,88 @@ export default function MakeAssertion() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Validate against the trimmed statement — the same value handleSubmit stores — so
+  // whitespace-only or padded input can't enable the Assert button and persist empty.
+  const trimmedStatement = statement.trim();
   const statementWarning =
-    statement.length > 0 && statement.length < 10
+    trimmedStatement.length > 0 && trimmedStatement.length < 10
       ? 'Too short to be resolvable'
-      : statement.endsWith('?')
+      : trimmedStatement.endsWith('?')
         ? 'Use a declarative statement, not a question'
         : null;
 
-  const statementValid = statement.length >= 10 && !statement.endsWith('?');
+  const statementValid = trimmedStatement.length >= 10 && !trimmedStatement.endsWith('?');
   const walletConnected = ready && authenticated && currentAddress;
   const canSubmit = statementValid && walletConnected;
-  const buttonDisabled = Boolean(walletConnected) && !statementValid;
+  // Guards double-submit: router.push doesn't unmount the page before a second click
+  // lands, and each submit would mint a fresh id — so latch after the first.
+  const [submitting, setSubmitting] = useState(false);
+  const buttonDisabled = (Boolean(walletConnected) && !statementValid) || submitting;
 
+  // Mock create — mirrors `create_assertion`, persisted in the client-side store
+  // until the on-chain transaction is wired.
   const handleSubmit = () => {
-    if (!canSubmit) return;
-    const mockId = ASSERTIONS[0]?.id ?? 'mock';
-    router.push(`/assertion/browse/${mockId}`);
+    if (!canSubmit || !currentAddress || submitting) return;
+    setSubmitting(true);
+
+    const id = generateMockId();
+    const submittedAt = Date.now();
+
+    addAssertion({
+      id,
+      asserter: currentAddress,
+      statement: statement.trim(),
+      auxiliaryHash: mockHash(statement + auxiliaryData),
+      bondAmountPUSD: bond,
+      state: 'Asserted',
+      livenessDeadline: new Date(submittedAt + DISPUTE_WINDOW.seconds * 1000).toISOString(),
+      outcome: null,
+      finalizedAt: null,
+      disputeCount: 0,
+      llmDispute: null,
+      voteDispute: null,
+      llmResolutionRound: null,
+      voteResolutionRound: null,
+      createdAt: new Date(submittedAt).toISOString(),
+    });
+
+    router.push(`/assertion/browse/${id}`);
+  };
+
+  // From any section but the summary, the primary button advances to the Claim Summary
+  // (a deliberate review step) instead of submitting — so a misclick can't stake blind.
+  const onPrimary = () => {
+    if (!walletConnected) {
+      login();
+      return;
+    }
+    if (open !== 'summary') {
+      setOpen('summary');
+      return;
+    }
+    handleSubmit();
   };
 
   const buttonLabel = !walletConnected
     ? 'Sign in to Assert'
-    : !statement.length || statement.length < 10 || statement.endsWith('?')
+    : !statementValid
       ? 'Stake to Confirm'
-      : `Stake ${bond} PUSD and Assert`;
+      : open !== 'summary'
+        ? 'Review Claim Summary'
+        : `Stake ${bond} USDC and Assert`;
 
   return (
-    <Container className="border-muted-foreground/50 relative flex h-screen flex-col overflow-hidden border-x border-dashed px-4 pt-18 pb-4">
+    <div className="relative flex h-screen flex-col overflow-hidden px-4 pt-18 pb-4">
       <m.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: 'easeOut' }}
+        initial={{ opacity: 0, y: 14, filter: 'blur(8px)' }}
+        animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         className="relative z-10 mt-4 flex h-full flex-col overflow-hidden"
       >
-        <div className="bg-background border-muted-foreground/50 flex h-full flex-col overflow-hidden border border-dashed">
+        <div className="bg-background border-border flex h-full flex-col overflow-hidden border">
           <SectionHeader
             label="Statement"
+            complete={statementValid}
             open={open === 'statement'}
             onClick={() => toggle('statement')}
             peek={statement || undefined}
@@ -125,23 +197,24 @@ export default function MakeAssertion() {
 
           <SectionHeader
             label="Bond & Window"
+            complete
             open={open === 'params'}
             showShortcut={open === 'params'}
             shortcutHint="Ctrl+Enter"
             onClick={() => toggle('params')}
-            peek={`${bond} PUSD · ${window_.label}`}
+            peek={`${bond} USDC · ${DISPUTE_WINDOW.label}`}
           />
           <ParamsSection
             open={open === 'params'}
             bond={bond}
-            window_={window_}
-            setWindow={setWindow}
-            windows={WINDOWS}
-            formatExpiry={(seconds) => formatExpiry(createdAt, seconds)}
+            windowLabel={DISPUTE_WINDOW.label}
+            windowSeconds={DISPUTE_WINDOW.seconds}
+            formatExpiry={(seconds) => formatExpiry(now, seconds)}
           />
 
           <SectionHeader
-            label="Auxiliary Data"
+            label="Resolution Spec"
+            complete={Boolean(auxiliaryData)}
             open={open === 'evidence'}
             onClick={() => toggle('evidence')}
             peek={
@@ -165,6 +238,7 @@ export default function MakeAssertion() {
 
           <SectionHeader
             label="Claim Summary"
+            complete={statementValid}
             open={open === 'summary'}
             onClick={() => toggle('summary')}
             peek={statement ? `${statement.slice(0, 40)}…` : undefined}
@@ -175,28 +249,22 @@ export default function MakeAssertion() {
             open={open === 'summary'}
             statement={statement}
             bond={bond}
-            windowLabel={window_.label}
-            windowValue={window_.value}
+            windowLabel={DISPUTE_WINDOW.label}
+            windowValue={DISPUTE_WINDOW.seconds}
             auxiliaryData={auxiliaryData}
             hashPreview={hashPreview}
-            formatExpiry={(seconds) => formatExpiry(createdAt, seconds)}
+            formatExpiry={(seconds) => formatExpiry(now, seconds)}
           />
 
-          <div className="border-muted-foreground/50 mt-auto border-t border-dashed p-5">
+          <div className="border-border mt-auto border-t p-5">
             <m.button
               whileHover={buttonDisabled ? {} : { scale: 1.005 }}
               whileTap={buttonDisabled ? {} : { scale: 0.995 }}
               disabled={buttonDisabled}
-              onClick={() => {
-                if (!walletConnected) {
-                  login();
-                  return;
-                }
-                handleSubmit();
-              }}
-              className={`w-full py-3 text-xs tracking-widest uppercase transition-colors ${
+              onClick={onPrimary}
+              className={`w-full py-4 font-mono text-sm tracking-[0.2em] uppercase transition-colors ${
                 buttonDisabled
-                  ? 'bg-muted/30 text-muted-foreground/25 border-muted-foreground/10 cursor-not-allowed border border-dashed'
+                  ? 'border-border bg-muted/40 text-muted-foreground cursor-not-allowed border'
                   : 'bg-primary hover:bg-primary/90 cursor-pointer text-black'
               }`}
             >
@@ -205,6 +273,6 @@ export default function MakeAssertion() {
           </div>
         </div>
       </m.div>
-    </Container>
+    </div>
   );
 }

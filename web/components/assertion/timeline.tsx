@@ -1,6 +1,9 @@
+import { getOutcomeLabel } from '@/lib/assertion-labels';
 import { cn } from '@/lib/utils';
 import type { AssertionAccount } from '@/types';
 
+// Horizontal lifecycle timeline card. The detail page pins it in-flow at the bottom of
+// its fixed-height layout so it never overlaps the content above.
 export default function Timeline({ statement }: { statement: AssertionAccount | undefined }) {
   if (!statement) {
     return null;
@@ -10,8 +13,7 @@ export default function Timeline({ statement }: { statement: AssertionAccount | 
     {
       date: statement.createdAt,
       title: 'ASSERTED',
-      description: 'optimistic truth activated',
-      color: 'bg-orange-400',
+      description: 'Optimistic truth activated',
       active: true,
     },
 
@@ -20,8 +22,7 @@ export default function Timeline({ statement }: { statement: AssertionAccount | 
           {
             date: statement.llmDispute.createdAt,
             title: 'DISPUTED',
-            description: 'llm dispute submitted',
-            color: 'bg-red-400',
+            description: 'LLM dispute submitted',
             active: true,
           },
         ]
@@ -32,8 +33,7 @@ export default function Timeline({ statement }: { statement: AssertionAccount | 
           {
             date: statement.llmResolutionRound.resolvedAt,
             title: 'LLM RESOLUTION',
-            description: `proposed ${statement.llmResolutionRound.outcome}`,
-            color: 'bg-yellow-400',
+            description: `Proposed ${getOutcomeLabel(statement.llmResolutionRound.outcome ?? null)}`,
             active: true,
           },
         ]
@@ -44,8 +44,7 @@ export default function Timeline({ statement }: { statement: AssertionAccount | 
           {
             date: statement.voteDispute.createdAt,
             title: 'VOTE CHALLENGE',
-            description: `challenged ${statement.voteDispute.challengedLLMResolution}`,
-            color: 'bg-purple-400',
+            description: `Challenged ${statement.voteDispute.challengedLLMResolution}`,
             active: true,
           },
         ]
@@ -58,8 +57,7 @@ export default function Timeline({ statement }: { statement: AssertionAccount | 
             title: 'VOTING OPEN',
             description: `${Number(
               statement.voteResolutionRound.totalValidWeight
-            ).toLocaleString()} opal locked`,
-            color: 'bg-blue-400',
+            ).toLocaleString()} vote weight locked`,
             active: true,
           },
         ]
@@ -69,82 +67,99 @@ export default function Timeline({ statement }: { statement: AssertionAccount | 
       date: statement.finalizedAt || statement.livenessDeadline,
       title: statement.finalizedAt ? 'FINALIZED' : 'PENDING FINALIZATION',
       description: statement.finalizedAt
-        ? `resolved ${statement.outcome}`
-        : 'awaiting next resolution phase',
-      color: statement.finalizedAt
-        ? statement.outcome === 'True'
-          ? 'bg-green-400'
-          : statement.outcome === 'False'
-            ? 'bg-red-400'
-            : 'bg-zinc-400'
-        : 'bg-zinc-500',
+        ? `Resolved ${statement.outcome}`
+        : 'Awaiting next resolution phase',
       active: !!statement.finalizedAt,
     },
   ];
 
+  const completed = events.filter((event) => event.active).length;
+
   return (
-    <div className="relative flex h-fit w-fit flex-col">
-      {events.map((event, index) => {
-        const isLast = index === events.length - 1;
+    <div className="w-full">
+      <div className="border-border bg-background/85 border-t px-6 pt-4 pb-5 backdrop-blur-md">
+        <div className="flex items-baseline justify-between">
+          <span className="text-muted-foreground/75 font-mono text-[10px] tracking-[0.3em] uppercase">
+            Lifecycle
+          </span>
 
-        return (
-          <div key={`${event.title}-${index}`} className="flex flex-1 flex-col">
-            <div className="flex items-start gap-2">
-              <div className="flex min-w-35 flex-col items-end">
-                <span className="text-muted-foreground text-xs whitespace-nowrap uppercase">
-                  {event.date
-                    ? new Date(event.date).toLocaleDateString('en-US', {
-                        day: '2-digit',
-                        month: 'short',
-                        year: 'numeric',
-                      })
-                    : 'Pending'}
-                </span>
+          <span className="text-muted-foreground/60 font-mono text-[10px] tracking-widest uppercase tabular-nums">
+            {completed} / {events.length} steps
+          </span>
+        </div>
 
-                <span
-                  className={cn(
-                    'text-xs whitespace-nowrap uppercase',
-                    event.active ? 'text-foreground' : 'text-muted-foreground'
-                  )}
-                >
-                  {event.title}
-                </span>
+        <div className="no-scrollbar mt-4 flex overflow-x-auto">
+          {events.map((event, index) => {
+            const isFirst = index === 0;
+            const isLast = index === events.length - 1;
 
-                <span className="text-muted-foreground max-w-35 text-right text-[10px] leading-relaxed uppercase">
-                  {event.description}
-                </span>
-              </div>
+            return (
+              <div
+                key={`${event.title}-${index}`}
+                className="flex min-w-44 flex-1 flex-col items-center gap-3"
+              >
+                <div className="flex w-full items-center">
+                  <span
+                    className={cn(
+                      'h-px flex-1',
+                      isFirst
+                        ? 'bg-transparent'
+                        : event.active
+                          ? 'bg-primary/50'
+                          : 'bg-muted-foreground/20'
+                    )}
+                  />
 
-              <div className="flex h-full flex-col items-center">
-                <span
-                  className={cn(
-                    'ring-secondary z-10 size-2 shrink-0 rounded-full ring-2',
-                    event.color
-                  )}
-                />
+                  <span
+                    className={cn(
+                      'z-10 mx-2 size-2 shrink-0 rotate-45',
+                      event.active
+                        ? 'bg-primary'
+                        : 'border-muted-foreground/50 border bg-transparent'
+                    )}
+                  />
 
-                {!isLast && (
-                  <svg
-                    width="1"
-                    className="mr-0.75 ml-auto h-24 flex-1"
-                    xmlns="http://www.w3.org/2000/svg"
-                    preserveAspectRatio="none"
+                  <span
+                    className={cn(
+                      'h-px flex-1',
+                      isLast
+                        ? 'bg-transparent'
+                        : events[index + 1]?.active
+                          ? 'bg-primary/50'
+                          : 'bg-muted-foreground/20'
+                    )}
+                  />
+                </div>
+
+                <div className="flex flex-col items-center gap-1 px-4 text-center">
+                  <span
+                    className={cn(
+                      'font-mono text-xs tracking-[0.15em] whitespace-nowrap uppercase',
+                      event.active ? 'text-foreground' : 'text-muted-foreground/70'
+                    )}
                   >
-                    <line
-                      x1="0.5"
-                      x2="0.5"
-                      y1="0"
-                      y2="100%"
-                      strokeDasharray="4 4"
-                      className="stroke-muted-foreground/50"
-                    />
-                  </svg>
-                )}
+                    {event.title}
+                  </span>
+
+                  <span className="text-muted-foreground/70 font-mono text-[10px] whitespace-nowrap uppercase tabular-nums">
+                    {event.date
+                      ? new Date(event.date).toLocaleDateString('en-US', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric',
+                        })
+                      : 'Pending'}
+                  </span>
+
+                  <span className="text-muted-foreground/60 text-xs leading-relaxed whitespace-nowrap">
+                    {event.description}
+                  </span>
+                </div>
               </div>
-            </div>
-          </div>
-        );
-      })}
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

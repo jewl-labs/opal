@@ -10,7 +10,6 @@ export function computeAssertionStats(assertions: AssertionAccount[]) {
 
   const totalBondPUSD = assertions.reduce((acc, a) => acc + (Number(a.bondAmountPUSD) || 0), 0);
 
-  // sum voteResolutionRound.totalValidWeight (may be bigint)
   const totalValidWeight = assertions.reduce((acc, a) => {
     const w = a.voteResolutionRound?.totalValidWeight;
     if (w === undefined || w === null) return acc;

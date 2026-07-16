@@ -12,8 +12,8 @@ import {
   WarningOctagonIcon,
 } from '@phosphor-icons/react';
 import { CheckIcon, CopySimpleIcon } from '@phosphor-icons/react';
+import { motion as m } from 'motion/react';
 
-import Container from '../common/container';
 import { Button } from '../ui/button';
 
 const LINKS = [
@@ -58,18 +58,21 @@ export default function ActivityNavigation() {
     return () => clearTimeout(timer);
   }, [isCopied]);
 
-  // !TBD: Add error handling for clipboard API failures
   const handleCopy = async () => {
-    if (address) {
+    if (!address) return;
+    try {
       await navigator.clipboard.writeText(address);
       setIsCopied(true);
+    } catch {
+      // Clipboard unavailable (permissions / insecure context) — leave the icon unchanged.
+      setIsCopied(false);
     }
   };
 
   const trimmedAddress = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : '';
 
   return (
-    <Container className="bg-background border-muted-foreground/50 sticky top-16 z-20 border-b border-dashed">
+    <div className="bg-background border-border sticky top-16 z-20 border-b">
       <div className="scrollbar-thumb-muted-foreground/20 flex w-full scrollbar-thin scrollbar-track-transparent items-center justify-between overflow-x-auto">
         <div className="flex w-max snap-x snap-mandatory gap-2 px-4 py-3 md:w-fit">
           {LINKS.map(({ label, path, icon: Icon }) => {
@@ -81,31 +84,36 @@ export default function ActivityNavigation() {
                 key={href}
                 aria-current={isActive ? 'page' : undefined}
                 className={
-                  `flex snap-center flex-col items-center justify-center gap-1 rounded-md px-3 py-1.5 whitespace-nowrap transition-colors duration-150 md:flex-row md:gap-2 ` +
+                  `relative flex snap-center flex-col items-center justify-center gap-1 rounded-none px-3 py-1.5 whitespace-nowrap transition-colors duration-150 md:flex-row md:gap-2 ` +
                   (isActive
-                    ? 'text-primary bg-primary/10 ring-primary/10 ring-1'
-                    : 'text-foreground/90 hover:bg-muted-foreground/5')
+                    ? 'text-primary'
+                    : 'text-muted-foreground hover:bg-muted-foreground/5 hover:text-foreground')
                 }
               >
-                <Icon className="size-4" />
-                <span className="text-xs md:text-sm">{label}</span>
+                {isActive && (
+                  <m.span
+                    layoutId="activity-tab-indicator"
+                    transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                    className="bg-primary/10 ring-primary/10 absolute inset-0 ring-1"
+                  />
+                )}
+                <Icon className="relative z-10 size-4" />
+                <span className="relative z-10 font-mono text-xs tracking-widest uppercase">
+                  {label}
+                </span>
               </Link>
             );
           })}
         </div>
-        <div className="px-4">
-          <span>{trimmedAddress}</span>
+        <div className="flex items-center px-4">
+          <span className="text-muted-foreground font-mono text-xs tracking-widest">
+            {trimmedAddress}
+          </span>
           <Button variant="ghost" size="icon-sm" className="ml-2" onClick={handleCopy}>
             {isCopied ? <CheckIcon weight="bold" /> : <CopySimpleIcon weight="bold" />}
           </Button>
-          <div className="px-4">
-            <span>{trimmedAddress}</span>
-            <Button variant="ghost" size="icon-sm" className="ml-2" onClick={handleCopy}>
-              {isCopied ? <CheckIcon weight="bold" /> : <CopySimpleIcon weight="bold" />}
-            </Button>
-          </div>
         </div>
       </div>
-    </Container>
+    </div>
   );
 }

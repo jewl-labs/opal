@@ -8,7 +8,7 @@ export default function Warning({ msg }: { msg: string }) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -4 }}
       transition={{ duration: 0.15 }}
-      className="flex items-center gap-2 text-sm text-amber-400/85 md:text-base"
+      className="flex items-center gap-2 text-xs text-amber-400/85 md:text-sm"
       role="alert"
       aria-live="polite"
       aria-atomic="true"

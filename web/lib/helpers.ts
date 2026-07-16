@@ -21,3 +21,9 @@ export function getTimeRemaining(deadline?: string) {
 
   return parts.length > 0 ? parts.join(' ') : 'Expired';
 }
+
+export function isDeadlinePast(deadline?: string | null) {
+  if (!deadline) return false;
+  const end = new Date(deadline).getTime();
+  return Number.isFinite(end) && end <= Date.now();
+}
