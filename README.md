@@ -92,6 +92,8 @@ anchor test
 
 `bun run test:local` is an alias for `anchor test` today. Pointing `anchor test` at devnet — a funded devnet keypair, a deployed program, and `--skip-local-validator` — lands in the test-split follow-up PR per ADR-0006; until then it still spins up a local surfpool network.
 
+The deadline/window tests depend on `[surfpool] block_production_mode = "clock"` in `Anchor.toml`: it advances slots on a timer so the on-chain `Clock` moves during the suite's real-time sleeps. Without it, surfpool only ticks the clock when a transaction lands, and every timing test fails.
+
 Current coverage: happy paths (undisputed, LLM resolution, full escalation), config validation, deadline violations, state guards, account mismatches, token balance assertions.
 
 ## Current State
