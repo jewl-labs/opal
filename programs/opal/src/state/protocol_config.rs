@@ -6,6 +6,7 @@ pub struct ProtocolConfig {
     pub authority: Pubkey,
     pub pusd_mint: Pubkey,
     pub treasury: Pubkey,
+    pub resolver: Pubkey,
     pub assertion_bond_min_pusd: u64,
     pub llm_dispute_bond_ratio_bps: u16,
     pub vote_dispute_bond_ratio_bps: u16,

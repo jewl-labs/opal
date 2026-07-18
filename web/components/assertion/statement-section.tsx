@@ -55,7 +55,7 @@ export default function StatementSection({ open, value, setValue, warning, maxCh
                 )}
               </AnimatePresence>
               <span
-                className={`text-xs tabular-nums md:text-xs ${
+                className={`font-mono text-xs tabular-nums ${
                   value.length > maxChars * 0.9 ? 'text-amber-400' : 'text-muted-foreground/85'
                 }`}
               >

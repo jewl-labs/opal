@@ -1,15 +1,18 @@
 'use client';
 import { motion as m } from 'motion/react';
 
+import CornerMarkers from '../common/corner-markers';
+import { SectionHeading } from './reveal';
+
 export default function Consumer() {
   return (
     <>
-      <section className="relative overflow-x-clip px-4 py-32">
-        <div className="mx-auto mb-16 max-w-3xl">
-          <h2 className="mt-3 text-center text-3xl font-bold tracking-tight text-balance uppercase md:text-4xl">
-            Built for integrators, challengers, and protocol operators
-          </h2>
-        </div>
+      <section className="relative overflow-x-clip px-6 py-32 md:px-16">
+        <SectionHeading
+          eyebrow="Audiences"
+          title="Built for integrators, challengers, and protocol operators"
+          className="mb-16"
+        />
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {[
@@ -29,43 +32,27 @@ export default function Consumer() {
               title: 'Future operators',
               text: 'The MagicBlock integration is reserved in accounts, but v1 does not require it to be live.',
             },
-          ].map((item) => (
-            <article
+          ].map((item, index) => (
+            <m.article
               key={item.title}
-              className="border-border/50 hover:border-border bg-background/70 group flex h-full flex-col border border-dashed py-6 shadow-sm backdrop-blur transition duration-300 ease-out"
+              initial={{ opacity: 0, y: 14, filter: 'blur(8px)' }}
+              whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              viewport={{ once: true, margin: '-15% 0px' }}
+              transition={{ duration: 0.45, delay: (index % 2) * 0.08 }}
+              className="border-border/50 hover:border-border bg-background/70 group flex h-full flex-col border py-6 shadow-sm backdrop-blur transition duration-300 ease-out"
             >
-              <header className="border-border/50 group-hover:border-border flex items-center justify-between gap-4 border-b border-dashed px-6 pb-4">
-                <h3 className="text-xs font-semibold tracking-tight uppercase">{item.title}</h3>
-                <span className="text-muted-foreground group-hover:text-primary text-xs font-semibold tracking-[0.35em] uppercase transition duration-300 ease-out">
-                  Opal
-                </span>
+              <header className="border-border/50 group-hover:border-border flex items-center justify-between gap-4 border-b px-6 pb-4">
+                <h3 className="text-sm uppercase">{item.title}</h3>
+                <span className="bg-primary/50 group-hover:bg-primary size-1.5 rotate-45 transition-colors duration-300" />
               </header>
-              <p className="text-muted-foreground mt-5 px-6 text-xs leading-7 text-balance uppercase">
+              <p className="text-muted-foreground mt-5 px-6 text-sm leading-relaxed text-balance">
                 {item.text}
               </p>
-            </article>
+            </m.article>
           ))}
         </div>
-        <m.span
-          animate={{ opacity: [0.5, 1, 0.5] }}
-          transition={{ duration: 0.2, repeat: Infinity }}
-          className="border-primary absolute bottom-4 left-4 z-20 size-4 border-b border-l"
-        />
-        <m.span
-          animate={{ opacity: [0.5, 1, 0.5] }}
-          transition={{ duration: 0.2, repeat: Infinity }}
-          className="border-primary absolute top-6 left-4 z-20 size-4 border-t border-l"
-        />
-        <m.span
-          animate={{ opacity: [0.5, 1, 0.5] }}
-          transition={{ duration: 0.2, repeat: Infinity }}
-          className="border-primary absolute right-4 bottom-4 z-20 size-4 border-r border-b"
-        />
-        <m.span
-          animate={{ opacity: [0.5, 1, 0.5] }}
-          transition={{ duration: 0.2, repeat: Infinity }}
-          className="border-primary absolute top-6 right-4 z-20 size-4 border-t border-r"
-        />
+
+        <CornerMarkers />
       </section>
       <span className="border-muted-foreground/50 top-screen pointer-events-none absolute right-0 left-0 z-20 h-0.5 w-screen border-b border-dashed" />
     </>

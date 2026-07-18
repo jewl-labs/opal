@@ -17,7 +17,6 @@ export function getOutcomeLabel(outcome: ResolutionOutcome | null): string {
   const outcomeMap: Record<ResolutionOutcome, string> = {
     True: 'True',
     False: 'False',
-    TooEarly: 'Too Early',
     Unresolvable: 'Unresolvable',
   };
   return outcomeMap[outcome];
@@ -56,7 +55,7 @@ export function getContextualMessage(assertion: AssertionAccount): string {
   }
 
   if (state === 'Voting' || voteResolutionRound?.votingStartsAt) {
-    return 'OPAL voting live';
+    return 'Staked vote live';
   }
 
   if (voteDispute) {

@@ -25,6 +25,13 @@ export function NavbarAuth({ layout, onClose }: NavbarAuthProps) {
   const btnSize = isMobile ? undefined : ('sm' as const);
   const pendingWallet = authenticated && !currentAddress;
 
+  // Destructive-tinted outline so Logout reads as red while keeping the app's
+  // bordered-button language.
+  const logoutClass = cn(
+    btnClass,
+    'border-destructive/20 bg-destructive/10 text-destructive hover:border-destructive/40 hover:bg-destructive/20 hover:text-destructive'
+  );
+
   const signIn = () => {
     login();
     onClose?.();
@@ -72,7 +79,7 @@ export function NavbarAuth({ layout, onClose }: NavbarAuthProps) {
             {truncateAddress(currentAddress)}
           </span>
           {activityBtn}
-          <Button variant="outline" className={btnClass} type="button" onClick={signOut}>
+          <Button variant="outline" className={logoutClass} type="button" onClick={signOut}>
             Logout
           </Button>
         </div>
@@ -85,7 +92,13 @@ export function NavbarAuth({ layout, onClose }: NavbarAuthProps) {
         <span className="text-muted-foreground font-mono text-xs">
           {truncateAddress(currentAddress)}
         </span>
-        <Button variant="outline" size={btnSize} type="button" onClick={signOut}>
+        <Button
+          variant="outline"
+          size={btnSize}
+          className={logoutClass}
+          type="button"
+          onClick={signOut}
+        >
           Logout
         </Button>
       </>

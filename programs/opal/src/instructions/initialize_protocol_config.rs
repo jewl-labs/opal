@@ -2,12 +2,14 @@ use crate::{
     constants::{BPS_DENOMINATOR, PROTOCOL_CONFIG_SEED},
     errors::OpalError,
     state::ProtocolConfig,
+    utils::is_pubkey_default,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, TokenAccount};
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct InitializeProtocolConfigArgs {
+    pub resolver: Pubkey,
     pub assertion_bond_min_pusd: u64,
     pub llm_dispute_bond_ratio_bps: u16,
     pub vote_dispute_bond_ratio_bps: u16,
@@ -54,6 +56,12 @@ pub fn handler(
     // !TBD: PLACEHOLDER — uncomment before mainnet to restrict init to deployer.
     // require!(ctx.accounts.authority.key() == crate::ID, OpalError::Unauthorized);
 
+    // The config is immutable after init, so a mis-set resolver would permanently
+    // brick LLM resolution.
+    require!(
+        !is_pubkey_default(&args.resolver),
+        OpalError::ConfigInvariantViolation
+    );
     require!(
         args.assertion_bond_min_pusd > 0,
         OpalError::InvalidAssertionBondMinimum
@@ -100,6 +108,7 @@ pub fn handler(
     config.authority = ctx.accounts.authority.key();
     config.pusd_mint = ctx.accounts.pusd_mint.key();
     config.treasury = ctx.accounts.treasury_pusd.key();
+    config.resolver = args.resolver;
     config.assertion_bond_min_pusd = args.assertion_bond_min_pusd;
     config.llm_dispute_bond_ratio_bps = args.llm_dispute_bond_ratio_bps;
     config.vote_dispute_bond_ratio_bps = args.vote_dispute_bond_ratio_bps;

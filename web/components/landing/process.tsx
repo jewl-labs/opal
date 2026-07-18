@@ -1,90 +1,74 @@
 'use client';
-import { motion as m } from 'motion/react';
+import CornerMarkers from '../common/corner-markers';
 
 export default function Process() {
   return (
     <>
-      <section className="relative overflow-x-clip px-4 py-24">
-        <h2 className="mb-16 text-center text-3xl font-bold tracking-tight uppercase md:text-4xl">
-          Resolution advances in three layers
-        </h2>
+      <section className="relative overflow-x-clip px-6 py-24 md:px-16">
+        <div className="mb-16 flex flex-col items-center gap-4">
+          <p className="text-primary font-mono text-xs tracking-[0.3em] uppercase">How it works</p>
+
+          <h2 className="text-center text-2xl uppercase md:text-3xl">
+            Resolution advances in three layers
+          </h2>
+        </div>
 
         <div className="grid gap-4 md:grid-cols-3">
-          <article className="border-border/50 hover:border-border bg-background/70 group min-h-70 border border-dashed py-6 shadow-sm backdrop-blur transition duration-300 ease-out">
-            <header className="border-border/50 group-hover:border-border flex items-center justify-between border-b border-dashed px-6 pb-4">
-              <span className="text-muted-foreground text-xs font-semibold tracking-[0.35em] uppercase">
+          <article className="border-border/50 hover:border-border bg-background/70 group min-h-70 border py-6 shadow-sm backdrop-blur transition duration-300 ease-out">
+            <header className="border-border/50 group-hover:border-border flex items-center justify-between border-b px-6 pb-4">
+              <span className="text-muted-foreground font-mono text-xs tracking-[0.3em] uppercase">
                 01
               </span>
-              <span className="text-muted-foreground group-hover:text-primary text-xs font-semibold tracking-[0.35em] uppercase transition-colors duration-300 ease-out">
+              <span className="text-muted-foreground group-hover:text-primary font-mono text-xs tracking-[0.3em] uppercase transition-colors duration-300 ease-out">
                 Assert
               </span>
             </header>
             <div className="flex h-full flex-col items-center justify-end pb-12">
               <AssertIllustration />
-              <p className="text-muted-foreground text-center text-xs text-balance uppercase">
+              <p className="text-muted-foreground text-center text-sm text-balance">
                 Post statement & bond. Default answer: True.
               </p>
             </div>
           </article>
-          <article className="border-border/50 hover:border-border bg-background/70 group min-h-80 border border-dashed py-6 shadow-sm backdrop-blur transition duration-300 ease-out">
-            <header className="border-border/50 group-hover:border-border flex items-center justify-between border-b border-dashed px-6 pb-4">
-              <span className="text-muted-foreground text-xs font-semibold tracking-[0.35em] uppercase">
+          <article className="border-border/50 hover:border-border bg-background/70 group min-h-80 border py-6 shadow-sm backdrop-blur transition duration-300 ease-out">
+            <header className="border-border/50 group-hover:border-border flex items-center justify-between border-b px-6 pb-4">
+              <span className="text-muted-foreground font-mono text-xs tracking-[0.3em] uppercase">
                 02
               </span>
-              <span className="text-muted-foreground group-hover:text-primary text-xs font-semibold tracking-[0.35em] uppercase transition-colors duration-300 ease-out">
+              <span className="text-muted-foreground group-hover:text-primary font-mono text-xs tracking-[0.3em] uppercase transition-colors duration-300 ease-out">
                 Dispute
               </span>
             </header>
             <div className="flex h-full flex-col items-center justify-center">
               <DisputeIllustration />
-              <p className="text-muted-foreground mt-6 text-center text-xs text-balance uppercase">
+              <p className="text-muted-foreground mt-6 text-center text-sm text-balance">
                 First dispute opens the LLM round.
               </p>
             </div>
           </article>
-          <article className="border-border/50 hover:border-border bg-background/70 group min-h-80 border border-dashed py-6 shadow-sm backdrop-blur transition duration-300 ease-out">
-            <header className="border-border/50 group-hover:border-border flex items-center justify-between border-b border-dashed px-6 pb-4">
-              <span className="text-muted-foreground text-xs font-semibold tracking-[0.35em] uppercase">
+          <article className="border-border/50 hover:border-border bg-background/70 group min-h-80 border py-6 shadow-sm backdrop-blur transition duration-300 ease-out">
+            <header className="border-border/50 group-hover:border-border flex items-center justify-between border-b px-6 pb-4">
+              <span className="text-muted-foreground font-mono text-xs tracking-[0.3em] uppercase">
                 03
               </span>
-              <span className="text-muted-foreground group-hover:text-primary text-xs font-semibold tracking-[0.35em] uppercase transition-colors duration-300 ease-out">
+              <span className="text-muted-foreground group-hover:text-primary font-mono text-xs tracking-[0.3em] uppercase transition-colors duration-300 ease-out">
                 Escalate
               </span>
             </header>
             <div className="flex h-full flex-col items-center justify-center">
               <EscalateIllustration />
-              <p className="text-muted-foreground mt-6 text-center text-xs leading-6 text-balance uppercase">
+              <p className="text-muted-foreground mt-6 text-center text-sm leading-6 text-balance">
                 Second dispute opens private voting; settlement on Resolved.
               </p>
             </div>
           </article>
         </div>
-        <p className="text-muted-foreground mt-16 hidden text-center text-base leading-6 text-balance uppercase md:block">
-          {' '}
-          Each layer is economical and terminal settlement is only available once the assertion is
-          fully resolved
+        <p className="text-muted-foreground mt-16 hidden text-center text-sm leading-6 text-balance md:block">
+          Each layer is economical, and terminal settlement is only available once the assertion is
+          fully resolved.
         </p>
 
-        <m.span
-          animate={{ opacity: [0.5, 1, 0.5] }}
-          transition={{ duration: 0.2, repeat: Infinity }}
-          className="border-primary absolute bottom-4 left-4 z-20 size-4 border-b border-l"
-        />
-        <m.span
-          animate={{ opacity: [0.5, 1, 0.5] }}
-          transition={{ duration: 0.2, repeat: Infinity }}
-          className="border-primary absolute top-6 left-4 z-20 size-4 border-t border-l"
-        />
-        <m.span
-          animate={{ opacity: [0.5, 1, 0.5] }}
-          transition={{ duration: 0.2, repeat: Infinity }}
-          className="border-primary absolute right-4 bottom-4 z-20 size-4 border-r border-b"
-        />
-        <m.span
-          animate={{ opacity: [0.5, 1, 0.5] }}
-          transition={{ duration: 0.2, repeat: Infinity }}
-          className="border-primary absolute top-6 right-4 z-20 size-4 border-t border-r"
-        />
+        <CornerMarkers />
       </section>
       <span className="border-muted-foreground/50 pointer-events-none absolute right-0 left-0 z-20 h-0.5 w-screen border-b border-dashed" />
     </>
@@ -790,27 +774,3 @@ function EscalateIllustration() {
     </svg>
   );
 }
-
-// function Dispute() {
-//   return (
-//     <svg
-//       width="209"
-//       height="181"
-//       viewBox="0 0 209 181"
-//       fill="none"
-//       xmlns="http://www.w3.org/2000/svg"
-//     >
-//       <rect
-//         x="0.866025"
-//         width="119"
-//         height="119"
-//         transform="matrix(0.866025 -0.5 0.866025 0.5 0.549009 60.433)"
-//         fill="#141414"
-//         stroke="#FF6464"
-//         strokeDasharray="4 8"
-//       />
-//       <path d="M0.432983 60L0.432983 120L104.356 180V120" stroke="#FF6464" stroke-dasharray="4 8" />
-//       <path d="M208.356 59.8537V119.854L104.433 179.854" stroke="#FF6464" stroke-dasharray="4 8" />
-//     </svg>
-//   );
-// }

@@ -1,9 +1,12 @@
 'use client';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 
-import { XIcon } from '@phosphor-icons/react';
+import { MagnifyingGlassIcon } from '@phosphor-icons/react';
 
+import { Button } from '@/components/ui/button';
+import { Kbd } from '@/components/ui/kbd';
+import Modal from '@/components/ui/modal';
 import { cn } from '@/lib/utils';
 
 interface SearchDialogProps {
@@ -30,46 +33,10 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
   const [walletAddress, setWalletAddress] = useState('');
   const [attempted, setAttempted] = useState(false);
   const router = useRouter();
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const dialogRef = useRef<HTMLDivElement | null>(null);
-  const lastFocusedRef = useRef<HTMLElement | null>(null);
 
   const normalized = walletAddress.trim();
   const isInputValid = isValidSearchAddress(normalized);
   const showError = attempted && normalized.length > 0 && !isInputValid;
-
-  useEffect(() => {
-    if (!isOpen) return;
-    lastFocusedRef.current = document.activeElement as HTMLElement | null;
-    inputRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-      if (e.key === 'Tab') {
-        const dialog = dialogRef.current;
-        if (!dialog) return;
-        const focusables = dialog.querySelectorAll<HTMLElement>(
-          'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
-        );
-        if (focusables.length === 0) return;
-        const first = focusables[0];
-        const last = focusables[focusables.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last?.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first?.focus();
-        }
-      }
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [isOpen, onClose]);
-
-  useEffect(() => {
-    if (isOpen) return;
-    lastFocusedRef.current?.focus?.();
-  }, [isOpen]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,122 +48,79 @@ export function SearchDialog({ isOpen, onClose }: SearchDialogProps) {
     onClose();
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-[2px]"
-      onClick={onClose}
-    >
-      <div
-        className={cn(
-          'relative mx-4 w-full max-w-110',
-          'bg-background border-border border',
-          'shadow-2xl shadow-black/40',
-          'animate-in fade-in-0 zoom-in-95 duration-150'
-        )}
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="search-dialog-title"
-        ref={dialogRef}
-      >
-        {/* Top bar */}
-        <div className="border-border flex items-center justify-between border-b px-4 py-3">
-          <div className="flex items-center gap-2.5">
-            <span className="bg-muted-foreground/30 size-1.5 rounded-full" />
+    <Modal open={isOpen} onClose={onClose} title="Find Account" align="top">
+      <form onSubmit={handleSubmit}>
+        <div
+          className={cn(
+            'flex h-16 items-center gap-3 border-b px-5 transition-colors',
+            showError ? 'border-destructive/50' : 'border-border'
+          )}
+        >
+          <MagnifyingGlassIcon
+            className={cn(
+              'size-5 shrink-0',
+              showError ? 'text-destructive/70' : 'text-muted-foreground/50'
+            )}
+          />
+
+          <span className="text-muted-foreground/40 shrink-0 font-mono text-sm select-none">
+            /u/
+          </span>
+
+          <input
+            id="search-input"
+            type="text"
+            autoFocus
+            placeholder="0x… · name.eth · base58"
+            value={walletAddress}
+            onChange={(e) => setWalletAddress(e.target.value)}
+            aria-invalid={showError}
+            aria-describedby={showError ? 'search-dialog-error' : undefined}
+            className={cn(
+              'placeholder:text-muted-foreground/30 w-full bg-transparent font-mono text-base outline-none md:text-lg',
+              showError ? 'text-destructive' : 'text-foreground'
+            )}
+          />
+
+          {showError && (
+            <p
+              id="search-dialog-error"
+              className="text-destructive shrink-0 font-mono text-[10px] tracking-widest uppercase"
+            >
+              invalid address
+            </p>
+          )}
+        </div>
+
+        <div className="border-border flex items-center gap-2 border-b px-5 py-3.5">
+          <span className="text-muted-foreground/40 mr-1 font-mono text-[10px] tracking-[0.2em] uppercase">
+            Formats
+          </span>
+
+          {ADDRESS_FORMATS.map((fmt) => (
             <span
-              id="search-dialog-title"
-              className="text-muted-foreground font-mono text-[11px] font-medium tracking-[0.12em] uppercase"
+              key={fmt.label}
+              className="border-border inline-flex items-center gap-1.5 border px-2 py-1"
             >
-              search profiles
+              <span className="text-muted-foreground font-mono text-[10px] tracking-wider uppercase">
+                {fmt.label}
+              </span>
+              <span className="text-muted-foreground/50 font-mono text-[10px]">{fmt.hint}</span>
             </span>
-          </div>
-          <button
-            aria-label="Close"
-            onClick={onClose}
-            className="text-muted-foreground/50 hover:text-foreground transition-colors"
-          >
-            <XIcon className="size-4" />
-          </button>
+          ))}
         </div>
 
-        {/* Body */}
-        <div className="px-4 py-5">
-          <form onSubmit={handleSubmit}>
-            {/* Input */}
-            <div
-              className={cn(
-                'flex items-center gap-2 border px-3 py-2.5 transition-colors',
-                showError
-                  ? 'border-destructive/60 bg-destructive/5'
-                  : 'border-border bg-muted/30 focus-within:border-foreground/30 focus-within:bg-transparent'
-              )}
-            >
-              <span className="text-muted-foreground/50 shrink-0 font-mono text-[11px] font-medium select-none">
-                /u/
-              </span>
-              <input
-                ref={inputRef}
-                id="search-input"
-                type="text"
-                placeholder="0x… · name.eth · base58"
-                value={walletAddress}
-                onChange={(e) => setWalletAddress(e.target.value)}
-                aria-invalid={showError}
-                aria-describedby={showError ? 'search-dialog-error' : undefined}
-                className={cn(
-                  'placeholder:text-muted-foreground/30 w-full bg-transparent font-mono text-sm outline-none',
-                  showError ? 'text-destructive' : 'text-foreground'
-                )}
-              />
-            </div>
+        <div className="flex items-center justify-between px-5 py-3.5">
+          <span className="text-muted-foreground/40 flex items-center gap-2 font-mono text-[10px] tracking-wider uppercase select-none">
+            <Kbd>↵</Kbd> Find
+          </span>
 
-            {/* Accepted formats row */}
-            <div className="mt-2.5 flex items-center gap-1.5">
-              {ADDRESS_FORMATS.map((fmt) => (
-                <span
-                  key={fmt.label}
-                  className="border-border/60 inline-flex items-center gap-1 border px-1.5 py-0.5"
-                >
-                  <span className="text-muted-foreground/60 font-mono text-[9px] font-semibold tracking-wider uppercase">
-                    {fmt.label}
-                  </span>
-                  <span className="text-muted-foreground/35 font-mono text-[9px]">{fmt.hint}</span>
-                </span>
-              ))}
-              {showError && (
-                <p
-                  id="search-dialog-error"
-                  className="text-destructive ml-auto font-mono text-[10px]"
-                >
-                  invalid address
-                </p>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="mt-5 flex items-center justify-between">
-              <span className="text-muted-foreground/30 font-mono text-[10px] select-none">
-                ↵ to search
-              </span>
-              <button
-                type="submit"
-                disabled={!isInputValid}
-                className={cn(
-                  'font-mono text-[11px] tracking-widest uppercase transition-all',
-                  'border px-4 py-1.5',
-                  isInputValid
-                    ? 'border-foreground/20 bg-foreground text-background hover:bg-foreground/90'
-                    : 'border-border/40 text-muted-foreground/30 cursor-not-allowed'
-                )}
-              >
-                Search
-              </button>
-            </div>
-          </form>
+          <Button type="submit" disabled={!isInputValid} className="uppercase">
+            Find Account
+          </Button>
         </div>
-      </div>
-    </div>
+      </form>
+    </Modal>
   );
 }

@@ -22,11 +22,7 @@ pub use instructions::initialize_protocol_config::{
     InitializeProtocolConfig, InitializeProtocolConfigArgs,
 };
 pub use instructions::open_vote::{OpenVote, OpenVoteArgs};
-
-#[cfg(feature = "mock-llm")]
-pub use instructions::submit_mock_llm_resolution::{
-    SubmitMockLlmResolution, SubmitMockLlmResolutionArgs,
-};
+pub use instructions::submit_llm_resolution::{SubmitLlmResolution, SubmitLlmResolutionArgs};
 
 declare_id!("8NCcxyAzKiAHxJ9DMnADtxShYutS9w81wHcXqgCavTBy");
 
@@ -63,12 +59,11 @@ pub mod opal {
         instructions::dispute_assertion::handler(ctx, args)
     }
 
-    #[cfg(feature = "mock-llm")]
-    pub fn submit_mock_llm_resolution(
-        ctx: Context<SubmitMockLlmResolution>,
-        args: SubmitMockLlmResolutionArgs,
+    pub fn submit_llm_resolution(
+        ctx: Context<SubmitLlmResolution>,
+        args: SubmitLlmResolutionArgs,
     ) -> Result<()> {
-        instructions::submit_mock_llm_resolution::handler(ctx, args)
+        instructions::submit_llm_resolution::handler(ctx, args)
     }
 
     pub fn finalize_llm_resolution(

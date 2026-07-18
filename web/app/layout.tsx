@@ -1,11 +1,10 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
-import Container from '@/components/common/container';
 import Navbar from '@/components/common/navbar';
 import { Providers } from '@/providers/providers';
 
-import { Disket } from './font';
+import { GeistMono, GeistPixelSquare, GeistSans } from './font';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -20,12 +19,14 @@ export default function RootLayout({
   children: ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${Disket.className} h-full antialiased`} suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${GeistSans.variable} ${GeistMono.variable} ${GeistPixelSquare.variable} ${GeistSans.className} h-full antialiased`}
+      suppressHydrationWarning
+    >
       <body className="relative overflow-x-clip">
         <Providers>
-          <Container className="border-muted-foreground/50 border-x border-dashed">
-            <Navbar />
-          </Container>
+          <Navbar />
           {children}
         </Providers>
       </body>

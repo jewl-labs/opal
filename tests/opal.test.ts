@@ -36,6 +36,8 @@ const STATE = {
 const OUTCOME = {
   TRUE: 0,
   FALSE: 1,
+  TOO_EARLY: 2,
+  UNRESOLVABLE: 3,
   NONE: 255,
 };
 
@@ -128,6 +130,7 @@ async function buildTokenEnv(connection: Connection): Promise<TokenEnv> {
 type ProtocolEnv = {
   configPda: PublicKey;
   authority: Keypair;
+  resolver: Keypair;
   treasuryAta: PublicKey;
 };
 
@@ -136,6 +139,7 @@ async function setupProtocol(
   token: TokenEnv,
   authority: Keypair
 ): Promise<ProtocolEnv> {
+  const resolver = Keypair.generate();
   const [configPda] = PublicKey.findProgramAddressSync([SEEDS.PROTOCOL_CONFIG], program.programId);
 
   const treasuryAta = (
@@ -149,6 +153,7 @@ async function setupProtocol(
 
   await program.methods
     .initializeProtocolConfig({
+      resolver: resolver.publicKey,
       assertionBondMinPusd: new BN(100),
       llmDisputeBondRatioBps: 5000,
       voteDisputeBondRatioBps: 3000,
@@ -173,7 +178,7 @@ async function setupProtocol(
     .signers([authority])
     .rpc({ commitment: 'confirmed' });
 
-  return { configPda, authority, treasuryAta };
+  return { configPda, authority, resolver, treasuryAta };
 }
 
 class Assertion {
@@ -238,16 +243,16 @@ class TestContext {
       .rpc({ commitment: 'confirmed' });
   }
 
-  async submitMockLlmResolution(a: Assertion, outcomeCode: number) {
+  async submitLlmResolution(a: Assertion, outcomeCode: number, resolver = this.proto.resolver) {
     return this.program.methods
-      .submitMockLlmResolution({ assertionId: a.id, outcomeCode })
+      .submitLlmResolution({ assertionId: a.id, outcomeCode })
       .accounts({
-        authority: this.proto.authority.publicKey,
+        resolver: resolver.publicKey,
         protocolConfig: this.proto.configPda,
         assertion: a.pdas.assertion,
         llmResolutionRound: a.pdas.llmRound,
       })
-      .signers([this.proto.authority])
+      .signers([resolver])
       .rpc({ commitment: 'confirmed' });
   }
 
@@ -391,10 +396,58 @@ describe('opal', () => {
       )
     ).address;
 
-    expect(
+    await expect(
       program.methods
         .initializeProtocolConfig({
+          resolver: authority.publicKey,
           assertionBondMinPusd: new BN(0),
+          llmDisputeBondRatioBps: 5000,
+          voteDisputeBondRatioBps: 3000,
+          protocolFeeBps: 250,
+          llmDisputerRewardShareBps: 3000,
+          voteDisputerRewardShareBps: 2500,
+          voterRewardShareBps: 2500,
+          treasuryShareBps: 2000,
+          supermajorityBps: 6700,
+          livenessWindowSeconds: new BN(86400),
+          llmChallengeWindowSeconds: new BN(43200),
+          voteSetupWindowSeconds: new BN(3600),
+          votingWindowSeconds: new BN(86400),
+        })
+        .accounts({
+          authority: authority.publicKey,
+          protocolConfig: configPda,
+          pusdMint: token.mint,
+          treasuryPusd: treasuryAta,
+          systemProgram: SystemProgram.programId,
+        })
+        .signers([authority])
+        .rpc({ commitment: 'confirmed' })
+    ).rejects.toThrow();
+  });
+
+  it('rejects protocol config with default resolver', async () => {
+    const authority = Keypair.generate();
+    await fund(connection, authority.publicKey, 10_000_000_000);
+
+    const [configPda] = PublicKey.findProgramAddressSync(
+      [SEEDS.PROTOCOL_CONFIG],
+      program.programId
+    );
+    const treasuryAta = (
+      await getOrCreateAssociatedTokenAccount(
+        connection,
+        token.mintAuthority,
+        token.mint,
+        token.treasury.publicKey
+      )
+    ).address;
+
+    await expect(
+      program.methods
+        .initializeProtocolConfig({
+          resolver: PublicKey.default,
+          assertionBondMinPusd: new BN(100),
           llmDisputeBondRatioBps: 5000,
           voteDisputeBondRatioBps: 3000,
           protocolFeeBps: 250,
@@ -466,7 +519,7 @@ describe('opal', () => {
     expect(acc.state).toBe(STATE.PENDING_LLM);
     expect(acc.disputeCount).toBe(1);
 
-    await ctx.submitMockLlmResolution(a, 1);
+    await ctx.submitLlmResolution(a, 1);
 
     acc = await ctx.fetchAssertion(a);
     expect(acc.state).toBe(STATE.ASSERTED_LLM);
@@ -495,7 +548,7 @@ describe('opal', () => {
 
     await ctx.createAssertion(a, 'Solana TPS > 10000', 500, 'perf');
     await ctx.disputeAssertion(a);
-    await ctx.submitMockLlmResolution(a, 0);
+    await ctx.submitLlmResolution(a, 0);
     await ctx.challengeLlmResolution(a);
     await ctx.openVote(a);
 
@@ -529,12 +582,12 @@ describe('opal', () => {
     const a = ctx.newAssertion();
     await ctx.createAssertion(a, 'Test', 200);
 
-    expect(ctx.finalizeUndisputed(a)).rejects.toThrow();
+    await expect(ctx.finalizeUndisputed(a)).rejects.toThrow();
   });
 
   it('error: insufficient bond', async () => {
     const a = ctx.newAssertion();
-    expect(ctx.createAssertion(a, 'Fail', 50)).rejects.toThrow();
+    await expect(ctx.createAssertion(a, 'Fail', 50)).rejects.toThrow();
   });
 
   it('error: disputing after liveness deadline', async () => {
@@ -542,24 +595,62 @@ describe('opal', () => {
     await ctx.createAssertion(a, 'Late dispute', 200);
     await sleep(4000);
 
-    expect(ctx.disputeAssertion(a)).rejects.toThrow();
+    await expect(ctx.disputeAssertion(a)).rejects.toThrow();
   });
 
-  it('error: submitMockLlmResolution when state is Asserted', async () => {
+  it('error: submitLlmResolution when state is Asserted', async () => {
     const a = ctx.newAssertion();
     await ctx.createAssertion(a, 'No dispute', 200);
 
-    expect(ctx.submitMockLlmResolution(a, 0)).rejects.toThrow();
+    await expect(ctx.submitLlmResolution(a, 0)).rejects.toThrow();
+  });
+
+  it('error: submitLlmResolution from a non-resolver signer', async () => {
+    const a = ctx.newAssertion();
+    await ctx.createAssertion(a, 'Wrong signer', 200);
+    await ctx.disputeAssertion(a);
+
+    await expect(ctx.submitLlmResolution(a, 0, proto.authority)).rejects.toThrow();
+  });
+
+  it('error: submitLlmResolution with TooEarly outcome', async () => {
+    const a = ctx.newAssertion();
+    await ctx.createAssertion(a, 'Too early', 200);
+    await ctx.disputeAssertion(a);
+
+    await expect(ctx.submitLlmResolution(a, OUTCOME.TOO_EARLY)).rejects.toThrow();
+  });
+
+  it('error: submitLlmResolution twice on the same round', async () => {
+    const a = ctx.newAssertion();
+    await ctx.createAssertion(a, 'Double submit', 200);
+    await ctx.disputeAssertion(a);
+    await ctx.submitLlmResolution(a, OUTCOME.TRUE);
+
+    await expect(ctx.submitLlmResolution(a, OUTCOME.FALSE)).rejects.toThrow();
+  });
+
+  it('accepts an Unresolvable verdict from the resolver', async () => {
+    const a = ctx.newAssertion();
+    await ctx.createAssertion(a, 'Undecidable claim', 200);
+    await ctx.disputeAssertion(a);
+    await ctx.submitLlmResolution(a, OUTCOME.UNRESOLVABLE);
+
+    const round = await ctx.fetchLlmRound(a);
+    expect(round.outcome).toBe(OUTCOME.UNRESOLVABLE);
+
+    const acc = await ctx.fetchAssertion(a);
+    expect(acc.state).toBe(STATE.ASSERTED_LLM);
   });
 
   it('error: challengeLlmResolution after challenge deadline', async () => {
     const a = ctx.newAssertion();
     await ctx.createAssertion(a, 'Missed challenge', 200);
     await ctx.disputeAssertion(a);
-    await ctx.submitMockLlmResolution(a, 0);
+    await ctx.submitLlmResolution(a, 0);
     await sleep(4000);
 
-    expect(ctx.challengeLlmResolution(a)).rejects.toThrow();
+    await expect(ctx.challengeLlmResolution(a)).rejects.toThrow();
   });
 
   it('error: disputing an already-disputed assertion', async () => {
@@ -567,7 +658,7 @@ describe('opal', () => {
     await ctx.createAssertion(a, 'Double dispute', 200);
     await ctx.disputeAssertion(a);
 
-    expect(ctx.disputeAssertion(a)).rejects.toThrow();
+    await expect(ctx.disputeAssertion(a)).rejects.toThrow();
   });
 
   it('error: mismatched llmDispute account', async () => {
@@ -583,7 +674,7 @@ describe('opal', () => {
 
     // finalizeLlmResolution with assertion1 but llmDispute from assertion2
     // should fail because the dispute doesn't link back to assertion1
-    expect(
+    await expect(
       program.methods
         .finalizeLlmResolution({ assertionId: a1.id })
         .accounts({

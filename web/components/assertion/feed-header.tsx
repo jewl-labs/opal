@@ -1,6 +1,8 @@
+import { MagnifyingGlassIcon } from '@phosphor-icons/react';
+
+import { cn } from '@/lib/utils';
 import type { QuickFilter, SortField, StageFilter } from '@/types/filters';
 
-import Container from '../common/container';
 import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
@@ -12,6 +14,8 @@ interface HeaderProps {
   quickFilters: QuickFilter[];
   onToggleQuickFilter: (value: QuickFilter) => void;
   onResetFilters: () => void;
+  search: string;
+  onSearchChange: (value: string) => void;
 }
 
 const SORT_FIELDS: Array<{ value: SortField; label: string }> = [
@@ -48,13 +52,15 @@ export default function Header({
   quickFilters,
   onToggleQuickFilter,
   onResetFilters,
+  search,
+  onSearchChange,
 }: HeaderProps) {
   return (
-    <Container className="bg-background border-muted-foreground/50 sticky top-16 z-10 flex h-16 w-full items-center justify-center border-b border-dashed">
+    <div className="bg-background border-border sticky top-16 z-10 flex h-16 w-full items-center justify-center border-b">
       <div className="flex w-full scrollbar-thin items-center gap-2 overflow-x-auto px-4 py-1 whitespace-nowrap">
         <span
           id="feed-sort-label"
-          className="text-muted-foreground text-[11px] tracking-[0.24em] uppercase"
+          className="text-muted-foreground font-mono text-[11px] tracking-[0.24em] uppercase"
         >
           Sort by
         </span>
@@ -82,7 +88,7 @@ export default function Header({
 
         <span
           id="feed-stage-label"
-          className="text-muted-foreground ml-2 text-[11px] tracking-[0.24em] uppercase"
+          className="text-muted-foreground ml-2 font-mono text-[11px] tracking-[0.24em] uppercase"
         >
           Stage
         </span>
@@ -116,10 +122,10 @@ export default function Header({
               <Button
                 key={filter.value}
                 type="button"
-                variant={isActive ? 'default' : 'outline'}
+                variant={isActive ? 'default' : 'ghost'}
                 aria-pressed={isActive}
                 onClick={() => onToggleQuickFilter(filter.value)}
-                className="border-muted-foreground/40 px-2.5"
+                className={cn('px-2.5', !isActive && 'text-muted-foreground hover:text-foreground')}
               >
                 {filter.label}
               </Button>
@@ -135,7 +141,19 @@ export default function Header({
             Reset
           </Button>
         </div>
+
+        <label className="border-muted-foreground/20 bg-muted/10 focus-within:border-muted-foreground/40 ml-auto flex h-9 w-56 shrink-0 items-center gap-2 border px-3 transition-colors lg:w-72">
+          <MagnifyingGlassIcon className="text-muted-foreground/50 size-4 shrink-0" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder="SEARCH ASSERTIONS..."
+            aria-label="Search assertions"
+            className="placeholder:text-muted-foreground/40 w-full bg-transparent font-mono text-xs tracking-widest uppercase outline-none"
+          />
+        </label>
       </div>
-    </Container>
+    </div>
   );
 }

@@ -50,40 +50,48 @@ export default function SummarySection({
             className="flex h-full flex-col justify-center p-6 md:p-7"
           >
             <div className="mx-auto max-w-3xl text-center">
-              <p className="text-foreground text-lg leading-relaxed md:text-xl">
-                {statement || <span className="text-muted-foreground/45">—</span>}
+              <p className="text-foreground text-xl leading-relaxed md:text-2xl">
+                {statement || (
+                  <span className="text-muted-foreground/60 text-base md:text-lg">
+                    No statement yet — start with the Statement section
+                  </span>
+                )}
               </p>
             </div>
 
-            <div className="mx-auto mt-6 grid w-full max-w-3xl grid-cols-2 gap-4 md:grid-cols-4">
-              <div className="min-w-0">
-                <div className="text-muted-foreground/75 text-[10px] tracking-[0.18em] uppercase">
+            <div className="mx-auto mt-10 grid w-full max-w-3xl grid-cols-2 gap-6 md:grid-cols-4">
+              <div className="border-border min-w-0 border-l pl-4">
+                <div className="text-muted-foreground/75 font-mono text-[11px] tracking-[0.2em] uppercase">
                   Bond
                 </div>
-                <div className="text-primary mt-1 text-sm">{bond} PUSD</div>
+                <div className="text-primary mt-1 font-mono text-base tabular-nums">
+                  {bond} USDC
+                </div>
               </div>
 
-              <div className="min-w-0">
-                <div className="text-muted-foreground/75 text-[10px] tracking-[0.18em] uppercase">
+              <div className="border-border min-w-0 border-l pl-4">
+                <div className="text-muted-foreground/75 font-mono text-[11px] tracking-[0.2em] uppercase">
                   Window
                 </div>
-                <div className="text-foreground mt-1 truncate text-sm">{windowLabel}</div>
+                <div className="text-foreground mt-1 truncate font-mono text-base">
+                  {windowLabel}
+                </div>
               </div>
 
-              <div className="min-w-0">
-                <div className="text-muted-foreground/75 text-[10px] tracking-[0.18em] uppercase">
+              <div className="border-border min-w-0 border-l pl-4">
+                <div className="text-muted-foreground/75 font-mono text-[11px] tracking-[0.2em] uppercase">
                   Expires
                 </div>
-                <div className="text-foreground mt-1 text-sm">
+                <div className="text-foreground mt-1 font-mono text-base tabular-nums">
                   {compactExpiry(formatExpiry(windowValue))}
                 </div>
               </div>
 
-              <div className="min-w-0">
-                <div className="text-muted-foreground/75 text-[10px] tracking-[0.18em] uppercase">
-                  Aux Hash
+              <div className="border-border min-w-0 border-l pl-4">
+                <div className="text-muted-foreground/75 font-mono text-[11px] tracking-[0.2em] uppercase">
+                  Spec Hash
                 </div>
-                <div className="text-foreground mt-1 truncate text-sm">
+                <div className="text-foreground mt-1 truncate font-mono text-base">
                   {auxiliaryData ? hashPreview(auxiliaryData) : '—'}
                 </div>
               </div>

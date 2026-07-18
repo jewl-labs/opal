@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { CheckCircleIcon, ClockIcon, WarningOctagonIcon } from '@phosphor-icons/react';
 import { motion as m } from 'motion/react';
 
+import { useHydrated } from '@/hooks/use-hydrated';
 import {
   getContextualMessage,
   getDisputeLevel,
@@ -17,6 +18,9 @@ import { getTimeRemaining } from '@/lib/helpers';
 import type { AssertionAccount } from '@/types';
 
 export default function AssertionCard({ data }: { data: AssertionAccount }) {
+  // The countdown is only shown after hydration — the SSR-computed value is ~1s
+  // stale by the time the client hydrates, which triggers a hydration mismatch.
+  const hydrated = useHydrated();
   const [remainingTime, setRemainingTime] = useState(() =>
     data.livenessDeadline ? getTimeRemaining(data.livenessDeadline) : '—'
   );
@@ -35,7 +39,6 @@ export default function AssertionCard({ data }: { data: AssertionAccount }) {
   const contextualMsg = getContextualMessage(data);
   const stage = getStageLabel(data.state);
 
-  // Color coding for finalization status
   const finalizationColor = {
     finalized: 'bg-green-950/40 text-green-300 border-green-900/50',
     pending: 'bg-red-950/40 text-red-300 border-red-900/50',
@@ -48,21 +51,20 @@ export default function AssertionCard({ data }: { data: AssertionAccount }) {
         layout
         layoutId={`statement-card-${data.id}`}
         className={
-          'group ring-muted-foreground/20 hover:ring-muted-foreground/40 bg-muted hover:bg-accent relative flex h-auto w-full cursor-pointer flex-col gap-0 overflow-hidden ring transition-all duration-200 ease-in-out hover:shadow-md'
+          'group ring-muted-foreground/20 hover:ring-primary/50 bg-muted divide-border/50 relative flex h-auto w-full cursor-pointer flex-col gap-0 divide-y overflow-hidden ring transition-shadow duration-200'
         }
       >
-        {/* Row 1: Statement + Finalization Badge */}
         <div className="px-4 py-3">
           <div className="flex items-start justify-between gap-2">
             <m.h2
               layout
               layoutId={`statement-${data.id}`}
-              className="flex-1 truncate text-sm font-bold tracking-tight md:text-base"
+              className="group-hover:text-primary flex-1 truncate text-sm transition-colors md:text-base"
             >
               {data.statement}
             </m.h2>
             <div
-              className={`flex items-center gap-1 rounded border px-2 py-1 text-xs font-medium tracking-tighter whitespace-nowrap ${finalizationColor}`}
+              className={`flex items-center gap-1 rounded-none border px-2 py-1 font-mono text-[11px] tracking-widest whitespace-nowrap uppercase ${finalizationColor}`}
             >
               {finalizationStatus === 'finalized' && (
                 <>
@@ -86,28 +88,30 @@ export default function AssertionCard({ data }: { data: AssertionAccount }) {
           </div>
         </div>
 
-        {/* Row 2: Stage + Consensus */}
-        <div className="px-4 py-2.5 text-xs tracking-tight">
+        <div className="px-4 py-2.5 text-xs">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <span className="text-muted-foreground">Stage:</span>
-              <span className="font-mono font-semibold">{stage}</span>
+              <span className="text-muted-foreground font-mono text-[11px] tracking-widest uppercase">
+                Stage
+              </span>
+              <span className="font-mono">{stage}</span>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-muted-foreground">Consensus:</span>
-              <span className="font-mono font-semibold">{getOutcomeLabel(data.outcome)}</span>
+              <span className="text-muted-foreground font-mono text-[11px] tracking-widest uppercase">
+                Consensus
+              </span>
+              <span className="font-mono">{getOutcomeLabel(data.outcome)}</span>
             </div>
           </div>
         </div>
 
-        {/* Row 3: Dispute & Economic Metadata */}
         <div className="px-4 py-2.5 text-xs">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               {disputeLevel !== 'none' && (
                 <>
                   <WarningOctagonIcon weight="fill" className="size-3.5" />
-                  <span className="text-muted-foreground">
+                  <span className="text-muted-foreground font-mono tabular-nums">
                     Disputes: {data.disputeCount}
                     {disputeLevel === 'llm' && ' (LLM)'}
                     {disputeLevel === 'vote' && ' (Vote)'}
@@ -119,16 +123,17 @@ export default function AssertionCard({ data }: { data: AssertionAccount }) {
               )}
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-muted-foreground">Bond:</span>
-              <span className="font-mono font-semibold text-amber-400">
-                {data.bondAmountPUSD} PUSD
+              <span className="text-muted-foreground font-mono text-[11px] tracking-widest uppercase">
+                Bond
+              </span>
+              <span className="text-primary font-mono tabular-nums">
+                {data.bondAmountPUSD} USDC
               </span>
             </div>
           </div>
         </div>
 
-        {/* Row 4: Contextual Message */}
-        <div className="px-4 py-2.5 text-xs font-medium tracking-wide">
+        <div className="text-muted-foreground px-4 py-2.5 text-xs">
           <div className="flex items-center gap-2">
             {finalizationStatus === 'pending' && (
               <WarningOctagonIcon weight="fill" className="size-3" />
@@ -141,21 +146,25 @@ export default function AssertionCard({ data }: { data: AssertionAccount }) {
           </div>
         </div>
 
-        {/* Row 5: Timing Context */}
         <div className="px-4 py-2.5 text-xs">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <ClockIcon weight="fill" className="text-muted-foreground size-3.5" />
-              <span className="text-muted-foreground">
-                {remainingTime === 'Expired' ? 'Liveness expired' : `${remainingTime} remaining`}
+              <span className="text-muted-foreground font-mono tabular-nums">
+                {!hydrated
+                  ? '—'
+                  : remainingTime === 'Expired'
+                    ? 'Liveness expired'
+                    : `${remainingTime} remaining`}
               </span>
             </div>
 
-            {/* Voting Weight Display */}
             {data.voteResolutionRound && data.voteResolutionRound.totalValidWeight > 0n && (
               <div className="flex items-center gap-2 font-mono">
-                <span className="text-muted-foreground">Weight locked:</span>
-                <span className="font-semibold">
+                <span className="text-muted-foreground text-[11px] tracking-widest uppercase">
+                  Weight locked
+                </span>
+                <span className="tabular-nums">
                   {Number(data.voteResolutionRound.totalValidWeight).toLocaleString()}
                 </span>
               </div>
