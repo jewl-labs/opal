@@ -84,7 +84,10 @@ pub struct ChallengeLlmResolution<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn handler(ctx: Context<ChallengeLlmResolution>, _args: ChallengeLlmResolutionArgs) -> Result<()> {
+pub fn handler(
+    ctx: Context<ChallengeLlmResolution>,
+    _args: ChallengeLlmResolutionArgs,
+) -> Result<()> {
     let now = Clock::get()?.unix_timestamp;
 
     let assertion = ctx.accounts.assertion.load()?;
@@ -130,7 +133,7 @@ pub fn handler(ctx: Context<ChallengeLlmResolution>, _args: ChallengeLlmResoluti
 
     token::transfer(
         CpiContext::new(
-            ctx.accounts.token_program.to_account_info(),
+            Token::id(),
             Transfer {
                 from: ctx.accounts.disputer_pusd.to_account_info(),
                 to: ctx.accounts.bond_vault.to_account_info(),

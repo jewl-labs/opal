@@ -105,7 +105,7 @@ pub fn handler(ctx: Context<FinalizeUndisputed>, _args: FinalizeUndisputedArgs) 
     if asserter_payout > 0 {
         token::transfer(
             CpiContext::new_with_signer(
-                ctx.accounts.token_program.to_account_info(),
+                Token::id(),
                 Transfer {
                     from: ctx.accounts.bond_vault.to_account_info(),
                     to: ctx.accounts.asserter_pusd.to_account_info(),
@@ -120,7 +120,7 @@ pub fn handler(ctx: Context<FinalizeUndisputed>, _args: FinalizeUndisputedArgs) 
     if fee > 0 {
         token::transfer(
             CpiContext::new_with_signer(
-                ctx.accounts.token_program.to_account_info(),
+                Token::id(),
                 Transfer {
                     from: ctx.accounts.bond_vault.to_account_info(),
                     to: ctx.accounts.treasury_pusd.to_account_info(),
