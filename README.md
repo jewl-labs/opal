@@ -12,7 +12,7 @@ Target use case: prediction-market resolution. Statements like "Kanye West's Del
 
 ## How It Works
 
-1. **Assert** — someone posts a statement, a USDC bond, and a Resolution Spec (the rubric; stored off-chain on Arweave, its hash on-chain)
+1. **Assert** — someone posts a statement, a USDC bond, and a Resolution Spec (the rubric; stored off-chain on Arweave, with a retrievable transaction ID and SHA-256 digest on-chain)
 2. **Wait** — liveness window where anyone can dispute
 3. **Undisputed** — if no dispute, resolves `True`
 4. **Disputed** — the first dispute triggers on-chain LLM resolution: a single trusted off-chain resolver posts the verdict via the resolver-gated `submit_llm_resolution` instruction `[Built]`; the off-chain service that makes the LLM call is `[MVP-target]` (the former 3-feed Switchboard council was removed per [ADR-0002](docs/adr/0002-trusted-llm-resolver.md))
@@ -104,7 +104,7 @@ These pieces are v1 targets, not yet shipped:
 
 - **Trusted LLM resolver** — the on-chain half is built: `submit_llm_resolution` is gated on a dedicated `ProtocolConfig.resolver` key (separate from `authority`, so a leaked hot resolver key can only post a challengeable verdict) and accepts only `True`/`False`/`Unresolvable`. The off-chain service that makes the real LLM call and posts verdicts is the remaining target; the former 3-feed Switchboard council was removed per ADR-0002. On-chain LLM provenance (prompt/response/evidence hashing) is deferred to a `[Vision]` trust-minimized resolver.
 - **Private staked voting** — opening a vote sets up the round, but real MagicBlock private voting (delegation, ER settlement) is the MVP target.
-- **Resolution Spec on Arweave** — the on-chain `auxiliary_hash` field exists; off-chain Arweave storage and integrity-checking is planned.
+- **Resolution Spec upload UX** — `create_assertion` now requires a bounded `ar://<tx-id>#sha256=<digest>` reference, and the resolver fetches and verifies it before judging. Product-side Arweave upload UI is still planned.
 - **Share-based reward split** — `Unresolvable` no-fault settlement is built. The share-based settlement split (`llm_disputer_reward_share_bps`, `vote_disputer_reward_share_bps`, `voter_reward_share_bps`, `treasury_share_bps`) is still planned; only `protocol_fee_bps` is applied to decisive settlements today.
 - **Field names** — state and config fields still carry the legacy `pusd` prefix; a later PR renames them to `usdc` to match the committed asset.
 

@@ -13,7 +13,7 @@ This document describes the target architecture for the prediction-market wedge.
 - `PendingLLM` and `PendingVote` are intermediary states: a dispute has been accepted, but the next resolution layer is not finished or active yet. `[Built]`
 - `Resolved` is terminal: `outcome` is set and irreversible consumers can settle. `[Built]`
 - The statement lives onchain as a fixed-size byte array (null-terminated string, max 280 bytes). `[Built]`
-- The Resolution Spec lives **off-chain on Arweave**; only `auxiliary_hash` is stored onchain (max 128 bytes) so anyone can fetch the spec and verify integrity. The spec **is the source of truth** — the LLM resolver and voters apply it, they do not adjudicate universal reality. `[MVP-target]` (see [ADR-0001](adr/0001-rubric-relative-truth.md))
+- The Resolution Spec lives **off-chain on Arweave**; `auxiliary_hash` stores a bounded `ar://<tx-id>#sha256=<digest>` reference so anyone can fetch the exact transaction and verify its bytes. The spec **is the source of truth** — the LLM resolver and voters apply it, they do not adjudicate universal reality. `[Built]` (upload UI remains product work; see [ADR-0001](adr/0001-rubric-relative-truth.md))
 - **USDC** is the single collateral asset for bonds, slashing, rewards, and fees. The mint is a config field (`pusd_mint`, slated to rename to `usdc_mint`) so localnet/devnet can use a test mint, but the protocol commits to USDC. `[MVP-target]` (see [ADR-0004](adr/0004-single-asset-usdc.md))
 - Governance is the `authority` keypair. There is no separate governance token in the MVP. `[MVP-target]`
 - LLM resolution is a **single trusted off-chain resolver** that posts the verdict via `submit_llm_resolution`, gated on the dedicated `ProtocolConfig.resolver` key `[Built]`; the off-chain resolver service is `[MVP-target]`. The former 3-feed Switchboard council was removed per [ADR-0002](adr/0002-trusted-llm-resolver.md). Binding LLM provenance hashes onchain is not part of the MVP — it is deferred to `[Vision]`.
@@ -54,7 +54,7 @@ pub struct AssertionAccount {
 }
 ```
 
-`auxiliary_hash` is the hash of the off-chain Resolution Spec; resolving the assertion means applying that spec, not judging absolute truth.
+`auxiliary_hash` is the off-chain Resolution Spec reference (`ar://<43-character-transaction-id>#sha256=<64-character-hex-digest>`); resolving the assertion means fetching, integrity-checking, and applying that spec, not judging absolute truth.
 
 Implementation notes:
 
@@ -66,12 +66,13 @@ Implementation notes:
 - When voting is active, `state = VOTING`; the LLM result remains the challenged result until the vote resolves.
 - When finalized, `state = RESOLVED` and `outcome` is set.
 
-### Resolution Spec (Arweave + `auxiliary_hash`) `[MVP-target]`
+### Resolution Spec (Arweave + `auxiliary_hash`) `[Built]`
 
 The Resolution Spec is the asserter-supplied rubric — authoritative sources and their priority, key definitions, ambiguity handling, and when the statement becomes resolvable. It is the single most important artifact after the statement itself, because **it is the source of truth**: True means "true under this assertion's spec, correctly applied," not a universal fact (see [ADR-0001](adr/0001-rubric-relative-truth.md)).
 
 - The spec lives off-chain on **Arweave** (permanent, content-addressed) and must stay retrievable and integrity-checkable for the whole assertion lifecycle.
-- Only its hash is stored onchain in `AssertionAccount.auxiliary_hash` (≤128 bytes), so anyone can fetch the spec and verify it matches.
+- `AssertionAccount.auxiliary_hash` stores `ar://<43-character-transaction-id>#sha256=<64-character-hex-digest>` (120 bytes): the transaction ID makes it retrievable and the digest authenticates the exact downloaded bytes.
+- `create_assertion` rejects malformed references. The resolver enforces a fetch timeout and size bound, then verifies SHA-256 and UTF-8 before the spec reaches the model. Missing or mismatched content produces no verdict and is retried.
 - The LLM resolver and the voters **apply** the spec; disputes and votes are framed as "applying this spec, the answer is X," not "in reality it's X."
 - Vetting the spec is the integrator's responsibility: garbage spec in → garbage truth out, faithfully applied. An integrator must read the spec before trusting an outcome.
 
@@ -213,7 +214,7 @@ An SPL token account owned by the protocol authority. Configured in `ProtocolCon
 The instruction names below are stable for this PR.
 
 1. `create_assertion` `[Built]`
-   - Stores the statement and the Resolution Spec hash (`auxiliary_hash`).
+   - Stores the statement and validated Resolution Spec reference (`auxiliary_hash`).
    - Locks the asserter's USDC bond.
    - Sets `state = ASSERTED`, `outcome = OUTCOME_NONE`, and `liveness_deadline`.
 
@@ -302,7 +303,7 @@ Prediction markets and other consumers should read assertion id, statement, auxi
 
 Integrator rules:
 
-- The `auxiliary_hash` points at the off-chain Resolution Spec on Arweave. An integrator **must read the spec** to judge whether an outcome is meaningful for its use case — outcomes are relative to the spec, not to absolute reality.
+- The `auxiliary_hash` points at and authenticates the off-chain Resolution Spec on Arweave. An integrator **must read and verify the spec** to judge whether an outcome is meaningful for its use case — outcomes are relative to the spec, not to absolute reality.
 - In `ASSERTED`, the current non-final answer is the optimistic default `True`.
 - In `ASSERTED_LLM`, the current non-final answer is `LlmResolutionRound.outcome`.
 - In `PENDING_VOTE` and `VOTING`, the LLM answer is under challenge; final answer is not available until `RESOLVED`.

@@ -41,6 +41,8 @@ const OUTCOME = {
   NONE: 255,
 };
 
+const RESOLUTION_SPEC_REFERENCE = `ar://${'A'.repeat(43)}#sha256=${'0'.repeat(64)}`;
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function fund(connection: Connection, pk: PublicKey, lamports: number) {
@@ -202,7 +204,12 @@ class TestContext {
     return new Assertion(id, derivePDAs(id, this.program.programId));
   }
 
-  async createAssertion(a: Assertion, statement: string, bond: number, auxiliaryHash = 'hash') {
+  async createAssertion(
+    a: Assertion,
+    statement: string,
+    bond: number,
+    auxiliaryHash = RESOLUTION_SPEC_REFERENCE
+  ) {
     return this.program.methods
       .createAssertion({
         assertionId: a.id,
@@ -484,7 +491,7 @@ describe('opal', () => {
     const asserterStart = await balanceOf(connection, token.asserterAta);
     const treasuryStart = await balanceOf(connection, proto.treasuryAta);
 
-    await ctx.createAssertion(a, 'Bitcoin > $100k by 2026', bond, 'hash123');
+    await ctx.createAssertion(a, 'Bitcoin > $100k by 2026', bond);
 
     const acc = await ctx.fetchAssertion(a);
     expect(acc.state).toBe(STATE.ASSERTED);
@@ -509,7 +516,7 @@ describe('opal', () => {
     const a = ctx.newAssertion();
     const bond = 200;
 
-    await ctx.createAssertion(a, 'ETH flips BTC', bond, 'abc');
+    await ctx.createAssertion(a, 'ETH flips BTC', bond);
 
     const disputerStart = await balanceOf(connection, token.llmDisputerAta);
 
@@ -546,7 +553,7 @@ describe('opal', () => {
   it('full escalation path: escalates to vote and resolves', async () => {
     const a = ctx.newAssertion();
 
-    await ctx.createAssertion(a, 'Solana TPS > 10000', 500, 'perf');
+    await ctx.createAssertion(a, 'Solana TPS > 10000', 500);
     await ctx.disputeAssertion(a);
     await ctx.submitLlmResolution(a, 0);
     await ctx.challengeLlmResolution(a);
@@ -588,6 +595,13 @@ describe('opal', () => {
   it('error: insufficient bond', async () => {
     const a = ctx.newAssertion();
     await expect(ctx.createAssertion(a, 'Fail', 50)).rejects.toThrow();
+  });
+
+  it('error: malformed Resolution Spec reference', async () => {
+    const a = ctx.newAssertion();
+    await expect(
+      ctx.createAssertion(a, 'Missing verifiable spec', 200, 'devnet-rehearsal-no-spec')
+    ).rejects.toThrow();
   });
 
   it('error: disputing after liveness deadline', async () => {
@@ -735,11 +749,11 @@ describe('opal', () => {
     const a2 = ctx.newAssertion();
 
     // create and dispute assertion1
-    await ctx.createAssertion(a1, 'A1', 200, 'a1');
+    await ctx.createAssertion(a1, 'A1', 200);
     await ctx.disputeAssertion(a1);
 
     // create assertion2 (undisputed) so we can try to pass its dispute for assertion1
-    await ctx.createAssertion(a2, 'A2', 200, 'a2');
+    await ctx.createAssertion(a2, 'A2', 200);
 
     // finalizeLlmResolution with assertion1 but llmDispute from assertion2
     // should fail because the dispute doesn't link back to assertion1

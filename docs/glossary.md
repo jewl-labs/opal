@@ -23,8 +23,8 @@ The on-chain object created when an asserter posts a statement, a USDC bond, and
 **Statement** — `statement: [u8; 280]` `[Built]`
 The short human-readable sentence whose truth is asserted. Null-terminated, stored on-chain.
 
-**Resolution Spec** — `auxiliary_hash` + off-chain content `[MVP-target]`
-The asserter-supplied rubric that defines _how_ the statement resolves: authoritative sources and their priority, key definitions, ambiguity handling, and when the statement becomes resolvable. **It is the source of truth** — the LLM resolver and voters apply it; they do not judge absolute reality. The spec lives off-chain on Arweave (permanent, content-addressed); only its hash is stored on-chain (`auxiliary_hash`, ≤128 bytes), so anyone can fetch it and verify integrity. See [ADR-0001](adr/0001-rubric-relative-truth.md).
+**Resolution Spec** — `auxiliary_hash` + off-chain content `[Built]`
+The asserter-supplied rubric that defines _how_ the statement resolves: authoritative sources and their priority, key definitions, ambiguity handling, and when the statement becomes resolvable. **It is the source of truth** — the LLM resolver and voters apply it; they do not judge absolute reality. The spec lives off-chain on Arweave; `auxiliary_hash` stores `ar://<tx-id>#sha256=<digest>` so anyone can fetch and verify the exact bytes. See [ADR-0001](adr/0001-rubric-relative-truth.md).
 _Avoid_: "auxiliary data" framed as optional hints; "evidence" — it is the spec, not a hint.
 
 **Rubric-relative truth** `[MVP-target]`

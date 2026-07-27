@@ -9,13 +9,13 @@ Throughout, "truth" means **rubric-relative truth**: the answer is judged agains
 Every assertion includes:
 
 1. An on-chain `statement`: a short natural-language sentence (max 280 bytes, null-terminated). `[Built]`
-2. An on-chain `auxiliary_hash`: the content hash of the off-chain **Resolution Spec** (max 128 bytes). `[Built]` (the field); `[MVP-target]` (the spec workflow)
+2. An on-chain `auxiliary_hash`: `ar://<43-character-transaction-id>#sha256=<64-character-hex-digest>` for the off-chain **Resolution Spec** (120 of the available 128 bytes). `[Built]`
 
-### The Resolution Spec `[MVP-target]`
+### The Resolution Spec `[Built]`
 
 The Resolution Spec is the asserter-supplied rubric that defines _how_ the statement resolves: authoritative sources and their priority, key definitions, ambiguity handling, and when the statement becomes resolvable. **It is the source of truth.** The LLM resolver and the voters _apply_ the spec; they do not adjudicate absolute reality, so the same statement text can resolve differently across assertions. See [ADR-0001](adr/0001-rubric-relative-truth.md).
 
-The spec lives off-chain on **Arweave** (permanent, content-addressed); only its hash is stored on-chain in `auxiliary_hash`, so anyone can fetch the spec and verify its integrity. The protocol does not enforce a schema for the spec content. If the spec is vague, missing, or contradictory, the statement is more likely to resolve `Unresolvable` — vetting the spec before trusting an outcome is the integrator's responsibility.
+The spec lives off-chain on **Arweave** (permanent, content-addressed). The on-chain `auxiliary_hash` stores both its transaction ID and SHA-256 digest in the bounded form `ar://<tx-id>#sha256=<digest>`, so anyone can retrieve the exact transaction and verify its bytes. `create_assertion` validates this reference format; the resolver enforces fetch timeout/size limits, verifies the digest and UTF-8, and only then passes the spec to the model. The protocol does not enforce a schema for the spec content. If the spec is vague or contradictory, the statement is more likely to resolve `Unresolvable` — vetting the spec before trusting an outcome is the integrator's responsibility.
 
 ## Outcome Rules
 
@@ -57,7 +57,7 @@ When an assertion is created (`create_assertion`):
 - `state = Asserted`
 - `outcome = None` (255)
 - `liveness_deadline` is set from `liveness_window_seconds`
-- `auxiliary_hash` points to the off-chain Resolution Spec
+- `auxiliary_hash` points to and authenticates the off-chain Resolution Spec
 
 While `Asserted`, the statement is treated as `True` by default. The liveness window is the only time a first dispute can be filed; if it expires undisputed, the assertion can be finalized `True` (`finalize_undisputed`).
 
