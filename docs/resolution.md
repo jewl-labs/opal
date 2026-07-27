@@ -27,10 +27,10 @@ The evidence, applied through the spec, verifies the statement.
 **`False` (1)** `[Built]`
 The evidence, applied through the spec, contradicts the statement.
 
-**`Unresolvable` (3)** `[MVP-target]`
+**`Unresolvable` (3)** `[Built]`
 The statement cannot be decided under the spec: source priority is unclear, evidence conflicts or is unavailable, the statement is ambiguous, the spec is too weak, the truth does not exist yet, or the vote failed to reach `supermajority_bps`. Settles **no-fault** (see [Settlement Logic](#settlement-logic)).
 
-**`TooEarly` (2)** — the code constant persists and `validate_outcome_code` still accepts it (0–3); `submit_llm_resolution` explicitly rejects it, though `finalize_vote_resolution_placeholder` can still technically accept it until the vote path is rebuilt. **Merging it into `Unresolvable` is `[MVP-target]`**: "the real-world truth does not exist yet" is just one way to be `Unresolvable`, and the target is that it settles identically. See [ADR-0005](adr/0005-no-fault-unresolvable.md).
+**`TooEarly` (2)** — deprecated. The code constant persists, but the shared outcome validator rejects it. "The real-world truth does not exist yet" is represented by `Unresolvable`. See [ADR-0005](adr/0005-no-fault-unresolvable.md).
 
 **`None` (255)** `[Built]` — sentinel for unset; the value of `outcome` until `state == Resolved`.
 
@@ -136,7 +136,7 @@ If the liveness window expires with no dispute:
 - asserter bond is returned minus the protocol fee
 - treasury receives the fee
 
-### Indeterminate (`Unresolvable`) — no-fault `[MVP-target]`
+### Indeterminate (`Unresolvable`) — no-fault `[Built]`
 
 If any path produces `Unresolvable`, the assertion settles **no-fault**:
 
@@ -156,7 +156,7 @@ If `finalize_llm_resolution` settles a `True` or `False` outcome (no vote disput
   - the asserter wins: receives their bond + the LLM disputer bond, minus fee
 - treasury receives the fee
 
-> Target `[MVP-target]`: `Unresolvable` takes the no-fault path above and does not flow through this win/lose branch. Today the code has no no-fault path — `Unresolvable` (like any `outcome != True`) still routes through the disputer-wins branch here (`llm_dispute_correct = final_outcome != OUTCOME_TRUE`), settling like `False`; this is the legacy behavior [ADR-0005](adr/0005-no-fault-unresolvable.md) replaces.
+`Unresolvable` takes the no-fault path above and does not flow through this win/lose branch. This replaces the legacy `outcome != True` behavior described in [ADR-0005](adr/0005-no-fault-unresolvable.md).
 
 ### Second Dispute (Vote Resolution) — `True` / `False` `[MVP-target]`
 

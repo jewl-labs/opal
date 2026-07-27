@@ -1,7 +1,7 @@
 use crate::{
     constants::{
         ASSERTION_SEED, ASSERTION_STATE_ASSERTED_LLM, ASSERTION_STATE_PENDING_LLM, LLM_ROUND_SEED,
-        OUTCOME_TOO_EARLY, PROTOCOL_CONFIG_SEED,
+        PROTOCOL_CONFIG_SEED,
     },
     errors::OpalError,
     state::{AssertionAccount, LlmResolutionRound, ProtocolConfig},
@@ -58,9 +58,6 @@ pub fn handler(ctx: Context<SubmitLlmResolution>, args: SubmitLlmResolutionArgs)
     );
 
     let outcome = validate_outcome_code(args.outcome_code)?;
-    // TooEarly is merged into Unresolvable per ADR-0005; the resolver emits
-    // only True, False, or Unresolvable.
-    require!(outcome != OUTCOME_TOO_EARLY, OpalError::InvalidOutcomeCode);
 
     let now = Clock::get()?.unix_timestamp;
     let challenge_deadline = checked_add_i64(now, protocol_config.llm_challenge_window_seconds)?;

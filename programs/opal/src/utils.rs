@@ -1,12 +1,18 @@
 use crate::{
-    constants::{BPS_DENOMINATOR, OUTCOME_NONE, OUTCOME_UNRESOLVABLE, TIMESTAMP_NONE},
+    constants::{
+        BPS_DENOMINATOR, OUTCOME_FALSE, OUTCOME_NONE, OUTCOME_TRUE, OUTCOME_UNRESOLVABLE,
+        TIMESTAMP_NONE,
+    },
     errors::OpalError,
 };
 use anchor_lang::prelude::*;
 
 pub fn validate_outcome_code(outcome_code: u8) -> Result<u8> {
     require!(
-        outcome_code <= OUTCOME_UNRESOLVABLE,
+        matches!(
+            outcome_code,
+            OUTCOME_TRUE | OUTCOME_FALSE | OUTCOME_UNRESOLVABLE
+        ),
         OpalError::InvalidOutcomeCode
     );
     Ok(outcome_code)

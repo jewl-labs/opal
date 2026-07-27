@@ -18,7 +18,7 @@ This document describes the target architecture for the prediction-market wedge.
 - Governance is the `authority` keypair. There is no separate governance token in the MVP. `[MVP-target]`
 - LLM resolution is a **single trusted off-chain resolver** that posts the verdict via `submit_llm_resolution`, gated on the dedicated `ProtocolConfig.resolver` key `[Built]`; the off-chain resolver service is `[MVP-target]`. The former 3-feed Switchboard council was removed per [ADR-0002](adr/0002-trusted-llm-resolver.md). Binding LLM provenance hashes onchain is not part of the MVP — it is deferred to `[Vision]`.
 - Final escalation is a **private, USDC-staked vote on a MagicBlock ephemeral rollup** with linear weight (1 USDC = 1 vote) and Schelling-point slashing. A single outcome must reach `supermajority_bps`, otherwise the vote resolves `Unresolvable`. `[MVP-target]` (see [ADR-0003](adr/0003-private-staked-voting.md))
-- `Unresolvable` settles **no-fault**: both bonds returned, nobody slashed, assertion voided. `[MVP-target]` (see [ADR-0005](adr/0005-no-fault-unresolvable.md))
+- `Unresolvable` settles **no-fault**: all assertion/dispute bonds are returned, no fee is taken, nobody is slashed, and the assertion is voided. `[Built]` (see [ADR-0005](adr/0005-no-fault-unresolvable.md))
 
 > Note on field names: account fields still carry the legacy `pusd` prefix (`assertion_bond_amount_pusd`, `bond_amount_pusd`, `pusd_mint`, …). These are USDC; the `*_pusd → *_usdc` / `pusd_mint → usdc_mint` rename is a separate follow-up PR.
 
@@ -93,7 +93,7 @@ pub struct LlmDisputeAccount {
 }
 ```
 
-`settlement_resolution` records the outcome this dispute settled against: if the LLM result is not challenged, it is the LLM result; if it is challenged, it is the final vote result. Settlement does **not** use a blanket `!= True ⇒ disputer correct` rule — a `True`/`False` outcome slashes the wrong side via the configured share split, while an `Unresolvable` outcome settles no-fault (both bonds returned, nobody slashed). See [ADR-0005](adr/0005-no-fault-unresolvable.md) and [resolution.md](resolution.md). `[MVP-target]`
+`settlement_resolution` records the outcome this dispute settled against: if the LLM result is not challenged, it is the LLM result; if it is challenged, it is the final vote result. Settlement does **not** use a blanket `!= True ⇒ disputer correct` rule — a `True`/`False` outcome slashes the wrong side, while an `Unresolvable` outcome settles no-fault (all principals returned, no fee, nobody slashed). See [ADR-0005](adr/0005-no-fault-unresolvable.md) and [resolution.md](resolution.md). `[Built]`
 
 ### `VoteDisputeAccount` `[Built]`
 
@@ -115,7 +115,7 @@ pub struct VoteDisputeAccount {
 }
 ```
 
-`settlement_resolution` is the final vote outcome. As above, `True`/`False` slashes the side that backed the other answer and an `Unresolvable` vote settles no-fault `[MVP-target]` (today the code treats any non-`True` outcome like `False`).
+`settlement_resolution` is the final vote outcome. As above, `True`/`False` slashes the side that backed the other answer and an `Unresolvable` vote settles no-fault. `[Built]`
 
 ### `BondVault` `[Built]`
 
@@ -139,7 +139,7 @@ pub struct LlmResolutionRound {
 }
 ```
 
-`outcome` is an outcome code: `0 = True`, `1 = False`, `3 = Unresolvable`. The code `2` (`TooEarly`) persists in the constants and `validate_outcome_code` still accepts it, but `submit_llm_resolution` rejects it; merging it into `Unresolvable` is `[MVP-target]` (see [ADR-0005](adr/0005-no-fault-unresolvable.md)). Today the resolver key sets `outcome` from an argument via `submit_llm_resolution`; the `[MVP-target]` off-chain service sets it from its single LLM call.
+`outcome` is an outcome code: `0 = True`, `1 = False`, `3 = Unresolvable`. The deprecated code `2` (`TooEarly`) persists as a constant, but the shared outcome validator rejects it; premature claims resolve as `Unresolvable` per [ADR-0005](adr/0005-no-fault-unresolvable.md). Today the resolver key sets `outcome` from an argument via `submit_llm_resolution`; the `[MVP-target]` off-chain service sets it from its single LLM call.
 
 ### `VoteResolutionRound` `[Built]` (struct) / `[MVP-target]` (private vote)
 
@@ -233,7 +233,7 @@ The instruction names below are stable for this PR.
 4. `finalize_llm_resolution` `[Built]`
    - Allowed after the LLM challenge window if no vote dispute exists.
    - Sets `state = RESOLVED` and `outcome = LlmResolutionRound.outcome`.
-   - Sets `LlmDisputeAccount.settlement_resolution` and settles bonds (share-based split / no-fault is `[MVP-target]`).
+   - Sets `LlmDisputeAccount.settlement_resolution` and settles bonds. `Unresolvable` returns both principals with no fee `[Built]`; the share-based split for decisive outcomes remains `[MVP-target]`.
 
 5. `challenge_llm_resolution` `[Built]`
    - Allowed while the assertion is `ASSERTED_LLM` and before the LLM challenge deadline.
@@ -294,7 +294,7 @@ Voting
 Resolved(VoteResolutionRound.final_outcome)
 ```
 
-When a terminal outcome is `Unresolvable`, settlement is no-fault: both bonds returned, nobody slashed, the assertion is voided (re-assert later if it becomes determinable). See [ADR-0005](adr/0005-no-fault-unresolvable.md).
+When a terminal outcome is `Unresolvable`, settlement is no-fault: all assertion/dispute bonds are returned, no fee is taken, nobody is slashed, and the assertion is voided (re-assert later if it becomes determinable). See [ADR-0005](adr/0005-no-fault-unresolvable.md).
 
 ## Integrator Contract
 

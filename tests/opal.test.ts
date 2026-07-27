@@ -630,8 +630,12 @@ describe('opal', () => {
     await expect(ctx.submitLlmResolution(a, OUTCOME.FALSE)).rejects.toThrow();
   });
 
-  it('accepts an Unresolvable verdict from the resolver', async () => {
+  it('settles an Unresolvable LLM verdict no-fault', async () => {
     const a = ctx.newAssertion();
+    const asserterStart = await balanceOf(connection, token.asserterAta);
+    const llmDisputerStart = await balanceOf(connection, token.llmDisputerAta);
+    const treasuryStart = await balanceOf(connection, proto.treasuryAta);
+
     await ctx.createAssertion(a, 'Undecidable claim', 200);
     await ctx.disputeAssertion(a);
     await ctx.submitLlmResolution(a, OUTCOME.UNRESOLVABLE);
@@ -641,6 +645,71 @@ describe('opal', () => {
 
     const acc = await ctx.fetchAssertion(a);
     expect(acc.state).toBe(STATE.ASSERTED_LLM);
+
+    await sleep(4000);
+    await ctx.finalizeLlmResolution(a);
+
+    const resolved = await ctx.fetchAssertion(a);
+    expect(resolved.state).toBe(STATE.RESOLVED);
+    expect(resolved.outcome).toBe(OUTCOME.UNRESOLVABLE);
+
+    const dispute = await ctx.fetchLlmDispute(a);
+    expect(dispute.settlementResolution).toBe(OUTCOME.UNRESOLVABLE);
+
+    expect(await balanceOf(connection, token.asserterAta)).toBe(asserterStart);
+    expect(await balanceOf(connection, token.llmDisputerAta)).toBe(llmDisputerStart);
+    expect(await balanceOf(connection, proto.treasuryAta)).toBe(treasuryStart);
+    expect(await balanceOf(connection, a.pdas.bondVault)).toBe(0);
+  });
+
+  it('settles an Unresolvable vote no-fault', async () => {
+    const a = ctx.newAssertion();
+    const asserterStart = await balanceOf(connection, token.asserterAta);
+    const llmDisputerStart = await balanceOf(connection, token.llmDisputerAta);
+    const voteDisputerStart = await balanceOf(connection, token.voteDisputerAta);
+    const treasuryStart = await balanceOf(connection, proto.treasuryAta);
+
+    await ctx.createAssertion(a, 'No vote outcome reaches supermajority', 500);
+    await ctx.disputeAssertion(a);
+    await ctx.submitLlmResolution(a, OUTCOME.TRUE);
+    await ctx.challengeLlmResolution(a);
+    await ctx.openVote(a);
+    await sleep(5000);
+
+    await ctx.finalizeVoteResolutionPlaceholder(a, OUTCOME.UNRESOLVABLE);
+
+    const resolved = await ctx.fetchAssertion(a);
+    expect(resolved.state).toBe(STATE.RESOLVED);
+    expect(resolved.outcome).toBe(OUTCOME.UNRESOLVABLE);
+
+    const llmDispute = await ctx.fetchLlmDispute(a);
+    expect(llmDispute.settlementResolution).toBe(OUTCOME.UNRESOLVABLE);
+
+    const voteDispute = await ctx.fetchVoteDispute(a);
+    expect(voteDispute.settlementResolution).toBe(OUTCOME.UNRESOLVABLE);
+
+    const voteRound = await ctx.fetchVoteRound(a);
+    expect(voteRound.finalOutcome).toBe(OUTCOME.UNRESOLVABLE);
+
+    expect(await balanceOf(connection, token.asserterAta)).toBe(asserterStart);
+    expect(await balanceOf(connection, token.llmDisputerAta)).toBe(llmDisputerStart);
+    expect(await balanceOf(connection, token.voteDisputerAta)).toBe(voteDisputerStart);
+    expect(await balanceOf(connection, proto.treasuryAta)).toBe(treasuryStart);
+    expect(await balanceOf(connection, a.pdas.bondVault)).toBe(0);
+  });
+
+  it('rejects TooEarly from the vote placeholder', async () => {
+    const a = ctx.newAssertion();
+    await ctx.createAssertion(a, 'Deprecated vote outcome', 200);
+    await ctx.disputeAssertion(a);
+    await ctx.submitLlmResolution(a, OUTCOME.TRUE);
+    await ctx.challengeLlmResolution(a);
+    await ctx.openVote(a);
+    await sleep(5000);
+
+    await expect(
+      ctx.finalizeVoteResolutionPlaceholder(a, OUTCOME.TOO_EARLY)
+    ).rejects.toThrow();
   });
 
   it('error: challengeLlmResolution after challenge deadline', async () => {

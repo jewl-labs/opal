@@ -49,8 +49,8 @@ The terminal result on the assertion; `OUTCOME_NONE` (255) until `state == Resol
 
 - `True` (0) `[Built]` — verified under the spec.
 - `False` (1) `[Built]` — contradicted under the spec.
-- `Unresolvable` (3) `[MVP-target]` — cannot be decided under the spec (ambiguous, conflicting, premature, or below the vote's supermajority). Settles **no-fault** (see Economics).
-- `TooEarly` (2) — the code value persists and `validate_outcome_code` still accepts it; no path is intended to emit it. **Merging it into `Unresolvable` is `[MVP-target]`.** _Avoid_ treating it as a distinct outcome.
+- `Unresolvable` (3) `[Built]` — cannot be decided under the spec (ambiguous, conflicting, premature, or below the vote's supermajority). Settles **no-fault** (see Economics).
+- `TooEarly` (2) — deprecated. The code value persists, but the shared outcome validator rejects it; use `Unresolvable`. _Avoid_ treating it as a distinct outcome.
 - `None` (255) — sentinel for unset.
 
 ## Participants
@@ -75,7 +75,7 @@ _Avoid_: calling the asset "pusd" (it is USDC — `pusd` is only the legacy on-c
 
 **Schelling-point vote** `[MVP-target]` — the staked vote is a coordination game on the truth: losing-side voters are slashed and winning-side voters are paid from the losing side, so the equilibrium is to vote the spec's honest answer. Security comes from this slashing, not from any weight curve. See [ADR-0003](adr/0003-private-staked-voting.md).
 
-**No-fault settlement** `[MVP-target]` — when an assertion resolves `Unresolvable`, all bonds are returned and no one is slashed; the assertion is voided. See [ADR-0005](adr/0005-no-fault-unresolvable.md).
+**No-fault settlement** `[Built]` — when an assertion resolves `Unresolvable`, all bonds are returned, no fee is taken, and no one is slashed; the assertion is voided. See [ADR-0005](adr/0005-no-fault-unresolvable.md).
 _Avoid_: the legacy `!= True ⇒ disputer correct` rule, which slashed on indeterminate outcomes.
 
 **Settlement Split** `[MVP-target]` — the slashed pot is divided by configured shares (`llm_disputer_reward_share_bps`, `vote_disputer_reward_share_bps`, `voter_reward_share_bps`, `treasury_share_bps`, summing ≤ 100%). Today only `protocol_fee_bps` is applied `[Built]`; the share-based split is `[MVP-target]`.
