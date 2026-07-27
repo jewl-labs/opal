@@ -13,6 +13,9 @@ import idl from '../target/idl/opal.json';
 import type { Opal } from '../target/types/opal';
 
 const TOKEN_PROGRAM_ID = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+const BPF_UPGRADEABLE_LOADER_ID = new PublicKey(
+  'BPFLoaderUpgradeab1e11111111111111111111111'
+);
 
 const SEEDS = {
   PROTOCOL_CONFIG: Buffer.from('protocol_config'),
@@ -44,6 +47,13 @@ const OUTCOME = {
 const RESOLUTION_SPEC_REFERENCE = `ar://${'A'.repeat(43)}#sha256=${'0'.repeat(64)}`;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+function programDataAddress(programId: PublicKey): PublicKey {
+  return PublicKey.findProgramAddressSync(
+    [programId.toBuffer()],
+    BPF_UPGRADEABLE_LOADER_ID
+  )[0];
+}
 
 async function fund(connection: Connection, pk: PublicKey, lamports: number) {
   const sig = await connection.requestAirdrop(pk, lamports);
@@ -169,12 +179,15 @@ async function setupProtocol(
       llmChallengeWindowSeconds: new BN(3),
       voteSetupWindowSeconds: new BN(1),
       votingWindowSeconds: new BN(3),
+      llmResolutionTimeoutSeconds: new BN(2),
     })
     .accounts({
       authority: authority.publicKey,
       protocolConfig: configPda,
       pusdMint: token.mint,
       treasuryPusd: treasuryAta,
+      program: program.programId,
+      programData: programDataAddress(program.programId),
       systemProgram: SystemProgram.programId,
     })
     .signers([authority])
@@ -260,6 +273,18 @@ class TestContext {
         llmResolutionRound: a.pdas.llmRound,
       })
       .signers([resolver])
+      .rpc({ commitment: 'confirmed' });
+  }
+
+  async recoverPendingLlm(a: Assertion) {
+    return this.program.methods
+      .recoverPendingLlm({ assertionId: a.id })
+      .accounts({
+        finalizer: this.provider.wallet.publicKey,
+        protocolConfig: this.proto.configPda,
+        assertion: a.pdas.assertion,
+        llmResolutionRound: a.pdas.llmRound,
+      })
       .rpc({ commitment: 'confirmed' });
   }
 
@@ -386,8 +411,58 @@ describe('opal', () => {
     token = await buildTokenEnv(connection);
   });
 
-  it('rejects invalid protocol config', async () => {
+  async function attemptProtocolInitialization(
+    authority: Keypair,
+    resolver: PublicKey,
+    assertionBondMinPusd: number
+  ) {
+    const [configPda] = PublicKey.findProgramAddressSync(
+      [SEEDS.PROTOCOL_CONFIG],
+      program.programId
+    );
+    const treasuryAta = (
+      await getOrCreateAssociatedTokenAccount(
+        connection,
+        token.mintAuthority,
+        token.mint,
+        token.treasury.publicKey
+      )
+    ).address;
+
+    return program.methods
+      .initializeProtocolConfig({
+        resolver,
+        assertionBondMinPusd: new BN(assertionBondMinPusd),
+        llmDisputeBondRatioBps: 5000,
+        voteDisputeBondRatioBps: 3000,
+        protocolFeeBps: 250,
+        llmDisputerRewardShareBps: 3000,
+        voteDisputerRewardShareBps: 2500,
+        voterRewardShareBps: 2500,
+        treasuryShareBps: 2000,
+        supermajorityBps: 6700,
+        livenessWindowSeconds: new BN(86400),
+        llmChallengeWindowSeconds: new BN(43200),
+        voteSetupWindowSeconds: new BN(3600),
+        votingWindowSeconds: new BN(86400),
+        llmResolutionTimeoutSeconds: new BN(300),
+      })
+      .accounts({
+        authority: authority.publicKey,
+        protocolConfig: configPda,
+        pusdMint: token.mint,
+        treasuryPusd: treasuryAta,
+        program: program.programId,
+        programData: programDataAddress(program.programId),
+        systemProgram: SystemProgram.programId,
+      })
+      .signers([authority])
+      .rpc({ commitment: 'confirmed' });
+  }
+
+  it('rejects initialization by a non-upgrade authority', async () => {
     const authority = Keypair.generate();
+    const resolver = Keypair.generate();
     await fund(connection, authority.publicKey, 10_000_000_000);
 
     const [configPda] = PublicKey.findProgramAddressSync(
@@ -406,8 +481,8 @@ describe('opal', () => {
     await expect(
       program.methods
         .initializeProtocolConfig({
-          resolver: authority.publicKey,
-          assertionBondMinPusd: new BN(0),
+          resolver: resolver.publicKey,
+          assertionBondMinPusd: new BN(100),
           llmDisputeBondRatioBps: 5000,
           voteDisputeBondRatioBps: 3000,
           protocolFeeBps: 250,
@@ -420,12 +495,15 @@ describe('opal', () => {
           llmChallengeWindowSeconds: new BN(43200),
           voteSetupWindowSeconds: new BN(3600),
           votingWindowSeconds: new BN(86400),
+          llmResolutionTimeoutSeconds: new BN(300),
         })
         .accounts({
           authority: authority.publicKey,
           protocolConfig: configPda,
           pusdMint: token.mint,
           treasuryPusd: treasuryAta,
+          program: program.programId,
+          programData: programDataAddress(program.programId),
           systemProgram: SystemProgram.programId,
         })
         .signers([authority])
@@ -434,8 +512,7 @@ describe('opal', () => {
   });
 
   it('rejects protocol config with default resolver', async () => {
-    const authority = Keypair.generate();
-    await fund(connection, authority.publicKey, 10_000_000_000);
+    const authority = provider.wallet.payer;
 
     const [configPda] = PublicKey.findProgramAddressSync(
       [SEEDS.PROTOCOL_CONFIG],
@@ -467,12 +544,15 @@ describe('opal', () => {
           llmChallengeWindowSeconds: new BN(43200),
           voteSetupWindowSeconds: new BN(3600),
           votingWindowSeconds: new BN(86400),
+          llmResolutionTimeoutSeconds: new BN(300),
         })
         .accounts({
           authority: authority.publicKey,
           protocolConfig: configPda,
           pusdMint: token.mint,
           treasuryPusd: treasuryAta,
+          program: program.programId,
+          programData: programDataAddress(program.programId),
           systemProgram: SystemProgram.programId,
         })
         .signers([authority])
@@ -480,9 +560,71 @@ describe('opal', () => {
     ).rejects.toThrow();
   });
 
+  it('rejects invalid protocol economics from the upgrade authority', async () => {
+    await expect(
+      attemptProtocolInitialization(
+        provider.wallet.payer,
+        Keypair.generate().publicKey,
+        0
+      )
+    ).rejects.toThrow();
+  });
+
+  it('rejects using the governance authority as the hot resolver', async () => {
+    await expect(
+      attemptProtocolInitialization(
+        provider.wallet.payer,
+        provider.wallet.publicKey,
+        100
+      )
+    ).rejects.toThrow();
+  });
+
   it('initializes protocol', async () => {
     proto = await setupProtocol(program, token, provider.wallet.payer);
     ctx = new TestContext(program, provider, connection, token, proto);
+  });
+
+  it('rotates the resolver only through governance', async () => {
+    const nextResolver = Keypair.generate();
+    const unauthorized = Keypair.generate();
+
+    await expect(
+      program.methods
+        .updateResolver({ newResolver: nextResolver.publicKey })
+        .accounts({
+          authority: unauthorized.publicKey,
+          protocolConfig: proto.configPda,
+        })
+        .signers([unauthorized])
+        .rpc({ commitment: 'confirmed' })
+    ).rejects.toThrow();
+
+    for (const invalidResolver of [PublicKey.default, proto.authority.publicKey, proto.resolver.publicKey]) {
+      await expect(
+        program.methods
+          .updateResolver({ newResolver: invalidResolver })
+          .accounts({
+            authority: proto.authority.publicKey,
+            protocolConfig: proto.configPda,
+          })
+          .signers([proto.authority])
+          .rpc({ commitment: 'confirmed' })
+      ).rejects.toThrow();
+    }
+
+    await program.methods
+      .updateResolver({ newResolver: nextResolver.publicKey })
+      .accounts({
+        authority: proto.authority.publicKey,
+        protocolConfig: proto.configPda,
+      })
+      .signers([proto.authority])
+      .rpc({ commitment: 'confirmed' });
+
+    const config = await program.account.protocolConfig.fetch(proto.configPda);
+    expect(config.resolver.equals(nextResolver.publicKey)).toBe(true);
+    proto.resolver = nextResolver;
   });
 
   it('undisputed path: creates, waits, finalizes with correct payouts', async () => {
@@ -642,6 +784,30 @@ describe('opal', () => {
     await ctx.submitLlmResolution(a, OUTCOME.TRUE);
 
     await expect(ctx.submitLlmResolution(a, OUTCOME.FALSE)).rejects.toThrow();
+  });
+
+  it('recovers a timed-out PendingLLM round as challengeable Unresolvable', async () => {
+    const a = ctx.newAssertion();
+    await ctx.createAssertion(a, 'Resolver outage recovery', 200);
+    await ctx.disputeAssertion(a);
+
+    await expect(ctx.recoverPendingLlm(a)).rejects.toThrow();
+    await sleep(3000);
+    await ctx.recoverPendingLlm(a);
+
+    const round = await ctx.fetchLlmRound(a);
+    expect(round.outcome).toBe(OUTCOME.UNRESOLVABLE);
+    expect(round.resolvedAt.toNumber()).toBeGreaterThan(0);
+    expect(round.challengeDeadline.toNumber()).toBeGreaterThan(0);
+
+    const assertion = await ctx.fetchAssertion(a);
+    expect(assertion.state).toBe(STATE.ASSERTED_LLM);
+    expect(assertion.llmChallengeDeadline.toNumber()).toBe(
+      round.challengeDeadline.toNumber()
+    );
+
+    await expect(ctx.recoverPendingLlm(a)).rejects.toThrow();
+    await expect(ctx.submitLlmResolution(a, OUTCOME.TRUE)).rejects.toThrow();
   });
 
   it('settles an Unresolvable LLM verdict no-fault', async () => {

@@ -23,6 +23,7 @@ pub struct InitializeProtocolConfigArgs {
     pub llm_challenge_window_seconds: i64,
     pub vote_setup_window_seconds: i64,
     pub voting_window_seconds: i64,
+    pub llm_resolution_timeout_seconds: i64,
 }
 
 #[derive(Accounts)]
@@ -46,6 +47,16 @@ pub struct InitializeProtocolConfig<'info> {
     )]
     pub treasury_pusd: Account<'info, TokenAccount>,
 
+    #[account(
+        constraint = program.programdata_address()? == Some(program_data.key()) @ OpalError::Unauthorized,
+    )]
+    pub program: Program<'info, crate::program::Opal>,
+
+    #[account(
+        constraint = program_data.upgrade_authority_address == Some(authority.key()) @ OpalError::Unauthorized,
+    )]
+    pub program_data: Account<'info, ProgramData>,
+
     pub system_program: Program<'info, System>,
 }
 
@@ -53,13 +64,8 @@ pub fn handler(
     ctx: Context<InitializeProtocolConfig>,
     args: InitializeProtocolConfigArgs,
 ) -> Result<()> {
-    // !TBD: PLACEHOLDER — uncomment before mainnet to restrict init to deployer.
-    // require!(ctx.accounts.authority.key() == crate::ID, OpalError::Unauthorized);
-
-    // The config is immutable after init, so a mis-set resolver would permanently
-    // brick LLM resolution.
     require!(
-        !is_pubkey_default(&args.resolver),
+        !is_pubkey_default(&args.resolver) && args.resolver != ctx.accounts.authority.key(),
         OpalError::ConfigInvariantViolation
     );
     require!(
@@ -87,7 +93,8 @@ pub fn handler(
         args.liveness_window_seconds > 0
             && args.llm_challenge_window_seconds > 0
             && args.vote_setup_window_seconds >= 0
-            && args.voting_window_seconds > 0,
+            && args.voting_window_seconds > 0
+            && args.llm_resolution_timeout_seconds > 0,
         OpalError::InvalidWindowConfiguration
     );
 
@@ -122,6 +129,7 @@ pub fn handler(
     config.llm_challenge_window_seconds = args.llm_challenge_window_seconds;
     config.vote_setup_window_seconds = args.vote_setup_window_seconds;
     config.voting_window_seconds = args.voting_window_seconds;
+    config.llm_resolution_timeout_seconds = args.llm_resolution_timeout_seconds;
     config.bump = ctx.bumps.protocol_config;
 
     Ok(())

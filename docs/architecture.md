@@ -196,12 +196,14 @@ pub struct ProtocolConfig {
     pub llm_challenge_window_seconds: i64,
     pub vote_setup_window_seconds: i64,
     pub voting_window_seconds: i64,
+    pub llm_resolution_timeout_seconds: i64,
     pub bump: u8,
 }
 ```
 
 - `authority` is governance for the MVP (no separate governance token).
-- `resolver` is the only key allowed to post LLM verdicts (`submit_llm_resolution`). It is deliberately separate from `authority`: the resolver is a hot key held by the off-chain service, and a leak exposes only a challengeable verdict, not governance.
+- `resolver` is the only key allowed to post LLM verdicts (`submit_llm_resolution`). It is deliberately separate from `authority`: the resolver is a hot key held by the off-chain service, and a leak exposes only a challengeable verdict, not governance. Governance can rotate it through `update_resolver`.
+- `llm_resolution_timeout_seconds` bounds how long an assertion can remain `PendingLLM`; after it expires, anyone can call `recover_pending_llm` to post a challengeable `Unresolvable` fallback.
 - `supermajority_bps` is a **config field** (e.g. `6700` in tests), not a hardcoded constant: it is the weighted threshold a single outcome must reach in a vote, otherwise the outcome is `Unresolvable`.
 - The reward-share fields (`llm_disputer_reward_share_bps`, `vote_disputer_reward_share_bps`, `voter_reward_share_bps`, `treasury_share_bps`) divide the slashed pot. Today only `protocol_fee_bps` is applied `[Built]`; the full share-based split is `[MVP-target]`.
 
@@ -225,42 +227,50 @@ The instruction names below are stable for this PR.
    - Creates `LlmResolutionRound`.
    - Sets `state = PENDING_LLM`, `dispute_count = 1`, and round/dispute pointers on `AssertionAccount`.
 
-3. `submit_llm_resolution` `[Built]` _(instruction)_ / `[MVP-target]` _(off-chain resolver service)_
+3. `submit_llm_resolution` `[Built]`
    - Gated to `protocol_config.resolver` — a dedicated key, separate from `authority`, so a leaked hot resolver key can only post a challengeable verdict.
    - Accepts only `True`, `False`, or `Unresolvable`; `TooEarly` is rejected per [ADR-0005](adr/0005-no-fault-unresolvable.md).
    - Sets `AssertionAccount.state = ASSERTED_LLM` and opens the LLM challenge deadline.
-   - The `[MVP-target]` off-chain trusted resolver makes a single LLM call and posts the verdict through this instruction; on-chain provenance hashing is deferred to `[Vision]`. (The name previously belonged to the removed Switchboard council instruction — [ADR-0002](adr/0002-trusted-llm-resolver.md).)
+   - The off-chain trusted resolver verifies the assertion's Resolution Spec, makes a single LLM call, and posts the verdict through this instruction. On-chain provenance hashing is deferred to `[Vision]`.
 
-4. `finalize_llm_resolution` `[Built]`
+4. `recover_pending_llm` `[Built]`
+   - Permissionless after `requested_at + llm_resolution_timeout_seconds` while the assertion is still `PENDING_LLM`.
+   - Posts `Unresolvable` and opens the normal challenge window. It races safely with the resolver because both paths require `PENDING_LLM`.
+
+5. `finalize_llm_resolution` `[Built]`
    - Allowed after the LLM challenge window if no vote dispute exists.
    - Sets `state = RESOLVED` and `outcome = LlmResolutionRound.outcome`.
    - Sets `LlmDisputeAccount.settlement_resolution` and settles bonds. `Unresolvable` returns both principals with no fee `[Built]`; the share-based split for decisive outcomes remains `[MVP-target]`.
 
-5. `challenge_llm_resolution` `[Built]`
+6. `challenge_llm_resolution` `[Built]`
    - Allowed while the assertion is `ASSERTED_LLM` and before the LLM challenge deadline.
    - Locks the second disputer's USDC bond.
    - Creates `VoteDisputeAccount` with `challenged_llm_resolution = LlmResolutionRound.outcome`.
    - Creates `VoteResolutionRound`.
    - Sets `state = PENDING_VOTE`, `dispute_count = 2`, and round/dispute pointers on `AssertionAccount`.
 
-6. `open_vote` `[Built]` (state plumbing) / `[MVP-target]` (real ER delegation)
+7. `open_vote` `[Built]` (state plumbing) / `[MVP-target]` (real ER delegation)
    - Sets voting deadlines on `VoteResolutionRound`.
    - Moves the assertion from `PENDING_VOTE` to `VOTING`.
    - Sets `delegated = BOOL_TRUE`. In the MVP this delegates the vote state to the MagicBlock ephemeral rollup; auth policy for opening the vote is still to be finalized (currently permissionless for liveness).
 
-7. `finalize_vote_resolution_placeholder` `[Built]` (state plumbing) / `[MVP-target]` (real tally)
+8. `finalize_vote_resolution_placeholder` `[Built]` (state plumbing) / `[MVP-target]` (real tally)
    - Allowed after the voting window expires.
    - Sets `VoteResolutionRound.final_outcome` (currently from an argument; in the MVP from the private tally, applying `supermajority_bps` → `Unresolvable` and the MagicBlock commit/undelegate).
    - Sets `AssertionAccount.state = RESOLVED` and `AssertionAccount.outcome`.
    - Sets settlement fields on both dispute accounts and settles bonds.
 
-8. `finalize_undisputed` `[Built]`
+9. `finalize_undisputed` `[Built]`
    - Allowed after `liveness_deadline` if no dispute exists.
    - Sets `state = RESOLVED` and `outcome = TRUE`.
    - Returns the asserter bond minus configured fees.
 
-9. `initialize_protocol_config` `[Built]`
-   - Authority-gated bootstrap of the `ProtocolConfig` singleton.
+10. `initialize_protocol_config` `[Built]`
+   - Verifies the signer against the program-data account's upgrade authority before creating the singleton, preventing first-initializer takeover.
+   - Rejects a default resolver or a resolver equal to governance.
+
+11. `update_resolver` `[Built]`
+   - Governance-only rotation of the hot resolver key; rejects default, governance, and no-op values.
 
 ## State Machine `[Built]`
 
