@@ -22,7 +22,9 @@ pub use instructions::initialize_protocol_config::{
     InitializeProtocolConfig, InitializeProtocolConfigArgs,
 };
 pub use instructions::open_vote::{OpenVote, OpenVoteArgs};
+pub use instructions::recover_pending_llm::{RecoverPendingLlm, RecoverPendingLlmArgs};
 pub use instructions::submit_llm_resolution::{SubmitLlmResolution, SubmitLlmResolutionArgs};
+pub use instructions::update_resolver::{UpdateResolver, UpdateResolverArgs};
 
 declare_id!("8NCcxyAzKiAHxJ9DMnADtxShYutS9w81wHcXqgCavTBy");
 
@@ -64,6 +66,17 @@ pub mod opal {
         args: SubmitLlmResolutionArgs,
     ) -> Result<()> {
         instructions::submit_llm_resolution::handler(ctx, args)
+    }
+
+    pub fn recover_pending_llm(
+        ctx: Context<RecoverPendingLlm>,
+        args: RecoverPendingLlmArgs,
+    ) -> Result<()> {
+        instructions::recover_pending_llm::handler(ctx, args)
+    }
+
+    pub fn update_resolver(ctx: Context<UpdateResolver>, args: UpdateResolverArgs) -> Result<()> {
+        instructions::update_resolver::handler(ctx, args)
     }
 
     pub fn finalize_llm_resolution(

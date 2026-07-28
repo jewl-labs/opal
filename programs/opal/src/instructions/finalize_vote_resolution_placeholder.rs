@@ -1,7 +1,8 @@
 use crate::{
     constants::{
         ASSERTION_SEED, ASSERTION_STATE_RESOLVED, ASSERTION_STATE_VOTING, BOND_VAULT_SEED,
-        LLM_DISPUTE_SEED, OUTCOME_TRUE, PROTOCOL_CONFIG_SEED, VOTE_DISPUTE_SEED, VOTE_ROUND_SEED,
+        LLM_DISPUTE_SEED, OUTCOME_TRUE, OUTCOME_UNRESOLVABLE, PROTOCOL_CONFIG_SEED,
+        VOTE_DISPUTE_SEED, VOTE_ROUND_SEED,
     },
     errors::OpalError,
     state::{
@@ -195,56 +196,68 @@ pub fn handler(
         OpalError::InvalidTreasuryAccount
     );
 
-    // !TBD: Reserved outcomes (TooEarly, Unresolvable) need explicit economic handling.
-    // Currently they are treated identically to False (disputer wins).
-    let llm_dispute_correct = final_outcome != OUTCOME_TRUE;
-    let vote_dispute_correct = final_outcome != vote_dispute.challenged_llm_resolution;
-
-    let (mut asserter_payout, mut llm_disputer_payout, stage_a_fee, stage_winner) =
-        if llm_dispute_correct {
-            let fee = checked_bps(assertion_bond, protocol_config.protocol_fee_bps)?;
-            let payout = llm_bond
-                .checked_add(
-                    assertion_bond
-                        .checked_sub(fee)
-                        .ok_or(OpalError::MathOverflow)?,
-                )
-                .ok_or(OpalError::MathOverflow)?;
-            (0, payout, fee, StageWinner::LlmDisputer)
+    let (asserter_payout, llm_disputer_payout, vote_disputer_payout, treasury_fee) =
+        if final_outcome == OUTCOME_UNRESOLVABLE {
+            // The final arbiter made no determination. Return every bond in full
+            // and do not assign fault or charge a protocol fee.
+            (assertion_bond, llm_bond, vote_bond, 0)
         } else {
-            let fee = checked_bps(llm_bond, protocol_config.protocol_fee_bps)?;
-            let payout = assertion_bond
-                .checked_add(llm_bond.checked_sub(fee).ok_or(OpalError::MathOverflow)?)
+            let llm_dispute_correct = final_outcome != OUTCOME_TRUE;
+            let vote_dispute_correct = final_outcome != vote_dispute.challenged_llm_resolution;
+
+            let (mut asserter_payout, mut llm_disputer_payout, stage_a_fee, stage_winner) =
+                if llm_dispute_correct {
+                    let fee = checked_bps(assertion_bond, protocol_config.protocol_fee_bps)?;
+                    let payout = llm_bond
+                        .checked_add(
+                            assertion_bond
+                                .checked_sub(fee)
+                                .ok_or(OpalError::MathOverflow)?,
+                        )
+                        .ok_or(OpalError::MathOverflow)?;
+                    (0, payout, fee, StageWinner::LlmDisputer)
+                } else {
+                    let fee = checked_bps(llm_bond, protocol_config.protocol_fee_bps)?;
+                    let payout = assertion_bond
+                        .checked_add(llm_bond.checked_sub(fee).ok_or(OpalError::MathOverflow)?)
+                        .ok_or(OpalError::MathOverflow)?;
+                    (payout, 0, fee, StageWinner::Asserter)
+                };
+
+            let (vote_disputer_payout, stage_b_fee, stage_winner_bonus) = if vote_dispute_correct {
+                (vote_bond, 0, 0)
+            } else {
+                let fee = checked_bps(vote_bond, protocol_config.protocol_fee_bps)?;
+                let bonus = vote_bond.checked_sub(fee).ok_or(OpalError::MathOverflow)?;
+                (0, fee, bonus)
+            };
+
+            if stage_winner_bonus > 0 {
+                match stage_winner {
+                    StageWinner::Asserter => {
+                        asserter_payout = asserter_payout
+                            .checked_add(stage_winner_bonus)
+                            .ok_or(OpalError::MathOverflow)?;
+                    }
+                    StageWinner::LlmDisputer => {
+                        llm_disputer_payout = llm_disputer_payout
+                            .checked_add(stage_winner_bonus)
+                            .ok_or(OpalError::MathOverflow)?;
+                    }
+                }
+            }
+
+            let treasury_fee = stage_a_fee
+                .checked_add(stage_b_fee)
                 .ok_or(OpalError::MathOverflow)?;
-            (payout, 0, fee, StageWinner::Asserter)
+
+            (
+                asserter_payout,
+                llm_disputer_payout,
+                vote_disputer_payout,
+                treasury_fee,
+            )
         };
-
-    let (vote_disputer_payout, stage_b_fee, stage_winner_bonus) = if vote_dispute_correct {
-        (vote_bond, 0, 0)
-    } else {
-        let fee = checked_bps(vote_bond, protocol_config.protocol_fee_bps)?;
-        let bonus = vote_bond.checked_sub(fee).ok_or(OpalError::MathOverflow)?;
-        (0, fee, bonus)
-    };
-
-    if stage_winner_bonus > 0 {
-        match stage_winner {
-            StageWinner::Asserter => {
-                asserter_payout = asserter_payout
-                    .checked_add(stage_winner_bonus)
-                    .ok_or(OpalError::MathOverflow)?;
-            }
-            StageWinner::LlmDisputer => {
-                llm_disputer_payout = llm_disputer_payout
-                    .checked_add(stage_winner_bonus)
-                    .ok_or(OpalError::MathOverflow)?;
-            }
-        }
-    }
-
-    let treasury_fee = stage_a_fee
-        .checked_add(stage_b_fee)
-        .ok_or(OpalError::MathOverflow)?;
 
     let assertion_id = assertion.id;
     let bump = assertion.bump;

@@ -9,13 +9,13 @@ Throughout, "truth" means **rubric-relative truth**: the answer is judged agains
 Every assertion includes:
 
 1. An on-chain `statement`: a short natural-language sentence (max 280 bytes, null-terminated). `[Built]`
-2. An on-chain `auxiliary_hash`: the content hash of the off-chain **Resolution Spec** (max 128 bytes). `[Built]` (the field); `[MVP-target]` (the spec workflow)
+2. An on-chain `auxiliary_hash`: `ar://<43-character-transaction-id>#sha256=<64-character-hex-digest>` for the off-chain **Resolution Spec** (120 of the available 128 bytes). `[Built]`
 
-### The Resolution Spec `[MVP-target]`
+### The Resolution Spec `[Built]`
 
 The Resolution Spec is the asserter-supplied rubric that defines _how_ the statement resolves: authoritative sources and their priority, key definitions, ambiguity handling, and when the statement becomes resolvable. **It is the source of truth.** The LLM resolver and the voters _apply_ the spec; they do not adjudicate absolute reality, so the same statement text can resolve differently across assertions. See [ADR-0001](adr/0001-rubric-relative-truth.md).
 
-The spec lives off-chain on **Arweave** (permanent, content-addressed); only its hash is stored on-chain in `auxiliary_hash`, so anyone can fetch the spec and verify its integrity. The protocol does not enforce a schema for the spec content. If the spec is vague, missing, or contradictory, the statement is more likely to resolve `Unresolvable` — vetting the spec before trusting an outcome is the integrator's responsibility.
+The spec lives off-chain on **Arweave** (permanent, content-addressed). The on-chain `auxiliary_hash` stores both its transaction ID and SHA-256 digest in the bounded form `ar://<tx-id>#sha256=<digest>`, so anyone can retrieve the exact transaction and verify its bytes. `create_assertion` validates this reference format; the resolver enforces fetch timeout/size limits, verifies the digest and UTF-8, and only then passes the spec to the model. The protocol does not enforce a schema for the spec content. If the spec is vague or contradictory, the statement is more likely to resolve `Unresolvable` — vetting the spec before trusting an outcome is the integrator's responsibility.
 
 ## Outcome Rules
 
@@ -27,10 +27,10 @@ The evidence, applied through the spec, verifies the statement.
 **`False` (1)** `[Built]`
 The evidence, applied through the spec, contradicts the statement.
 
-**`Unresolvable` (3)** `[MVP-target]`
+**`Unresolvable` (3)** `[Built]`
 The statement cannot be decided under the spec: source priority is unclear, evidence conflicts or is unavailable, the statement is ambiguous, the spec is too weak, the truth does not exist yet, or the vote failed to reach `supermajority_bps`. Settles **no-fault** (see [Settlement Logic](#settlement-logic)).
 
-**`TooEarly` (2)** — the code constant persists and `validate_outcome_code` still accepts it (0–3); `submit_llm_resolution` explicitly rejects it, though `finalize_vote_resolution_placeholder` can still technically accept it until the vote path is rebuilt. **Merging it into `Unresolvable` is `[MVP-target]`**: "the real-world truth does not exist yet" is just one way to be `Unresolvable`, and the target is that it settles identically. See [ADR-0005](adr/0005-no-fault-unresolvable.md).
+**`TooEarly` (2)** — deprecated. The code constant persists, but the shared outcome validator rejects it. "The real-world truth does not exist yet" is represented by `Unresolvable`. See [ADR-0005](adr/0005-no-fault-unresolvable.md).
 
 **`None` (255)** `[Built]` — sentinel for unset; the value of `outcome` until `state == Resolved`.
 
@@ -57,7 +57,7 @@ When an assertion is created (`create_assertion`):
 - `state = Asserted`
 - `outcome = None` (255)
 - `liveness_deadline` is set from `liveness_window_seconds`
-- `auxiliary_hash` points to the off-chain Resolution Spec
+- `auxiliary_hash` points to and authenticates the off-chain Resolution Spec
 
 While `Asserted`, the statement is treated as `True` by default. The liveness window is the only time a first dispute can be filed; if it expires undisputed, the assertion can be finalized `True` (`finalize_undisputed`).
 
@@ -71,7 +71,9 @@ When the first dispute is filed (`dispute_assertion`):
 - `state = PendingLLM`
 - `dispute_count = 1`
 
-The on-chain half is `[Built]`: `submit_llm_resolution` posts the verdict and is gated on a dedicated `ProtocolConfig.resolver` key — deliberately separate from `authority`, so a leaked hot resolver key can only post a challengeable verdict, not act as governance. It accepts only `True`, `False`, or `Unresolvable` (`TooEarly` is rejected per [ADR-0005](adr/0005-no-fault-unresolvable.md)). The off-chain **trusted resolver** service that makes the single LLM call and submits through this instruction is `[MVP-target]`. The LLM layer does not need to be trustless because the staked vote backstops it (a wrong verdict is challengeable). Binding LLM provenance (prompt/response/evidence hashes) on-chain for auditability is **not part of the MVP**; it is deferred to a `[Vision]` trust-minimized/permissionless resolver.
+The resolver path is `[Built]`: `submit_llm_resolution` posts the verdict and is gated on a dedicated, governance-rotatable `ProtocolConfig.resolver` key — deliberately separate from `authority`, so a leaked hot resolver key can only post a challengeable verdict, not act as governance. The off-chain worker fetches and verifies the Resolution Spec, makes the LLM call, and submits only `True`, `False`, or `Unresolvable`. Live search grounding remains operationally deferred until a paid Gemini key is available. Binding prompt/response/evidence hashes on-chain is a post-MVP `[Vision]` item.
+
+If no resolver verdict arrives by `requested_at + llm_resolution_timeout_seconds`, anyone may call `recover_pending_llm`. It transitions the round to a challengeable `Unresolvable` result and opens the standard LLM challenge window; a later no-fault finalization returns both principals. The resolver submission and recovery paths share the `PendingLLM` guard, so only one can win.
 
 On localnet, integration tests call `submit_llm_resolution` directly with a test resolver keypair; the former `mock-llm` feature and `submit_mock_llm_resolution` were removed when the real instruction landed. (An earlier instruction of the same name belonged to the 3-feed Switchboard council — `set_council_feeds`, `council_feeds`, `switchboard_*`, and `*_hash` fields — removed per [ADR-0002](adr/0002-trusted-llm-resolver.md); it was compiled but never operationally stood up.)
 
@@ -136,7 +138,7 @@ If the liveness window expires with no dispute:
 - asserter bond is returned minus the protocol fee
 - treasury receives the fee
 
-### Indeterminate (`Unresolvable`) — no-fault `[MVP-target]`
+### Indeterminate (`Unresolvable`) — no-fault `[Built]`
 
 If any path produces `Unresolvable`, the assertion settles **no-fault**:
 
@@ -156,7 +158,7 @@ If `finalize_llm_resolution` settles a `True` or `False` outcome (no vote disput
   - the asserter wins: receives their bond + the LLM disputer bond, minus fee
 - treasury receives the fee
 
-> Target `[MVP-target]`: `Unresolvable` takes the no-fault path above and does not flow through this win/lose branch. Today the code has no no-fault path — `Unresolvable` (like any `outcome != True`) still routes through the disputer-wins branch here (`llm_dispute_correct = final_outcome != OUTCOME_TRUE`), settling like `False`; this is the legacy behavior [ADR-0005](adr/0005-no-fault-unresolvable.md) replaces.
+`Unresolvable` takes the no-fault path above and does not flow through this win/lose branch. This replaces the legacy `outcome != True` behavior described in [ADR-0005](adr/0005-no-fault-unresolvable.md).
 
 ### Second Dispute (Vote Resolution) — `True` / `False` `[MVP-target]`
 

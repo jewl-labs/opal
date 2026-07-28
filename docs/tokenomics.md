@@ -54,9 +54,7 @@ llm_dispute_correct  = settlement_resolution != True
 vote_dispute_correct = settlement_resolution != challenged_llm_resolution
 ```
 
-Today the LLM-dispute rule slashes the asserter on **any** non-`True` outcome (`False`, plus the still-accepted `TooEarly`/`Unresolvable` codes), not only on a genuine `False`. This is the legacy `!= True` rule, which wrongly assigns fault on indeterminate outcomes.
-
-> **No-fault override** `[MVP-target]`. When `settlement_resolution` is `Unresolvable`, neither side is "correct" or "wrong" — the assertion settles no-fault (below). This **replaces** the legacy `settlement_resolution != True ⇒ disputer correct` rule, which wrongly slashed the asserter (or, under a True-fallback, the disputer) whenever the outcome was merely indeterminate. Only a genuine `True`/`False` settlement assigns fault. See [ADR-0005](adr/0005-no-fault-unresolvable.md).
+> **No-fault override** `[Built]`. When `settlement_resolution` is `Unresolvable`, neither side is "correct" or "wrong" — the assertion settles no-fault (below). This **replaces** the legacy `settlement_resolution != True ⇒ disputer correct` rule, which wrongly slashed the asserter whenever the outcome was merely indeterminate. Only a genuine `True`/`False` settlement assigns fault. See [ADR-0005](adr/0005-no-fault-unresolvable.md).
 
 ## Settlement Defaults
 
@@ -68,7 +66,7 @@ If the liveness window expires with no dispute:
 - the asserter bond is returned minus the protocol fee (`protocol_fee_bps`),
 - the treasury receives the fee.
 
-### Unresolvable — No-Fault `[MVP-target]`
+### Unresolvable — No-Fault `[Built]`
 
 If the settled outcome is `Unresolvable` (ambiguous, conflicting, premature, or below the vote's `supermajority_bps`):
 
@@ -76,7 +74,7 @@ If the settled outcome is `Unresolvable` (ambiguous, conflicting, premature, or 
 - no one is slashed and no fee is taken,
 - the assertion is **voided** — re-assert later if it becomes determinable.
 
-Merging `TooEarly` into `Unresolvable` is `[MVP-target]`; the `OUTCOME_TOO_EARLY` (2) constant persists and `validate_outcome_code` still accepts it, but no path is intended to emit it. See [ADR-0005](adr/0005-no-fault-unresolvable.md).
+The deprecated `OUTCOME_TOO_EARLY` (2) constant persists, but the shared outcome validator rejects it. Prematurity is represented by `Unresolvable`. See [ADR-0005](adr/0005-no-fault-unresolvable.md).
 
 ### First Dispute Settles Correct (`False`) `[Built]`
 

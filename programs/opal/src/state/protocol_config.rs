@@ -20,5 +20,6 @@ pub struct ProtocolConfig {
     pub llm_challenge_window_seconds: i64,
     pub vote_setup_window_seconds: i64,
     pub voting_window_seconds: i64,
+    pub llm_resolution_timeout_seconds: i64,
     pub bump: u8,
 }

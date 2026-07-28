@@ -23,8 +23,8 @@ The on-chain object created when an asserter posts a statement, a USDC bond, and
 **Statement** — `statement: [u8; 280]` `[Built]`
 The short human-readable sentence whose truth is asserted. Null-terminated, stored on-chain.
 
-**Resolution Spec** — `auxiliary_hash` + off-chain content `[MVP-target]`
-The asserter-supplied rubric that defines _how_ the statement resolves: authoritative sources and their priority, key definitions, ambiguity handling, and when the statement becomes resolvable. **It is the source of truth** — the LLM resolver and voters apply it; they do not judge absolute reality. The spec lives off-chain on Arweave (permanent, content-addressed); only its hash is stored on-chain (`auxiliary_hash`, ≤128 bytes), so anyone can fetch it and verify integrity. See [ADR-0001](adr/0001-rubric-relative-truth.md).
+**Resolution Spec** — `auxiliary_hash` + off-chain content `[Built]`
+The asserter-supplied rubric that defines _how_ the statement resolves: authoritative sources and their priority, key definitions, ambiguity handling, and when the statement becomes resolvable. **It is the source of truth** — the LLM resolver and voters apply it; they do not judge absolute reality. The spec lives off-chain on Arweave; `auxiliary_hash` stores `ar://<tx-id>#sha256=<digest>` so anyone can fetch and verify the exact bytes. See [ADR-0001](adr/0001-rubric-relative-truth.md).
 _Avoid_: "auxiliary data" framed as optional hints; "evidence" — it is the spec, not a hint.
 
 **Rubric-relative truth** `[MVP-target]`
@@ -49,8 +49,8 @@ The terminal result on the assertion; `OUTCOME_NONE` (255) until `state == Resol
 
 - `True` (0) `[Built]` — verified under the spec.
 - `False` (1) `[Built]` — contradicted under the spec.
-- `Unresolvable` (3) `[MVP-target]` — cannot be decided under the spec (ambiguous, conflicting, premature, or below the vote's supermajority). Settles **no-fault** (see Economics).
-- `TooEarly` (2) — the code value persists and `validate_outcome_code` still accepts it; no path is intended to emit it. **Merging it into `Unresolvable` is `[MVP-target]`.** _Avoid_ treating it as a distinct outcome.
+- `Unresolvable` (3) `[Built]` — cannot be decided under the spec (ambiguous, conflicting, premature, or below the vote's supermajority). Settles **no-fault** (see Economics).
+- `TooEarly` (2) — deprecated. The code value persists, but the shared outcome validator rejects it; use `Unresolvable`. _Avoid_ treating it as a distinct outcome.
 - `None` (255) — sentinel for unset.
 
 ## Participants
@@ -60,7 +60,7 @@ The terminal result on the assertion; `OUTCOME_NONE` (255) until `state == Resol
 **LLM Disputer** `[Built]` — the first disputer; challenges the default `True` and triggers LLM resolution.
 **Vote Disputer** `[Built]` — the second disputer; challenges the LLM verdict and triggers the staked vote.
 **Voter** `[MVP-target]` — anyone who stakes USDC into a specific vote round; weight is linear in stake; wrong-side stake is slashed, right-side stake earns rewards.
-**LLM Resolver** `[MVP-target]` — a trusted off-chain service that calls one LLM and posts the verdict via `submit_llm_resolution` `[Built]`, gated on the dedicated `ProtocolConfig.resolver` key. (On-chain LLM provenance hashing is deferred to `[Vision]`.) See [ADR-0002](adr/0002-trusted-llm-resolver.md).
+**LLM Resolver** `[Built]` — a trusted off-chain service that verifies the Resolution Spec, calls one LLM, and posts the verdict via `submit_llm_resolution`, gated on the dedicated, governance-rotatable `ProtocolConfig.resolver` key. Live search grounding awaits a paid Gemini key; on-chain provenance hashing is deferred to `[Vision]`. See [ADR-0002](adr/0002-trusted-llm-resolver.md).
 _Avoid_: "council" for the resolver — the 3-feed Switchboard council was removed per ADR-0002 and was never the resolver design.
 **Integrator** — any app consuming Opal outcomes; must read the Resolution Spec to judge whether an outcome is meaningful for its use case, and should require `state == Resolved` before irreversible settlement.
 
@@ -75,7 +75,7 @@ _Avoid_: calling the asset "pusd" (it is USDC — `pusd` is only the legacy on-c
 
 **Schelling-point vote** `[MVP-target]` — the staked vote is a coordination game on the truth: losing-side voters are slashed and winning-side voters are paid from the losing side, so the equilibrium is to vote the spec's honest answer. Security comes from this slashing, not from any weight curve. See [ADR-0003](adr/0003-private-staked-voting.md).
 
-**No-fault settlement** `[MVP-target]` — when an assertion resolves `Unresolvable`, all bonds are returned and no one is slashed; the assertion is voided. See [ADR-0005](adr/0005-no-fault-unresolvable.md).
+**No-fault settlement** `[Built]` — when an assertion resolves `Unresolvable`, all bonds are returned, no fee is taken, and no one is slashed; the assertion is voided. See [ADR-0005](adr/0005-no-fault-unresolvable.md).
 _Avoid_: the legacy `!= True ⇒ disputer correct` rule, which slashed on indeterminate outcomes.
 
 **Settlement Split** `[MVP-target]` — the slashed pot is divided by configured shares (`llm_disputer_reward_share_bps`, `vote_disputer_reward_share_bps`, `voter_reward_share_bps`, `treasury_share_bps`, summing ≤ 100%). Today only `protocol_fee_bps` is applied `[Built]`; the share-based split is `[MVP-target]`.

@@ -5,7 +5,7 @@ use crate::{
     },
     errors::OpalError,
     state::{AssertionAccount, ProtocolConfig},
-    utils::checked_add_i64,
+    utils::{checked_add_i64, validate_resolution_spec_reference},
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
@@ -75,6 +75,7 @@ pub fn handler(ctx: Context<CreateAssertion>, args: CreateAssertionArgs) -> Resu
         hash_bytes.len() <= MAX_AUXILIARY_HASH_LEN,
         OpalError::AuxiliaryHashTooLong
     );
+    validate_resolution_spec_reference(&args.auxiliary_hash)?;
 
     let protocol_config = ctx.accounts.protocol_config.load()?;
     require!(

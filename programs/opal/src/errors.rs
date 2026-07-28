@@ -38,6 +38,8 @@ pub enum OpalError {
     StatementTooLong,
     #[msg("Auxiliary hash exceeds max length")]
     AuxiliaryHashTooLong,
+    #[msg("Invalid Resolution Spec reference")]
+    InvalidResolutionSpecReference,
     #[msg("Invalid treasury token account")]
     InvalidTreasuryAccount,
     #[msg("Invalid asserter token account")]

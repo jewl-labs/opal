@@ -1,15 +1,45 @@
 use crate::{
-    constants::{BPS_DENOMINATOR, OUTCOME_NONE, OUTCOME_UNRESOLVABLE, TIMESTAMP_NONE},
+    constants::{
+        ARWEAVE_TRANSACTION_ID_LEN, BPS_DENOMINATOR, OUTCOME_FALSE, OUTCOME_NONE, OUTCOME_TRUE,
+        OUTCOME_UNRESOLVABLE, RESOLUTION_SPEC_REFERENCE_DIGEST_SEPARATOR,
+        RESOLUTION_SPEC_REFERENCE_LEN, RESOLUTION_SPEC_REFERENCE_PREFIX, SHA256_HEX_LEN,
+        TIMESTAMP_NONE,
+    },
     errors::OpalError,
 };
 use anchor_lang::prelude::*;
 
 pub fn validate_outcome_code(outcome_code: u8) -> Result<u8> {
     require!(
-        outcome_code <= OUTCOME_UNRESOLVABLE,
+        matches!(
+            outcome_code,
+            OUTCOME_TRUE | OUTCOME_FALSE | OUTCOME_UNRESOLVABLE
+        ),
         OpalError::InvalidOutcomeCode
     );
     Ok(outcome_code)
+}
+
+pub fn validate_resolution_spec_reference(reference: &str) -> Result<()> {
+    let bytes = reference.as_bytes();
+    let transaction_id_start = RESOLUTION_SPEC_REFERENCE_PREFIX.len();
+    let transaction_id_end = transaction_id_start + ARWEAVE_TRANSACTION_ID_LEN;
+    let digest_separator_end =
+        transaction_id_end + RESOLUTION_SPEC_REFERENCE_DIGEST_SEPARATOR.len();
+    let digest_end = digest_separator_end + SHA256_HEX_LEN;
+
+    let valid = bytes.len() == RESOLUTION_SPEC_REFERENCE_LEN
+        && bytes.starts_with(RESOLUTION_SPEC_REFERENCE_PREFIX)
+        && bytes[transaction_id_start..transaction_id_end]
+            .iter()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_'))
+        && bytes[transaction_id_end..digest_separator_end]
+            == *RESOLUTION_SPEC_REFERENCE_DIGEST_SEPARATOR
+        && bytes[digest_separator_end..digest_end]
+            .iter()
+            .all(u8::is_ascii_hexdigit);
+    require!(valid, OpalError::InvalidResolutionSpecReference);
+    Ok(())
 }
 
 pub fn checked_bps(amount: u64, bps: u16) -> Result<u64> {

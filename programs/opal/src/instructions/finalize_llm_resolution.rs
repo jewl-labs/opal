@@ -1,7 +1,7 @@
 use crate::{
     constants::{
         ASSERTION_SEED, ASSERTION_STATE_ASSERTED_LLM, ASSERTION_STATE_RESOLVED, BOND_VAULT_SEED,
-        LLM_DISPUTE_SEED, LLM_ROUND_SEED, OUTCOME_TRUE, PROTOCOL_CONFIG_SEED,
+        LLM_DISPUTE_SEED, LLM_ROUND_SEED, OUTCOME_TRUE, OUTCOME_UNRESOLVABLE, PROTOCOL_CONFIG_SEED,
     },
     errors::OpalError,
     state::{AssertionAccount, LlmDisputeAccount, LlmResolutionRound, ProtocolConfig},
@@ -154,31 +154,32 @@ pub fn handler(
         OpalError::InvalidTreasuryAccount
     );
 
-    // !TBD: Reserved outcomes (TooEarly, Unresolvable) need explicit economic handling.
-    // Currently they are treated identically to False (disputer wins).
-    let llm_dispute_correct = final_outcome != OUTCOME_TRUE;
-
-    let (asserter_payout, llm_disputer_payout, treasury_fee) = if llm_dispute_correct {
-        let fee = checked_bps(assertion_bond, protocol_config.protocol_fee_bps)?;
-        let llm_payout = llm_dispute_bond
-            .checked_add(
-                assertion_bond
-                    .checked_sub(fee)
-                    .ok_or(OpalError::MathOverflow)?,
-            )
-            .ok_or(OpalError::MathOverflow)?;
-        (0, llm_payout, fee)
-    } else {
-        let fee = checked_bps(llm_dispute_bond, protocol_config.protocol_fee_bps)?;
-        let asserter_total = assertion_bond
-            .checked_add(
-                llm_dispute_bond
-                    .checked_sub(fee)
-                    .ok_or(OpalError::MathOverflow)?,
-            )
-            .ok_or(OpalError::MathOverflow)?;
-        (asserter_total, 0, fee)
-    };
+    let (asserter_payout, llm_disputer_payout, treasury_fee) =
+        if final_outcome == OUTCOME_UNRESOLVABLE {
+            // Nobody is at fault when the assertion cannot be decided under its
+            // resolution spec. Return both principals and charge no protocol fee.
+            (assertion_bond, llm_dispute_bond, 0)
+        } else if final_outcome != OUTCOME_TRUE {
+            let fee = checked_bps(assertion_bond, protocol_config.protocol_fee_bps)?;
+            let llm_payout = llm_dispute_bond
+                .checked_add(
+                    assertion_bond
+                        .checked_sub(fee)
+                        .ok_or(OpalError::MathOverflow)?,
+                )
+                .ok_or(OpalError::MathOverflow)?;
+            (0, llm_payout, fee)
+        } else {
+            let fee = checked_bps(llm_dispute_bond, protocol_config.protocol_fee_bps)?;
+            let asserter_total = assertion_bond
+                .checked_add(
+                    llm_dispute_bond
+                        .checked_sub(fee)
+                        .ok_or(OpalError::MathOverflow)?,
+                )
+                .ok_or(OpalError::MathOverflow)?;
+            (asserter_total, 0, fee)
+        };
 
     let assertion_id = assertion.id;
     let bump = assertion.bump;
