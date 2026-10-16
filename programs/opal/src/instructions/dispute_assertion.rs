@@ -27,7 +27,7 @@ pub struct DisputeAssertion<'info> {
     )]
     pub protocol_config: AccountLoader<'info, ProtocolConfig>,
 
-    pub pusd_mint: Account<'info, Mint>,
+    pub usdc_mint: Account<'info, Mint>,
 
     #[account(
         mut,
@@ -58,17 +58,17 @@ pub struct DisputeAssertion<'info> {
         mut,
         seeds = [BOND_VAULT_SEED, args.assertion_id.as_ref()],
         bump,
-        token::mint = pusd_mint,
+        token::mint = usdc_mint,
         token::authority = assertion,
     )]
     pub bond_vault: Account<'info, TokenAccount>,
 
     #[account(
         mut,
-        token::mint = pusd_mint,
+        token::mint = usdc_mint,
         token::authority = disputer,
     )]
-    pub disputer_pusd: Account<'info, TokenAccount>,
+    pub disputer_usdc: Account<'info, TokenAccount>,
 
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
@@ -91,7 +91,7 @@ pub fn handler(ctx: Context<DisputeAssertion>, _args: DisputeAssertionArgs) -> R
     );
 
     let bond_amount = checked_bps(
-        assertion.assertion_bond_amount_pusd,
+        assertion.assertion_bond_amount_usdc,
         protocol_config.llm_dispute_bond_ratio_bps,
     )?;
     drop(assertion);
@@ -102,7 +102,7 @@ pub fn handler(ctx: Context<DisputeAssertion>, _args: DisputeAssertionArgs) -> R
         CpiContext::new(
             Token::id(),
             Transfer {
-                from: ctx.accounts.disputer_pusd.to_account_info(),
+                from: ctx.accounts.disputer_usdc.to_account_info(),
                 to: ctx.accounts.bond_vault.to_account_info(),
                 authority: ctx.accounts.disputer.to_account_info(),
             },
@@ -115,7 +115,7 @@ pub fn handler(ctx: Context<DisputeAssertion>, _args: DisputeAssertionArgs) -> R
     let mut llm_dispute = ctx.accounts.llm_dispute.load_init()?;
     llm_dispute.assertion = ctx.accounts.assertion.key();
     llm_dispute.disputer = ctx.accounts.disputer.key();
-    llm_dispute.bond_amount_pusd = bond_amount;
+    llm_dispute.bond_amount_usdc = bond_amount;
     llm_dispute.created_at = now;
     llm_dispute.resolution_round = llm_round_key;
     llm_dispute.settlement_resolution = OUTCOME_NONE;

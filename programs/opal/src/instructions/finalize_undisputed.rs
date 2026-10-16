@@ -4,11 +4,11 @@ use crate::{
         OUTCOME_TRUE, PROTOCOL_CONFIG_SEED,
     },
     errors::OpalError,
+    settlement::{settle, PayoutAccounts, Positions, Settlement},
     state::{AssertionAccount, ProtocolConfig},
-    utils::checked_bps,
 };
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
+use anchor_spl::token::{Mint, Token, TokenAccount};
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct FinalizeUndisputedArgs {
@@ -26,7 +26,7 @@ pub struct FinalizeUndisputed<'info> {
     )]
     pub protocol_config: AccountLoader<'info, ProtocolConfig>,
 
-    pub pusd_mint: Account<'info, Mint>,
+    pub usdc_mint: Account<'info, Mint>,
 
     #[account(
         mut,
@@ -39,22 +39,22 @@ pub struct FinalizeUndisputed<'info> {
         mut,
         seeds = [BOND_VAULT_SEED, args.assertion_id.as_ref()],
         bump,
-        token::mint = pusd_mint,
+        token::mint = usdc_mint,
         token::authority = assertion,
     )]
     pub bond_vault: Account<'info, TokenAccount>,
 
     #[account(
         mut,
-        token::mint = pusd_mint,
+        token::mint = usdc_mint,
     )]
-    pub asserter_pusd: Account<'info, TokenAccount>,
+    pub asserter_usdc: Account<'info, TokenAccount>,
 
     #[account(
         mut,
-        token::mint = pusd_mint,
+        token::mint = usdc_mint,
     )]
-    pub treasury_pusd: Account<'info, TokenAccount>,
+    pub treasury_usdc: Account<'info, TokenAccount>,
 
     pub token_program: Program<'info, Token>,
 }
@@ -77,60 +77,34 @@ pub fn handler(ctx: Context<FinalizeUndisputed>, _args: FinalizeUndisputedArgs) 
         now >= assertion.liveness_deadline,
         OpalError::DeadlineNotReached
     );
-    require!(
-        ctx.accounts.bond_vault.amount >= assertion.assertion_bond_amount_pusd,
-        OpalError::InsufficientVaultBalance
-    );
-    require!(
-        ctx.accounts.asserter_pusd.owner == assertion.asserter,
-        OpalError::InvalidAsserterTokenAccount
-    );
-    require!(
-        ctx.accounts.treasury_pusd.key() == protocol_config.treasury,
-        OpalError::InvalidTreasuryAccount
-    );
 
-    let assertion_bond = assertion.assertion_bond_amount_pusd;
-    let fee = checked_bps(assertion_bond, protocol_config.protocol_fee_bps)?;
-    let asserter_payout = assertion_bond
-        .checked_sub(fee)
-        .ok_or(OpalError::MathOverflow)?;
-
+    let positions = Positions {
+        asserter: assertion.asserter,
+        asserter_bond: assertion.assertion_bond_amount_usdc,
+        llm_disputer: None,
+    };
+    let fee_bps = protocol_config.protocol_fee_bps;
+    let treasury = protocol_config.treasury;
     let assertion_id = assertion.id;
     let bump = assertion.bump;
     drop(assertion);
+    drop(protocol_config);
 
     let signer_seeds: &[&[u8]] = &[ASSERTION_SEED, assertion_id.as_ref(), &[bump]];
-
-    if asserter_payout > 0 {
-        token::transfer(
-            CpiContext::new_with_signer(
-                Token::id(),
-                Transfer {
-                    from: ctx.accounts.bond_vault.to_account_info(),
-                    to: ctx.accounts.asserter_pusd.to_account_info(),
-                    authority: ctx.accounts.assertion.to_account_info(),
-                },
-                &[signer_seeds],
-            ),
-            asserter_payout,
-        )?;
-    }
-
-    if fee > 0 {
-        token::transfer(
-            CpiContext::new_with_signer(
-                Token::id(),
-                Transfer {
-                    from: ctx.accounts.bond_vault.to_account_info(),
-                    to: ctx.accounts.treasury_pusd.to_account_info(),
-                    authority: ctx.accounts.assertion.to_account_info(),
-                },
-                &[signer_seeds],
-            ),
-            fee,
-        )?;
-    }
+    settle(
+        Settlement::Undisputed,
+        &positions,
+        fee_bps,
+        treasury,
+        PayoutAccounts {
+            bond_vault: &ctx.accounts.bond_vault,
+            assertion: ctx.accounts.assertion.as_ref(),
+            asserter_usdc: &ctx.accounts.asserter_usdc,
+            llm_disputer_usdc: None,
+            treasury_usdc: &ctx.accounts.treasury_usdc,
+        },
+        signer_seeds,
+    )?;
 
     let mut assertion = ctx.accounts.assertion.load_mut()?;
     assertion.state = ASSERTION_STATE_RESOLVED;
