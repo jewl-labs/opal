@@ -133,7 +133,7 @@ pub fn handler(
 
     token::transfer(
         CpiContext::new(
-            ctx.accounts.token_program.to_account_info(),
+            Token::id(),
             Transfer {
                 from: ctx.accounts.disputer_pusd.to_account_info(),
                 to: ctx.accounts.bond_vault.to_account_info(),

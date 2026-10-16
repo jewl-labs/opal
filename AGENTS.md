@@ -13,12 +13,12 @@ Opal is a Solana (Anchor) optimistic oracle for natural-language statements. **T
 ```bash
 bun install              # deps
 anchor build             # build program + regenerate target/idl + target/types
-anchor test              # full TS integration suite on localnet
+anchor test              # full TS integration suite on surfpool
 bun run test:local       # alias for anchor test
 bun run format           # prettier check  (format:fix to write)
 ```
 
-> `anchor test` currently runs on **localnet**; pointing it at real devnet integration is deferred per [ADR-0006](docs/adr/0006-codebase-organization.md).
+> `anchor test` currently runs on **surfpool** (Anchor v1's default local runner); pointing it at real devnet integration is deferred per [ADR-0006](docs/adr/0006-codebase-organization.md).
 
 The web frontend lives in `web/` — see [web/AGENTS.md](web/AGENTS.md).
 
@@ -55,7 +55,8 @@ Program ID (localnet): `8NCcxyAzKiAHxJ9DMnADtxShYutS9w81wHcXqgCavTBy`
 
 ## Gotchas
 
-- **No Rust unit tests.** All coverage is `tests/opal.test.ts` against a localnet validator; `cargo test -p opal` runs an empty harness.
+- **No Rust unit tests.** All coverage is `tests/opal.test.ts` against a local surfpool network; `cargo test -p opal` runs an empty harness.
+- **Surfpool clock:** `Anchor.toml` sets `[surfpool] block_production_mode = "clock"` so the on-chain `Clock` advances during the suite's real-time `sleep()`s. Without it surfpool only ticks the clock on incoming transactions, and every deadline/window test fails (`DeadlineNotReached` / negative tests that never reject).
 - **LLM resolution in tests calls `submit_llm_resolution` directly** with a test resolver keypair (the outcome is passed as an argument; the former `mock-llm` feature is gone). The off-chain resolver service that makes the real LLM call is `[MVP-target]` — see [ADR-0002](docs/adr/0002-trusted-llm-resolver.md).
 - **Mainnet auth is commented out:** `initialize_protocol_config` has a disabled `require!(authority == crate::ID)` so tests can init with any keypair. Uncomment before mainnet.
 - **The asset is USDC.** Some code fields still read `pusd_*` pending the rename — see [ADR-0004](docs/adr/0004-single-asset-usdc.md).
