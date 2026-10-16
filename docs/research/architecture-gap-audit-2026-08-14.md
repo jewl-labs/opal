@@ -230,6 +230,9 @@ Upgrade authority also matters: an upgradeable program cannot promise privacy
 from its own administrator. Define the threat model and approved TEE
 measurement/upgrade policy before selecting accounts.
 
+Status: TBD — adversary model undecided. Left open deliberately; do not treat
+the current MVP privacy description as a committed threat model.
+
 ### eSPL model and atomic vote lock
 
 "Private Payments/eSPL" conflates separate surfaces. The hosted Payments API
@@ -273,6 +276,11 @@ revocation path; the current initializer notes that a bad key permanently
 bricks resolution. Devnet needs authority-gated immediate rotation, an audit
 event/record, and a decision about pending disputes.
 
+Decision: Option A — implement authority-gated immediate rotation and
+revocation before Devnet. Revoked or replaced keys must not submit new
+verdicts; every key change emits an auditable event/record with explicit
+handling of pending resolver jobs. Devnet release gate.
+
 ### Security budget and liveness incentives
 
 Fixed 500 USDC bonds and a 3,000 USDC voting quorum do not bound downstream
@@ -287,6 +295,11 @@ A single long-lived Voting PER puts all private balances and vote rounds behind
 one availability, operator, funding, and upgrade domain. Define validator/TEE
 rotation, outage behavior, migration, monitoring, and recovery before calling it
 a durable custody layer.
+
+Decision for Devnet MVP: accepted liveness risk, no migration or fallback.
+The Voting PER is not expected to be down for long periods, let alone
+indefinitely; a prolonged outage leaves bonds and unclaimed payouts locked
+until it resumes. No base-layer claim fallback or admin migration for Devnet.
 
 ## Recommended closure order
 

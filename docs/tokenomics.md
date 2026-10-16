@@ -73,11 +73,11 @@ Both dispute accounts carry a `settlement_resolution`, the outcome that settleme
 A dispute is **correct** when the settled outcome contradicts the answer it challenged. `Unresolvable` is a fault-assigned outcome; only `NoConsensus` assigns no correctness:
 
 ```text
-llm_dispute_correct  = settlement_resolution != True
-vote_dispute_correct = settlement_resolution != challenged_llm_resolution
+llm_dispute_correct  = settlement_resolution != True AND settlement_resolution != NoConsensus
+vote_dispute_correct = settlement_resolution != challenged_llm_resolution AND settlement_resolution != NoConsensus
 ```
 
-The first disputer is correct whenever the final outcome is `False` or `Unresolvable`; the asserter is correct only when it is `True`. A vote disputer is correct whenever the final outcome differs from the LLM verdict they challenged. `NoConsensus` overrides both rules and assigns no fault. See [ADR-0007](adr/0007-unresolvable-vs-no-consensus.md).
+The first disputer is correct whenever the final outcome is `False` or `Unresolvable`; the asserter is correct only when it is `True`. A vote disputer is correct whenever the final outcome differs from the LLM verdict they challenged. `NoConsensus` assigns no correctness under either rule and settles no-fault. `ResolverUnavailable` has no `settlement_resolution` and bypasses correctness evaluation entirely. See [ADR-0007](adr/0007-unresolvable-vs-no-consensus.md).
 
 ## Settlement Defaults
 
