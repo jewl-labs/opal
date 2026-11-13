@@ -56,6 +56,7 @@ What we've discussed and considered so far. This is not a fixed plan. "Direction
 ### Config admin
 
 - Gate `initialize_protocol_config` on the program's upgrade authority (ProgramData check). PR #31 has code worth salvaging for this and for `update_resolver`.
+- When the gate lands, delete the commented-out `crate::ID` check in `initialize_protocol_config.rs`. It's the wrong fix: the program account can't pay for `init`.
 - Add a two-step authority transfer (propose, then accept) and authority-only `update_resolver`, emitting events.
 - Bonds and fees stay fixed per deployment for now. If they ever become changeable, snapshot them onto each assertion, because `settle` reads the live config.
 - Key policy:
@@ -74,6 +75,7 @@ What we've discussed and considered so far. This is not a fixed plan. "Direction
 
 - Resolver Deadline and `ResolverUnavailable`. Today a silent resolver locks both bonds forever.
 - Rename `OUTCOME_TOO_EARLY` to `NoConsensus`.
+- Tests for `settle`'s recipient checks. Nothing asserts `InvalidAsserterTokenAccount`, `InvalidDisputerTokenAccount` or `InvalidTreasuryAccount`, and they are all that stops a finalizer redirecting a payout. Add them with the settlement refactor.
 - Known gaps: a second `dispute_assertion` fails in Anchor's `init` before the `AssertionAlreadyDisputed` guard runs; `anchor build` warns about a program-ID mismatch.
 
 ## Open: fee model
@@ -145,4 +147,5 @@ MagicBlock: not needed unless private stake is chosen. VRF only if we use random
 ## Other considerations
 
 - Unretrievable spec: `protocol.md` says a spec the resolver can't fetch gets no verdict, so bonds refund in full. An asserter could post a URI pointing at nothing and never be slashed. Consider having the resolver post `Unresolvable` after bounded retries (a silent resolver still gives `ResolverUnavailable`).
+- `web/` still describes the old program. `web/AGENTS.md` says the `*_pusd` to `*_usdc` rename is still to come; the landing page names `open_vote`, `finalize_vote_resolution` and `VoteResolutionRound`; one comment cites the deleted `docs/resolution.md`. Fix when the web app starts consuming the IDL.
 - Docs cleanups: "Not in the MVP" is in both `protocol.md` and the glossary; hardcoded 990/495 USDC sit next to the Parameters table; ADR numbers skip 4–6 without explanation; no state-machine or fund-flow diagram.
