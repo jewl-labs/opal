@@ -28,10 +28,6 @@ pub enum OpalError {
     ConfigInvariantViolation,
     #[msg("Dispute has already been settled")]
     AlreadySettled,
-    #[msg("Vote is not open")]
-    VoteNotOpen,
-    #[msg("Voting window is still open")]
-    VoteWindowNotClosed,
     #[msg("Challenge deadline is missing")]
     MissingChallengeDeadline,
     #[msg("Assertion statement exceeds max length")]
@@ -44,10 +40,6 @@ pub enum OpalError {
     InvalidAsserterTokenAccount,
     #[msg("Invalid disputer token account")]
     InvalidDisputerTokenAccount,
-    #[msg("Assertion and related account link mismatch")]
-    AssertionLinkMismatch,
-    #[msg("Resolution round link mismatch")]
-    RoundLinkMismatch,
     #[msg("Insufficient balance in bond vault")]
     InsufficientVaultBalance,
     #[msg("Assertion bond minimum must be greater than zero")]

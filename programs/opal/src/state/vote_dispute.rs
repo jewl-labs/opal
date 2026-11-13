@@ -7,9 +7,7 @@ pub struct VoteDisputeAccount {
     pub disputer: Pubkey,
     pub challenged_llm_resolution_round: Pubkey,
     pub challenged_llm_resolution: u8,
-    pub bond_amount_pusd: u64,
+    pub bond_amount_usdc: u64,
     pub created_at: i64,
-    pub resolution_round: Pubkey,
-    pub settlement_resolution: u8,
     pub bump: u8,
 }

@@ -15,7 +15,7 @@ pub struct CreateAssertionArgs {
     pub assertion_id: Pubkey,
     pub statement: String,
     pub auxiliary_hash: String,
-    pub assertion_bond_amount_pusd: u64,
+    pub assertion_bond_amount_usdc: u64,
 }
 
 #[derive(Accounts)]
@@ -30,7 +30,7 @@ pub struct CreateAssertion<'info> {
     )]
     pub protocol_config: AccountLoader<'info, ProtocolConfig>,
 
-    pub pusd_mint: Account<'info, Mint>,
+    pub usdc_mint: Account<'info, Mint>,
 
     // !TBD: assertion_id is caller-supplied, allowing front-running of the assertion PDA.
     // Consider using a hash of (asserter, nonce) to prevent this.
@@ -46,7 +46,7 @@ pub struct CreateAssertion<'info> {
     #[account(
         init,
         payer = asserter,
-        token::mint = pusd_mint,
+        token::mint = usdc_mint,
         token::authority = assertion,
         seeds = [BOND_VAULT_SEED, args.assertion_id.as_ref()],
         bump
@@ -55,10 +55,10 @@ pub struct CreateAssertion<'info> {
 
     #[account(
         mut,
-        token::mint = pusd_mint,
+        token::mint = usdc_mint,
         token::authority = asserter,
     )]
-    pub asserter_pusd: Account<'info, TokenAccount>,
+    pub asserter_usdc: Account<'info, TokenAccount>,
 
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
@@ -78,11 +78,11 @@ pub fn handler(ctx: Context<CreateAssertion>, args: CreateAssertionArgs) -> Resu
 
     let protocol_config = ctx.accounts.protocol_config.load()?;
     require!(
-        args.assertion_bond_amount_pusd >= protocol_config.assertion_bond_min_pusd,
+        args.assertion_bond_amount_usdc >= protocol_config.assertion_bond_min_usdc,
         OpalError::InsufficientBondAmount
     );
     require!(
-        ctx.accounts.pusd_mint.key() == protocol_config.pusd_mint,
+        ctx.accounts.usdc_mint.key() == protocol_config.usdc_mint,
         OpalError::InvalidMint
     );
 
@@ -108,23 +108,22 @@ pub fn handler(ctx: Context<CreateAssertion>, args: CreateAssertionArgs) -> Resu
     assertion.outcome = OUTCOME_NONE;
     assertion.finalized_at = TIMESTAMP_NONE;
     assertion.dispute_count = 0;
-    assertion.assertion_bond_amount_pusd = args.assertion_bond_amount_pusd;
+    assertion.assertion_bond_amount_usdc = args.assertion_bond_amount_usdc;
     assertion.llm_dispute = Pubkey::default();
     assertion.vote_dispute = Pubkey::default();
     assertion.llm_resolution_round = Pubkey::default();
-    assertion.vote_resolution_round = Pubkey::default();
     assertion.bump = ctx.bumps.assertion;
 
     token::transfer(
         CpiContext::new(
             Token::id(),
             Transfer {
-                from: ctx.accounts.asserter_pusd.to_account_info(),
+                from: ctx.accounts.asserter_usdc.to_account_info(),
                 to: ctx.accounts.bond_vault.to_account_info(),
                 authority: ctx.accounts.asserter.to_account_info(),
             },
         ),
-        args.assertion_bond_amount_pusd,
+        args.assertion_bond_amount_usdc,
     )?;
 
     Ok(())

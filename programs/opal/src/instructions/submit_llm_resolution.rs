@@ -58,8 +58,8 @@ pub fn handler(ctx: Context<SubmitLlmResolution>, args: SubmitLlmResolutionArgs)
     );
 
     let outcome = validate_outcome_code(args.outcome_code)?;
-    // TooEarly is merged into Unresolvable per ADR-0005; the resolver emits
-    // only True, False, or Unresolvable.
+    // Code 2 (TooEarly) is reserved for the vote-only NoConsensus outcome (ADR-0007),
+    // so the resolver posts only True, False, or Unresolvable.
     require!(outcome != OUTCOME_TOO_EARLY, OpalError::InvalidOutcomeCode);
 
     let now = Clock::get()?.unix_timestamp;

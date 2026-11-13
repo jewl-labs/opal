@@ -1,7 +1,14 @@
 import { describe, it, expect, beforeAll } from 'bun:test';
-import { Connection, Keypair, PublicKey, SystemProgram } from '@solana/web3.js';
+import {
+  Connection,
+  Keypair,
+  PublicKey,
+  SYSVAR_CLOCK_PUBKEY,
+  SystemProgram,
+} from '@solana/web3.js';
 import * as anchor from '@anchor-lang/core';
-import { Program, AnchorProvider, Wallet, BN } from '@anchor-lang/core';
+import { Program, AnchorProvider, BN } from '@anchor-lang/core';
+import type { IdlTypes } from '@anchor-lang/core';
 import {
   createMint,
   getOrCreateAssociatedTokenAccount,
@@ -14,34 +21,54 @@ import type { Opal } from '../target/types/opal';
 
 const TOKEN_PROGRAM_ID = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
 
+// Seeds, states and outcomes are `#[constant]`s in constants.rs, read back from the IDL.
+function idlConstant(name: string): string {
+  const found = idl.constants.find((c) => c.name === name);
+  if (!found) throw new Error(`constant ${name} is missing from the IDL`);
+  return found.value;
+}
+const seed = (name: string) => Buffer.from(JSON.parse(idlConstant(name)) as number[]);
+const code = (name: string) => Number(idlConstant(name));
+
 const SEEDS = {
-  PROTOCOL_CONFIG: Buffer.from('protocol_config'),
-  ASSERTION: Buffer.from('assertion'),
-  BOND_VAULT: Buffer.from('bond_vault'),
-  LLM_DISPUTE: Buffer.from('llm_dispute'),
-  VOTE_DISPUTE: Buffer.from('vote_dispute'),
-  LLM_ROUND: Buffer.from('llm_round'),
-  VOTE_ROUND: Buffer.from('vote_round'),
+  PROTOCOL_CONFIG: seed('PROTOCOL_CONFIG_SEED'),
+  ASSERTION: seed('ASSERTION_SEED'),
+  BOND_VAULT: seed('BOND_VAULT_SEED'),
+  LLM_DISPUTE: seed('LLM_DISPUTE_SEED'),
+  VOTE_DISPUTE: seed('VOTE_DISPUTE_SEED'),
+  LLM_ROUND: seed('LLM_ROUND_SEED'),
 };
 
 const STATE = {
-  ASSERTED: 0,
-  PENDING_LLM: 1,
-  ASSERTED_LLM: 2,
-  PENDING_VOTE: 3,
-  VOTING: 4,
-  RESOLVED: 5,
+  ASSERTED: code('ASSERTION_STATE_ASSERTED'),
+  PENDING_LLM: code('ASSERTION_STATE_PENDING_LLM'),
+  ASSERTED_LLM: code('ASSERTION_STATE_ASSERTED_LLM'),
+  PENDING_VOTE: code('ASSERTION_STATE_PENDING_VOTE'),
+  RESOLVED: code('ASSERTION_STATE_RESOLVED'),
 };
 
 const OUTCOME = {
-  TRUE: 0,
-  FALSE: 1,
-  TOO_EARLY: 2,
-  UNRESOLVABLE: 3,
-  NONE: 255,
+  TRUE: code('OUTCOME_TRUE'),
+  FALSE: code('OUTCOME_FALSE'),
+  TOO_EARLY: code('OUTCOME_TOO_EARLY'),
+  UNRESOLVABLE: code('OUTCOME_UNRESOLVABLE'),
+  NONE: code('OUTCOME_NONE'),
 };
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+// Windows are long on purpose: tests cross them with `advanceSeconds`, never by waiting.
+const LIVENESS_SECONDS = 3600;
+const CHALLENGE_SECONDS = 1800;
+
+type ConfigArgs = IdlTypes<Opal>['initializeProtocolConfigArgs'];
+
+const CONFIG_DEFAULTS: Omit<ConfigArgs, 'resolver'> = {
+  assertionBondMinUsdc: new BN(100),
+  llmDisputeBondRatioBps: 5000,
+  voteDisputeBondRatioBps: 3000,
+  protocolFeeBps: 250,
+  livenessWindowSeconds: new BN(LIVENESS_SECONDS),
+  llmChallengeWindowSeconds: new BN(CHALLENGE_SECONDS),
+};
 
 async function fund(connection: Connection, pk: PublicKey, lamports: number) {
   const sig = await connection.requestAirdrop(pk, lamports);
@@ -51,6 +78,63 @@ async function fund(connection: Connection, pk: PublicKey, lamports: number) {
 async function balanceOf(connection: Connection, ata: PublicKey) {
   const acc = await getAccount(connection, ata, 'confirmed');
   return Number(acc.amount);
+}
+
+// The on-chain Clock is in seconds; the sysvar stores `unix_timestamp` at byte offset 32.
+async function chainTime(connection: Connection): Promise<number> {
+  const info = await connection.getAccountInfo(SYSVAR_CLOCK_PUBKEY, 'confirmed');
+  if (!info) throw new Error('clock sysvar not found');
+  return Number(info.data.readBigInt64LE(32));
+}
+
+// Warps the surfpool clock forward so the on-chain time is at least `seconds` later.
+// `surfnet_timeTravel` takes MILLISECONDS and only moves forward; it rejects a target
+// the clock has already passed, so re-read and retry if the clock raced ahead of us.
+async function advanceSeconds(connection: Connection, seconds: number) {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const before = await chainTime(connection);
+    const res = await fetch(connection.rpcEndpoint, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'surfnet_timeTravel',
+        params: [{ absoluteTimestamp: (before + seconds) * 1000 }],
+      }),
+    });
+    const body = (await res.json()) as { error?: { data?: string; message: string } };
+    if (body.error) {
+      if (String(body.error.data).includes('past timestamp')) continue;
+      throw new Error(`surfnet_timeTravel failed: ${JSON.stringify(body.error)}`);
+    }
+    const after = await chainTime(connection);
+    if (after < before + seconds) {
+      throw new Error(`clock only reached ${after}, wanted ${before + seconds}`);
+    }
+    return;
+  }
+  throw new Error('surfnet_timeTravel kept targeting the past');
+}
+
+// Asserts the call is rejected with the named program error: an Opal error such as
+// `DeadlineNotReached`, or an Anchor error such as `ConstraintSeeds`.
+async function expectProgramError(call: Promise<unknown>, name: string) {
+  let failure: unknown;
+  try {
+    await call;
+  } catch (e) {
+    failure = e;
+  }
+  if (failure === undefined) throw new Error(`expected ${name}, but the call succeeded`);
+
+  if (failure instanceof anchor.AnchorError) {
+    expect(failure.error.errorCode.code).toBe(name);
+    return;
+  }
+  // Not an Anchor error (e.g. a System Program failure): match the name in the logs.
+  const logs = (failure as { logs?: string[] }).logs ?? [];
+  expect([String(failure), ...logs].join('\n')).toContain(name);
 }
 
 function derivePDAs(id: PublicKey, programId: PublicKey) {
@@ -71,11 +155,7 @@ function derivePDAs(id: PublicKey, programId: PublicKey) {
     [SEEDS.VOTE_DISPUTE, assertion.toBuffer()],
     programId
   );
-  const [voteRound] = PublicKey.findProgramAddressSync(
-    [SEEDS.VOTE_ROUND, assertion.toBuffer()],
-    programId
-  );
-  return { assertion, bondVault, llmDispute, llmRound, voteDispute, voteRound };
+  return { assertion, bondVault, llmDispute, llmRound, voteDispute };
 }
 
 type TokenEnv = {
@@ -134,12 +214,13 @@ type ProtocolEnv = {
   treasuryAta: PublicKey;
 };
 
-async function setupProtocol(
+// `args` override CONFIG_DEFAULTS; the resolver is always explicit.
+async function initializeConfig(
   program: Program<Opal>,
   token: TokenEnv,
-  authority: Keypair
-): Promise<ProtocolEnv> {
-  const resolver = Keypair.generate();
+  authority: Keypair,
+  args: Pick<ConfigArgs, 'resolver'> & Partial<ConfigArgs>
+) {
   const [configPda] = PublicKey.findProgramAddressSync([SEEDS.PROTOCOL_CONFIG], program.programId);
 
   const treasuryAta = (
@@ -152,33 +233,18 @@ async function setupProtocol(
   ).address;
 
   await program.methods
-    .initializeProtocolConfig({
-      resolver: resolver.publicKey,
-      assertionBondMinPusd: new BN(100),
-      llmDisputeBondRatioBps: 5000,
-      voteDisputeBondRatioBps: 3000,
-      protocolFeeBps: 250,
-      llmDisputerRewardShareBps: 3000,
-      voteDisputerRewardShareBps: 2500,
-      voterRewardShareBps: 2500,
-      treasuryShareBps: 2000,
-      supermajorityBps: 6700,
-      livenessWindowSeconds: new BN(2),
-      llmChallengeWindowSeconds: new BN(3),
-      voteSetupWindowSeconds: new BN(1),
-      votingWindowSeconds: new BN(3),
-    })
+    .initializeProtocolConfig({ ...CONFIG_DEFAULTS, ...args })
     .accounts({
       authority: authority.publicKey,
       protocolConfig: configPda,
-      pusdMint: token.mint,
-      treasuryPusd: treasuryAta,
+      usdcMint: token.mint,
+      treasuryUsdc: treasuryAta,
       systemProgram: SystemProgram.programId,
     })
     .signers([authority])
     .rpc({ commitment: 'confirmed' });
 
-  return { configPda, authority, resolver, treasuryAta };
+  return { configPda, treasuryAta };
 }
 
 class Assertion {
@@ -187,6 +253,8 @@ class Assertion {
     public pdas: ReturnType<typeof derivePDAs>
   ) {}
 }
+
+type Balances = { asserter: number; llmDisputer: number; treasury: number; vault: number };
 
 class TestContext {
   constructor(
@@ -202,21 +270,30 @@ class TestContext {
     return new Assertion(id, derivePDAs(id, this.program.programId));
   }
 
+  async balances(a: Assertion): Promise<Balances> {
+    return {
+      asserter: await balanceOf(this.connection, this.token.asserterAta),
+      llmDisputer: await balanceOf(this.connection, this.token.llmDisputerAta),
+      treasury: await balanceOf(this.connection, this.proto.treasuryAta),
+      vault: await balanceOf(this.connection, a.pdas.bondVault),
+    };
+  }
+
   async createAssertion(a: Assertion, statement: string, bond: number, auxiliaryHash = 'hash') {
     return this.program.methods
       .createAssertion({
         assertionId: a.id,
         statement,
         auxiliaryHash,
-        assertionBondAmountPusd: new BN(bond),
+        assertionBondAmountUsdc: new BN(bond),
       })
       .accounts({
         asserter: this.token.asserter.publicKey,
         protocolConfig: this.proto.configPda,
-        pusdMint: this.token.mint,
+        usdcMint: this.token.mint,
         assertion: a.pdas.assertion,
         bondVault: a.pdas.bondVault,
-        asserterPusd: this.token.asserterAta,
+        asserterUsdc: this.token.asserterAta,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
@@ -230,12 +307,12 @@ class TestContext {
       .accounts({
         disputer: this.token.llmDisputer.publicKey,
         protocolConfig: this.proto.configPda,
-        pusdMint: this.token.mint,
+        usdcMint: this.token.mint,
         assertion: a.pdas.assertion,
         llmDispute: a.pdas.llmDispute,
         llmResolutionRound: a.pdas.llmRound,
         bondVault: a.pdas.bondVault,
-        disputerPusd: this.token.llmDisputerAta,
+        disputerUsdc: this.token.llmDisputerAta,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
@@ -256,20 +333,20 @@ class TestContext {
       .rpc({ commitment: 'confirmed' });
   }
 
-  async finalizeLlmResolution(a: Assertion) {
+  async finalizeLlmResolution(a: Assertion, llmDispute = a.pdas.llmDispute) {
     return this.program.methods
       .finalizeLlmResolution({ assertionId: a.id })
       .accounts({
         finalizer: this.provider.wallet.publicKey,
         protocolConfig: this.proto.configPda,
-        pusdMint: this.token.mint,
+        usdcMint: this.token.mint,
         assertion: a.pdas.assertion,
-        llmDispute: a.pdas.llmDispute,
+        llmDispute,
         llmResolutionRound: a.pdas.llmRound,
         bondVault: a.pdas.bondVault,
-        asserterPusd: this.token.asserterAta,
-        llmDisputerPusd: this.token.llmDisputerAta,
-        treasuryPusd: this.proto.treasuryAta,
+        asserterUsdc: this.token.asserterAta,
+        llmDisputerUsdc: this.token.llmDisputerAta,
+        treasuryUsdc: this.proto.treasuryAta,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .rpc({ commitment: 'confirmed' });
@@ -281,52 +358,16 @@ class TestContext {
       .accounts({
         disputer: this.token.voteDisputer.publicKey,
         protocolConfig: this.proto.configPda,
-        pusdMint: this.token.mint,
+        usdcMint: this.token.mint,
         assertion: a.pdas.assertion,
         llmResolutionRound: a.pdas.llmRound,
         voteDispute: a.pdas.voteDispute,
-        voteResolutionRound: a.pdas.voteRound,
         bondVault: a.pdas.bondVault,
-        disputerPusd: this.token.voteDisputerAta,
+        disputerUsdc: this.token.voteDisputerAta,
         tokenProgram: TOKEN_PROGRAM_ID,
         systemProgram: SystemProgram.programId,
       })
       .signers([this.token.voteDisputer])
-      .rpc({ commitment: 'confirmed' });
-  }
-
-  async openVote(a: Assertion) {
-    return this.program.methods
-      .openVote({ assertionId: a.id })
-      .accounts({
-        authority: this.proto.authority.publicKey,
-        protocolConfig: this.proto.configPda,
-        assertion: a.pdas.assertion,
-        voteResolutionRound: a.pdas.voteRound,
-      })
-      .signers([this.proto.authority])
-      .rpc({ commitment: 'confirmed' });
-  }
-
-  async finalizeVoteResolutionPlaceholder(a: Assertion, outcomeCode: number) {
-    return this.program.methods
-      .finalizeVoteResolutionPlaceholder({ assertionId: a.id, outcomeCode })
-      .accounts({
-        authority: this.proto.authority.publicKey,
-        protocolConfig: this.proto.configPda,
-        pusdMint: this.token.mint,
-        assertion: a.pdas.assertion,
-        llmDispute: a.pdas.llmDispute,
-        voteDispute: a.pdas.voteDispute,
-        voteResolutionRound: a.pdas.voteRound,
-        bondVault: a.pdas.bondVault,
-        asserterPusd: this.token.asserterAta,
-        llmDisputerPusd: this.token.llmDisputerAta,
-        voteDisputerPusd: this.token.voteDisputerAta,
-        treasuryPusd: this.proto.treasuryAta,
-        tokenProgram: TOKEN_PROGRAM_ID,
-      })
-      .signers([this.proto.authority])
       .rpc({ commitment: 'confirmed' });
   }
 
@@ -336,11 +377,11 @@ class TestContext {
       .accounts({
         finalizer: this.provider.wallet.publicKey,
         protocolConfig: this.proto.configPda,
-        pusdMint: this.token.mint,
+        usdcMint: this.token.mint,
         assertion: a.pdas.assertion,
         bondVault: a.pdas.bondVault,
-        asserterPusd: this.token.asserterAta,
-        treasuryPusd: this.proto.treasuryAta,
+        asserterUsdc: this.token.asserterAta,
+        treasuryUsdc: this.proto.treasuryAta,
         tokenProgram: TOKEN_PROGRAM_ID,
       })
       .rpc({ commitment: 'confirmed' });
@@ -355,12 +396,32 @@ class TestContext {
   fetchLlmRound(a: Assertion) {
     return this.program.account.llmResolutionRound.fetch(a.pdas.llmRound);
   }
-  fetchVoteDispute(a: Assertion) {
-    return this.program.account.voteDisputeAccount.fetch(a.pdas.voteDispute);
+
+  // Creates, disputes, resolves via the LLM and finalizes after the challenge window.
+  // Returns the balances just before and just after the final settlement.
+  async settleViaLlm(a: Assertion, bond: number, outcome: number) {
+    await this.createAssertion(a, `LLM settlement, outcome ${outcome}`, bond);
+    await this.disputeAssertion(a);
+    await this.submitLlmResolution(a, outcome);
+    await advanceSeconds(this.connection, CHALLENGE_SECONDS + 1);
+
+    const before = await this.balances(a);
+    await this.finalizeLlmResolution(a);
+    const after = await this.balances(a);
+    return { before, after };
   }
-  fetchVoteRound(a: Assertion) {
-    return this.program.account.voteResolutionRound.fetch(a.pdas.voteRound);
-  }
+}
+
+// Every unit in the vault before settlement leaves it: recipients and treasury gain the bonds.
+function expectConserved(before: Balances, after: Balances, bonds: number) {
+  expect(before.vault).toBe(bonds);
+  expect(after.vault).toBe(0);
+  const gained =
+    after.asserter -
+    before.asserter +
+    (after.llmDisputer - before.llmDisputer) +
+    (after.treasury - before.treasury);
+  expect(gained).toBe(bonds);
 }
 
 describe('opal', () => {
@@ -379,110 +440,63 @@ describe('opal', () => {
     token = await buildTokenEnv(connection);
   });
 
-  it('rejects invalid protocol config', async () => {
+  // The config rejection tests run before the config exists, so the only way they can
+  // reject is by failing validation (not because the PDA is already initialized).
+  it('rejects a zero assertion bond minimum', async () => {
     const authority = Keypair.generate();
     await fund(connection, authority.publicKey, 10_000_000_000);
 
-    const [configPda] = PublicKey.findProgramAddressSync(
-      [SEEDS.PROTOCOL_CONFIG],
-      program.programId
+    await expectProgramError(
+      initializeConfig(program, token, authority, {
+        resolver: authority.publicKey,
+        assertionBondMinUsdc: new BN(0),
+      }),
+      'InvalidAssertionBondMinimum'
     );
-    const treasuryAta = (
-      await getOrCreateAssociatedTokenAccount(
-        connection,
-        token.mintAuthority,
-        token.mint,
-        token.treasury.publicKey
-      )
-    ).address;
-
-    await expect(
-      program.methods
-        .initializeProtocolConfig({
-          resolver: authority.publicKey,
-          assertionBondMinPusd: new BN(0),
-          llmDisputeBondRatioBps: 5000,
-          voteDisputeBondRatioBps: 3000,
-          protocolFeeBps: 250,
-          llmDisputerRewardShareBps: 3000,
-          voteDisputerRewardShareBps: 2500,
-          voterRewardShareBps: 2500,
-          treasuryShareBps: 2000,
-          supermajorityBps: 6700,
-          livenessWindowSeconds: new BN(86400),
-          llmChallengeWindowSeconds: new BN(43200),
-          voteSetupWindowSeconds: new BN(3600),
-          votingWindowSeconds: new BN(86400),
-        })
-        .accounts({
-          authority: authority.publicKey,
-          protocolConfig: configPda,
-          pusdMint: token.mint,
-          treasuryPusd: treasuryAta,
-          systemProgram: SystemProgram.programId,
-        })
-        .signers([authority])
-        .rpc({ commitment: 'confirmed' })
-    ).rejects.toThrow();
   });
 
   it('rejects protocol config with default resolver', async () => {
     const authority = Keypair.generate();
     await fund(connection, authority.publicKey, 10_000_000_000);
 
-    const [configPda] = PublicKey.findProgramAddressSync(
-      [SEEDS.PROTOCOL_CONFIG],
-      program.programId
+    await expectProgramError(
+      initializeConfig(program, token, authority, { resolver: PublicKey.default }),
+      'ConfigInvariantViolation'
     );
-    const treasuryAta = (
-      await getOrCreateAssociatedTokenAccount(
-        connection,
-        token.mintAuthority,
-        token.mint,
-        token.treasury.publicKey
-      )
-    ).address;
+  });
 
-    await expect(
-      program.methods
-        .initializeProtocolConfig({
-          resolver: PublicKey.default,
-          assertionBondMinPusd: new BN(100),
-          llmDisputeBondRatioBps: 5000,
-          voteDisputeBondRatioBps: 3000,
-          protocolFeeBps: 250,
-          llmDisputerRewardShareBps: 3000,
-          voteDisputerRewardShareBps: 2500,
-          voterRewardShareBps: 2500,
-          treasuryShareBps: 2000,
-          supermajorityBps: 6700,
-          livenessWindowSeconds: new BN(86400),
-          llmChallengeWindowSeconds: new BN(43200),
-          voteSetupWindowSeconds: new BN(3600),
-          votingWindowSeconds: new BN(86400),
-        })
-        .accounts({
-          authority: authority.publicKey,
-          protocolConfig: configPda,
-          pusdMint: token.mint,
-          treasuryPusd: treasuryAta,
-          systemProgram: SystemProgram.programId,
-        })
-        .signers([authority])
-        .rpc({ commitment: 'confirmed' })
-    ).rejects.toThrow();
+  it('rejects protocol config with a non-positive window', async () => {
+    const authority = Keypair.generate();
+    await fund(connection, authority.publicKey, 10_000_000_000);
+
+    await expectProgramError(
+      initializeConfig(program, token, authority, {
+        resolver: authority.publicKey,
+        llmChallengeWindowSeconds: new BN(0),
+      }),
+      'InvalidWindowConfiguration'
+    );
   });
 
   it('initializes protocol', async () => {
-    proto = await setupProtocol(program, token, provider.wallet.payer);
+    const authority = provider.wallet.payer;
+    const resolver = Keypair.generate();
+    const { configPda, treasuryAta } = await initializeConfig(program, token, authority, {
+      resolver: resolver.publicKey,
+    });
+    proto = { configPda, authority, resolver, treasuryAta };
     ctx = new TestContext(program, provider, connection, token, proto);
+
+    const config = await program.account.protocolConfig.fetch(configPda);
+    expect(config.resolver.toBase58()).toBe(resolver.publicKey.toBase58());
+    expect(config.protocolFeeBps).toBe(250);
+    expect(config.livenessWindowSeconds.toNumber()).toBe(LIVENESS_SECONDS);
+    expect(config.llmChallengeWindowSeconds.toNumber()).toBe(CHALLENGE_SECONDS);
   });
 
   it('undisputed path: creates, waits, finalizes with correct payouts', async () => {
     const a = ctx.newAssertion();
     const bond = 200;
-    const asserterStart = await balanceOf(connection, token.asserterAta);
-    const treasuryStart = await balanceOf(connection, proto.treasuryAta);
 
     await ctx.createAssertion(a, 'Bitcoin > $100k by 2026', bond, 'hash123');
 
@@ -491,9 +505,11 @@ describe('opal', () => {
     expect(acc.disputeCount).toBe(0);
     expect(acc.outcome).toBe(OUTCOME.NONE);
 
-    await sleep(4000);
+    await advanceSeconds(connection, LIVENESS_SECONDS + 1);
 
+    const before = await ctx.balances(a);
     await ctx.finalizeUndisputed(a);
+    const after = await ctx.balances(a);
 
     const resolved = await ctx.fetchAssertion(a);
     expect(resolved.state).toBe(STATE.RESOLVED);
@@ -501,8 +517,9 @@ describe('opal', () => {
     expect(resolved.finalizedAt.toNumber()).toBeGreaterThan(0);
 
     // fee = 200 * 250 / 10000 = 5
-    expect(await balanceOf(connection, token.asserterAta)).toBe(asserterStart - bond + (bond - 5));
-    expect(await balanceOf(connection, proto.treasuryAta)).toBe(treasuryStart + 5);
+    expect(after.asserter - before.asserter).toBe(bond - 5);
+    expect(after.treasury - before.treasury).toBe(5);
+    expectConserved(before, after, bond);
   });
 
   it('llm resolution path: disputes, resolves via llm, pays winner', async () => {
@@ -510,16 +527,13 @@ describe('opal', () => {
     const bond = 200;
 
     await ctx.createAssertion(a, 'ETH flips BTC', bond, 'abc');
-
-    const disputerStart = await balanceOf(connection, token.llmDisputerAta);
-
     await ctx.disputeAssertion(a);
 
     let acc = await ctx.fetchAssertion(a);
     expect(acc.state).toBe(STATE.PENDING_LLM);
     expect(acc.disputeCount).toBe(1);
 
-    await ctx.submitLlmResolution(a, 1);
+    await ctx.submitLlmResolution(a, OUTCOME.FALSE);
 
     acc = await ctx.fetchAssertion(a);
     expect(acc.state).toBe(STATE.ASSERTED_LLM);
@@ -528,9 +542,11 @@ describe('opal', () => {
     expect(round.outcome).toBe(OUTCOME.FALSE);
     expect(round.challengeDeadline.toNumber()).toBeGreaterThan(0);
 
-    await sleep(4000);
+    await advanceSeconds(connection, CHALLENGE_SECONDS + 1);
 
+    const before = await ctx.balances(a);
     await ctx.finalizeLlmResolution(a);
+    const after = await ctx.balances(a);
 
     const resolved = await ctx.fetchAssertion(a);
     expect(resolved.state).toBe(STATE.RESOLVED);
@@ -539,70 +555,94 @@ describe('opal', () => {
     const dispute = await ctx.fetchLlmDispute(a);
     expect(dispute.settlementResolution).toBe(OUTCOME.FALSE);
 
-    // disputer was correct (outcome != TRUE). Net gain = assertion bond - fee = 195.
-    expect(await balanceOf(connection, token.llmDisputerAta)).toBe(disputerStart + 195);
+    // dispute bond = 50% of 200 = 100; fee = 200 * 250 / 10000 = 5.
+    // The disputer was right: they get their 100 back plus the asserter's 200 minus the fee.
+    expect(after.llmDisputer - before.llmDisputer).toBe(100 + 195);
+    expect(after.asserter - before.asserter).toBe(0);
+    expect(after.treasury - before.treasury).toBe(5);
+    expectConserved(before, after, bond + 100);
   });
 
-  it('full escalation path: escalates to vote and resolves', async () => {
+  it('llm resolution path: a True verdict pays the asserter', async () => {
+    const a = ctx.newAssertion();
+    const { before, after } = await ctx.settleViaLlm(a, 200, OUTCOME.TRUE);
+
+    const resolved = await ctx.fetchAssertion(a);
+    expect(resolved.state).toBe(STATE.RESOLVED);
+    expect(resolved.outcome).toBe(OUTCOME.TRUE);
+
+    // fee = 100 * 250 / 10000 = 2 (floored); the asserter keeps 200 and wins 100 - 2.
+    expect(after.asserter - before.asserter).toBe(200 + 98);
+    expect(after.llmDisputer - before.llmDisputer).toBe(0);
+    expect(after.treasury - before.treasury).toBe(2);
+    expectConserved(before, after, 300);
+  });
+
+  it('llm resolution path: an Unresolvable verdict pays the disputer', async () => {
+    const a = ctx.newAssertion();
+    const { before, after } = await ctx.settleViaLlm(a, 200, OUTCOME.UNRESOLVABLE);
+
+    const resolved = await ctx.fetchAssertion(a);
+    expect(resolved.state).toBe(STATE.RESOLVED);
+    expect(resolved.outcome).toBe(OUTCOME.UNRESOLVABLE);
+
+    const dispute = await ctx.fetchLlmDispute(a);
+    expect(dispute.settlementResolution).toBe(OUTCOME.UNRESOLVABLE);
+
+    // Same payout as False: the disputer gets 100 + (200 - 5), the treasury 5.
+    expect(after.llmDisputer - before.llmDisputer).toBe(295);
+    expect(after.asserter - before.asserter).toBe(0);
+    expect(after.treasury - before.treasury).toBe(5);
+    expectConserved(before, after, 300);
+  });
+
+  it('full escalation path: challenge moves the assertion to PendingVote', async () => {
     const a = ctx.newAssertion();
 
     await ctx.createAssertion(a, 'Solana TPS > 10000', 500, 'perf');
     await ctx.disputeAssertion(a);
-    await ctx.submitLlmResolution(a, 0);
+    await ctx.submitLlmResolution(a, OUTCOME.TRUE);
     await ctx.challengeLlmResolution(a);
-    await ctx.openVote(a);
 
-    let acc = await ctx.fetchAssertion(a);
-    expect(acc.state).toBe(STATE.VOTING);
+    const acc = await ctx.fetchAssertion(a);
+    expect(acc.state).toBe(STATE.PENDING_VOTE);
+    expect(acc.disputeCount).toBe(2);
+    expect(acc.voteDispute.toBase58()).toBe(a.pdas.voteDispute.toBase58());
 
-    await sleep(5000);
-
-    // sanity-check accounts exist before calling finalize
-    await ctx.fetchVoteDispute(a);
-    await ctx.fetchVoteRound(a);
-
-    await ctx.finalizeVoteResolutionPlaceholder(a, 1);
-
-    const resolved = await ctx.fetchAssertion(a);
-    expect(resolved.state).toBe(STATE.RESOLVED);
-    expect(resolved.outcome).toBe(OUTCOME.FALSE);
-    expect(resolved.finalizedAt.toNumber()).toBeGreaterThan(0);
-
-    const llmDisp = await ctx.fetchLlmDispute(a);
-    expect(llmDisp.settlementResolution).not.toBe(OUTCOME.NONE);
-
-    const voteDisp = await ctx.fetchVoteDispute(a);
-    expect(voteDisp.settlementResolution).not.toBe(OUTCOME.NONE);
-
-    const vr = await ctx.fetchVoteRound(a);
-    expect(vr.finalOutcome).toBe(OUTCOME.FALSE);
+    // assertion bond 500 + llm dispute 50% (250) + vote dispute 30% (150)
+    expect(await balanceOf(connection, a.pdas.bondVault)).toBe(500 + 250 + 150);
   });
 
   it('error: premature finalizeUndisputed', async () => {
     const a = ctx.newAssertion();
     await ctx.createAssertion(a, 'Test', 200);
 
-    await expect(ctx.finalizeUndisputed(a)).rejects.toThrow();
+    await expectProgramError(ctx.finalizeUndisputed(a), 'DeadlineNotReached');
   });
 
   it('error: insufficient bond', async () => {
     const a = ctx.newAssertion();
-    await expect(ctx.createAssertion(a, 'Fail', 50)).rejects.toThrow();
+    await expectProgramError(ctx.createAssertion(a, 'Fail', 50), 'InsufficientBondAmount');
   });
 
   it('error: disputing after liveness deadline', async () => {
     const a = ctx.newAssertion();
     await ctx.createAssertion(a, 'Late dispute', 200);
-    await sleep(4000);
+    await advanceSeconds(connection, LIVENESS_SECONDS + 1);
 
-    await expect(ctx.disputeAssertion(a)).rejects.toThrow();
+    await expectProgramError(ctx.disputeAssertion(a), 'DeadlinePassed');
   });
 
-  it('error: submitLlmResolution when state is Asserted', async () => {
+  it('error: submitLlmResolution before any dispute exists', async () => {
     const a = ctx.newAssertion();
     await ctx.createAssertion(a, 'No dispute', 200);
 
-    await expect(ctx.submitLlmResolution(a, 0)).rejects.toThrow();
+    // The llm round PDA only exists once the assertion is disputed; until then it is an
+    // empty System Program account.
+    await expectProgramError(
+      ctx.submitLlmResolution(a, OUTCOME.TRUE),
+      'AccountOwnedByWrongProgram'
+    );
   });
 
   it('error: submitLlmResolution from a non-resolver signer', async () => {
@@ -610,15 +650,21 @@ describe('opal', () => {
     await ctx.createAssertion(a, 'Wrong signer', 200);
     await ctx.disputeAssertion(a);
 
-    await expect(ctx.submitLlmResolution(a, 0, proto.authority)).rejects.toThrow();
+    await expectProgramError(
+      ctx.submitLlmResolution(a, OUTCOME.TRUE, proto.authority),
+      'Unauthorized'
+    );
   });
 
-  it('error: submitLlmResolution with TooEarly outcome', async () => {
+  it('error: submitLlmResolution with an outcome the resolver cannot post', async () => {
     const a = ctx.newAssertion();
     await ctx.createAssertion(a, 'Too early', 200);
     await ctx.disputeAssertion(a);
 
-    await expect(ctx.submitLlmResolution(a, OUTCOME.TOO_EARLY)).rejects.toThrow();
+    // 2 is reserved for the vote-only outcome; 4 and 255 are not outcomes at all.
+    for (const outcome of [OUTCOME.TOO_EARLY, 4, OUTCOME.NONE]) {
+      await expectProgramError(ctx.submitLlmResolution(a, outcome), 'InvalidOutcomeCode');
+    }
   });
 
   it('error: submitLlmResolution twice on the same round', async () => {
@@ -627,7 +673,7 @@ describe('opal', () => {
     await ctx.disputeAssertion(a);
     await ctx.submitLlmResolution(a, OUTCOME.TRUE);
 
-    await expect(ctx.submitLlmResolution(a, OUTCOME.FALSE)).rejects.toThrow();
+    await expectProgramError(ctx.submitLlmResolution(a, OUTCOME.FALSE), 'InvalidState');
   });
 
   it('accepts an Unresolvable verdict from the resolver', async () => {
@@ -643,14 +689,23 @@ describe('opal', () => {
     expect(acc.state).toBe(STATE.ASSERTED_LLM);
   });
 
+  it('error: finalizeLlmResolution before the challenge deadline', async () => {
+    const a = ctx.newAssertion();
+    await ctx.createAssertion(a, 'Too soon', 200);
+    await ctx.disputeAssertion(a);
+    await ctx.submitLlmResolution(a, OUTCOME.TRUE);
+
+    await expectProgramError(ctx.finalizeLlmResolution(a), 'DeadlineNotReached');
+  });
+
   it('error: challengeLlmResolution after challenge deadline', async () => {
     const a = ctx.newAssertion();
     await ctx.createAssertion(a, 'Missed challenge', 200);
     await ctx.disputeAssertion(a);
-    await ctx.submitLlmResolution(a, 0);
-    await sleep(4000);
+    await ctx.submitLlmResolution(a, OUTCOME.TRUE);
+    await advanceSeconds(connection, CHALLENGE_SECONDS + 1);
 
-    await expect(ctx.challengeLlmResolution(a)).rejects.toThrow();
+    await expectProgramError(ctx.challengeLlmResolution(a), 'DeadlinePassed');
   });
 
   it('error: disputing an already-disputed assertion', async () => {
@@ -658,39 +713,20 @@ describe('opal', () => {
     await ctx.createAssertion(a, 'Double dispute', 200);
     await ctx.disputeAssertion(a);
 
-    await expect(ctx.disputeAssertion(a)).rejects.toThrow();
+    // The dispute PDAs exist already, so `init` fails before the handler's state check runs.
+    await expectProgramError(ctx.disputeAssertion(a), 'already in use');
   });
 
   it('error: mismatched llmDispute account', async () => {
     const a1 = ctx.newAssertion();
     const a2 = ctx.newAssertion();
 
-    // create and dispute assertion1
     await ctx.createAssertion(a1, 'A1', 200, 'a1');
     await ctx.disputeAssertion(a1);
-
-    // create assertion2 (undisputed) so we can try to pass its dispute for assertion1
     await ctx.createAssertion(a2, 'A2', 200, 'a2');
+    await ctx.disputeAssertion(a2);
 
-    // finalizeLlmResolution with assertion1 but llmDispute from assertion2
-    // should fail because the dispute doesn't link back to assertion1
-    await expect(
-      program.methods
-        .finalizeLlmResolution({ assertionId: a1.id })
-        .accounts({
-          finalizer: provider.wallet.publicKey,
-          protocolConfig: proto.configPda,
-          pusdMint: token.mint,
-          assertion: a1.pdas.assertion,
-          llmDispute: a2.pdas.llmDispute,
-          llmResolutionRound: a1.pdas.llmRound,
-          bondVault: a1.pdas.bondVault,
-          asserterPusd: token.asserterAta,
-          llmDisputerPusd: token.llmDisputerAta,
-          treasuryPusd: proto.treasuryAta,
-          tokenProgram: TOKEN_PROGRAM_ID,
-        })
-        .rpc({ commitment: 'confirmed' })
-    ).rejects.toThrow();
+    // finalizeLlmResolution for a1 with the llmDispute PDA that belongs to a2.
+    await expectProgramError(ctx.finalizeLlmResolution(a1, a2.pdas.llmDispute), 'ConstraintSeeds');
   });
 });
